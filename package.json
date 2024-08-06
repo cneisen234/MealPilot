@@ -2,6 +2,7 @@
   "name": "my-social-ai-app",
   "version": "0.1.0",
   "private": true,
+  "proxy": "http://localhost:5000",
   "dependencies": {
     "@emotion/react": "^11.13.0",
     "@testing-library/jest-dom": "^5.17.0",

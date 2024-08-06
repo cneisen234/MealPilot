@@ -1,28 +1,31 @@
-// src/components/interests/AddInterestForm.tsx
 import React, { useState } from "react";
-import { Interest, Item } from "../../types";
+import { Interest, Item, PrivacySetting } from "../../types";
 
 interface AddInterestFormProps {
-  onAddInterest: (interest: Omit<Interest, "id">) => void;
+  onAddInterest: (interest: Omit<Interest, "id" | "userId">) => void;
 }
 
 const AddInterestForm: React.FC<AddInterestFormProps> = ({ onAddInterest }) => {
   const [category, setCategory] = useState("");
   const [itemName, setItemName] = useState("");
   const [itemRating, setItemRating] = useState<number>(5);
+  const [visibility, setVisibility] = useState<PrivacySetting>(
+    PrivacySetting.FriendsOnly
+  );
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     const newItem: Item = { name: itemName, rating: itemRating };
-    const newInterest: Omit<Interest, "id"> = {
-      userId: 1, // Assuming user ID 1 for now
+    const newInterest: Omit<Interest, "id" | "userId"> = {
       category,
       items: [newItem],
+      visibility,
     };
     onAddInterest(newInterest);
     setCategory("");
     setItemName("");
     setItemRating(5);
+    setVisibility(PrivacySetting.FriendsOnly);
   };
 
   return (
@@ -58,6 +61,17 @@ const AddInterestForm: React.FC<AddInterestFormProps> = ({ onAddInterest }) => {
           max="10"
           required
         />
+      </div>
+      <div className="form-group">
+        <select
+          className="form-control"
+          value={visibility}
+          onChange={(e) => setVisibility(e.target.value as PrivacySetting)}
+          required>
+          <option value={PrivacySetting.Public}>Public</option>
+          <option value={PrivacySetting.FriendsOnly}>Friends Only</option>
+          <option value={PrivacySetting.Private}>Private</option>
+        </select>
       </div>
       <button type="submit" className="btn btn-primary">
         Add Interest

@@ -1,22 +1,25 @@
-// src/pages/Profile.tsx
 import React, { useState, useEffect } from "react";
-import { Interest, User } from "../types";
+import { User, Interest, PrivacySetting } from "../types";
 import InterestList from "../components/interests/InterestList";
-import { getUserInterests } from "../utils/api";
 
-const Profile: React.FC = () => {
+interface ProfileProps {
+  userId: number;
+  isOwnProfile: boolean;
+}
+
+const Profile: React.FC<ProfileProps> = ({ userId, isOwnProfile }) => {
   const [user, setUser] = useState<User | null>(null);
 
   useEffect(() => {
-    // Simulating API call to get user data
     const fetchUser = async () => {
       // This would normally be an API call
       const dummyUser: User = {
-        id: 1,
+        id: userId,
         name: "John Doe",
         username: "johndoe",
         avatar: "https://i.pravatar.cc/307",
         bio: "Enthusiast of technology and nature.",
+        bioVisibility: PrivacySetting.FriendsOnly,
         interests: [
           {
             category: "Technology",
@@ -25,6 +28,7 @@ const Profile: React.FC = () => {
               { name: "AI", rating: 8 },
               { name: "Web Development", rating: 10 },
             ],
+            visibility: PrivacySetting.Public,
           },
           {
             category: "Nature",
@@ -33,18 +37,32 @@ const Profile: React.FC = () => {
               { name: "Bird Watching", rating: 6 },
               { name: "Gardening", rating: 8 },
             ],
+            visibility: PrivacySetting.FriendsOnly,
           },
         ],
+        interestsVisibility: PrivacySetting.FriendsOnly,
+        friends: [],
+        pendingFriendRequests: [],
       };
       setUser(dummyUser);
     };
 
     fetchUser();
-  }, []);
+  }, [userId]);
 
   if (!user) {
     return <div>Loading...</div>;
   }
+
+  const canViewBio =
+    isOwnProfile ||
+    user.bioVisibility === PrivacySetting.Public ||
+    user.bioVisibility === PrivacySetting.FriendsOnly; /* && isFriend */
+
+  const canViewInterests =
+    isOwnProfile ||
+    user.interestsVisibility === PrivacySetting.Public ||
+    user.interestsVisibility === PrivacySetting.FriendsOnly; /* && isFriend */
 
   return (
     <div style={{ maxWidth: "800px", margin: "0 auto", padding: "20px" }}>
@@ -86,71 +104,83 @@ const Profile: React.FC = () => {
             }}>
             @{user.username}
           </p>
-          <p style={{ color: "var(--text-color)" }}>{user.bio}</p>
+          {canViewBio && (
+            <p style={{ color: "var(--text-color)" }}>{user.bio}</p>
+          )}
         </div>
       </div>
 
-      <div
-        style={{
-          background: "var(--surface-color)",
-          borderRadius: "15px",
-          padding: "30px",
-          boxShadow: "0 4px 6px rgba(0, 0, 0, 0.1)",
-        }}>
-        <h2
+      {canViewInterests && (
+        <div
           style={{
-            fontSize: "1.8em",
-            marginBottom: "20px",
-            color: "var(--primary-color)",
-            borderBottom: "2px solid var(--primary-color)",
-            paddingBottom: "10px",
+            background: "var(--surface-color)",
+            borderRadius: "15px",
+            padding: "30px",
+            boxShadow: "0 4px 6px rgba(0, 0, 0, 0.1)",
           }}>
-          Interests
-        </h2>
-        {user.interests.map((interest, index) => (
-          <div key={index} style={{ marginBottom: "30px" }}>
-            <h3
-              style={{
-                fontSize: "1.4em",
-                color: "var(--secondary-color)",
-                marginBottom: "15px",
-              }}>
-              {interest.category}
-            </h3>
-            <div style={{ display: "flex", flexWrap: "wrap", gap: "10px" }}>
-              {interest.items.map((item, itemIndex) => (
-                <div
-                  key={itemIndex}
+          <h2
+            style={{
+              fontSize: "1.8em",
+              marginBottom: "20px",
+              color: "var(--primary-color)",
+              borderBottom: "2px solid var(--primary-color)",
+              paddingBottom: "10px",
+            }}>
+            Interests
+          </h2>
+          {user.interests.map((interest, index) => {
+            const canViewCategory =
+              isOwnProfile ||
+              interest.visibility === PrivacySetting.Public ||
+              interest.visibility ===
+                PrivacySetting.FriendsOnly; /* && isFriend */
+
+            return canViewCategory ? (
+              <div key={index} style={{ marginBottom: "30px" }}>
+                <h3
                   style={{
-                    background: "rgba(150, 111, 214, 0.1)",
-                    padding: "10px 15px",
-                    borderRadius: "20px",
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "space-between",
+                    fontSize: "1.4em",
+                    color: "var(--secondary-color)",
+                    marginBottom: "15px",
                   }}>
-                  <span>{item.name}</span>
-                  <span
-                    style={{
-                      marginLeft: "10px",
-                      background: "var(--primary-color)",
-                      color: "white",
-                      borderRadius: "50%",
-                      width: "25px",
-                      height: "25px",
-                      display: "flex",
-                      alignItems: "center",
-                      justifyContent: "center",
-                      fontSize: "0.8em",
-                    }}>
-                    {item.rating}
-                  </span>
+                  {interest.category}
+                </h3>
+                <div style={{ display: "flex", flexWrap: "wrap", gap: "10px" }}>
+                  {interest.items.map((item, itemIndex) => (
+                    <div
+                      key={itemIndex}
+                      style={{
+                        background: "rgba(150, 111, 214, 0.1)",
+                        padding: "10px 15px",
+                        borderRadius: "20px",
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "space-between",
+                      }}>
+                      <span>{item.name}</span>
+                      <span
+                        style={{
+                          marginLeft: "10px",
+                          background: "var(--primary-color)",
+                          color: "white",
+                          borderRadius: "50%",
+                          width: "25px",
+                          height: "25px",
+                          display: "flex",
+                          alignItems: "center",
+                          justifyContent: "center",
+                          fontSize: "0.8em",
+                        }}>
+                        {item.rating}
+                      </span>
+                    </div>
+                  ))}
                 </div>
-              ))}
-            </div>
-          </div>
-        ))}
-      </div>
+              </div>
+            ) : null;
+          })}
+        </div>
+      )}
     </div>
   );
 };

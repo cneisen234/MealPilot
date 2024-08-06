@@ -3,7 +3,7 @@ import React, { useState } from "react";
 import { FaSearch, FaUserPlus, FaEnvelope, FaComment } from "react-icons/fa";
 import ProfileView from "../components/ProfileView";
 import AddFriendModal from "../components/AddFriendModal";
-import { User, Interest, Item } from "../types";
+import { User, Interest, Item, FriendRequest, PrivacySetting } from "../types";
 
 const dummyFriends: User[] = [
   {
@@ -12,6 +12,7 @@ const dummyFriends: User[] = [
     username: "alice_j",
     avatar: "https://i.pravatar.cc/150?img=1",
     bio: "Love traveling and photography!",
+    bioVisibility: PrivacySetting.Public,
     interests: [
       {
         category: "Photography",
@@ -20,6 +21,7 @@ const dummyFriends: User[] = [
           { name: "Landscape Photography", rating: 8 },
           { name: "Photo Editing", rating: 7 },
         ],
+        visibility: PrivacySetting.Public,
       },
       {
         category: "Travel",
@@ -28,6 +30,7 @@ const dummyFriends: User[] = [
           { name: "Cultural Experiences", rating: 10 },
           { name: "Travel Planning", rating: 8 },
         ],
+        visibility: PrivacySetting.Public,
       },
       {
         category: "Cooking",
@@ -36,140 +39,12 @@ const dummyFriends: User[] = [
           { name: "Baking", rating: 6 },
           { name: "Vegan Recipes", rating: 8 },
         ],
+        visibility: PrivacySetting.Public,
       },
     ],
-  },
-  {
-    id: 2,
-    name: "Bob Smith",
-    username: "bob_smith",
-    avatar: "https://i.pravatar.cc/150?img=2",
-    bio: "Software developer and coffee enthusiast",
-    interests: [
-      {
-        category: "Coding",
-        items: [
-          { name: "JavaScript", rating: 10 },
-          { name: "React", rating: 9 },
-          { name: "Node.js", rating: 8 },
-        ],
-      },
-      {
-        category: "Coffee",
-        items: [
-          { name: "Espresso", rating: 10 },
-          { name: "Pour Over", rating: 9 },
-          { name: "Latte Art", rating: 7 },
-        ],
-      },
-      {
-        category: "Hiking",
-        items: [
-          { name: "Mountain Trails", rating: 8 },
-          { name: "Camping", rating: 7 },
-          { name: "Wildlife Photography", rating: 6 },
-        ],
-      },
-    ],
-  },
-  {
-    id: 3,
-    name: "Carol White",
-    username: "carol_w",
-    avatar: "https://i.pravatar.cc/150?img=3",
-    bio: "Bookworm and cat lover",
-    interests: [
-      {
-        category: "Reading",
-        items: [
-          { name: "Classic Literature", rating: 10 },
-          { name: "Science Fiction", rating: 9 },
-          { name: "Poetry", rating: 8 },
-        ],
-      },
-      {
-        category: "Cats",
-        items: [
-          { name: "Cat Behavior", rating: 9 },
-          { name: "Cat Care", rating: 10 },
-          { name: "Cat Photography", rating: 7 },
-        ],
-      },
-      {
-        category: "Yoga",
-        items: [
-          { name: "Vinyasa Flow", rating: 8 },
-          { name: "Meditation", rating: 9 },
-          { name: "Yoga Philosophy", rating: 7 },
-        ],
-      },
-    ],
-  },
-  {
-    id: 4,
-    name: "David Brown",
-    username: "david_b",
-    avatar: "https://i.pravatar.cc/150?img=4",
-    bio: "Fitness freak and nutrition expert",
-    interests: [
-      {
-        category: "Fitness",
-        items: [
-          { name: "Weightlifting", rating: 10 },
-          { name: "HIIT", rating: 9 },
-          { name: "Calisthenics", rating: 8 },
-        ],
-      },
-      {
-        category: "Nutrition",
-        items: [
-          { name: "Meal Planning", rating: 9 },
-          { name: "Macronutrients", rating: 10 },
-          { name: "Supplements", rating: 8 },
-        ],
-      },
-      {
-        category: "Running",
-        items: [
-          { name: "Marathon Training", rating: 9 },
-          { name: "Trail Running", rating: 8 },
-          { name: "Running Gear", rating: 7 },
-        ],
-      },
-    ],
-  },
-  {
-    id: 5,
-    name: "Eva Green",
-    username: "eva_green",
-    avatar: "https://i.pravatar.cc/150?img=5",
-    bio: "Artist and nature lover",
-    interests: [
-      {
-        category: "Painting",
-        items: [
-          { name: "Watercolor", rating: 10 },
-          { name: "Oil Painting", rating: 8 },
-          { name: "Abstract Art", rating: 9 },
-        ],
-      },
-      {
-        category: "Hiking",
-        items: [
-          { name: "Nature Photography", rating: 9 },
-          { name: "Bird Watching", rating: 8 },
-          { name: "Foraging", rating: 7 },
-        ],
-      },
-      {
-        category: "Gardening",
-        items: [
-          { name: "Organic Vegetables", rating: 9 },
-          { name: "Flower Arranging", rating: 8 },
-          { name: "Composting", rating: 7 },
-        ],
-      },
-    ],
+    interestsVisibility: PrivacySetting.Public,
+    friends: [],
+    pendingFriendRequests: [],
   },
 ];
 
@@ -362,7 +237,15 @@ const Friends: React.FC = () => {
       )}
 
       {isAddFriendModalOpen && (
-        <AddFriendModal onClose={() => setIsAddFriendModalOpen(false)} />
+        <AddFriendModal
+          onClose={() => setIsAddFriendModalOpen(false)}
+          currentUserId={0}
+          onSendFriendRequest={function (
+            request: Omit<FriendRequest, "id" | "createdAt">
+          ): void {
+            throw new Error("Function not implemented.");
+          }}
+        />
       )}
     </div>
   );

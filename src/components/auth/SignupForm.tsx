@@ -1,19 +1,38 @@
 // src/components/auth/SignupForm.tsx
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
+import { useNavigate } from "react-router-dom";
+import axios from "axios";
+import { signup, testConnection } from "../../utils/api";
 
 const SignupForm: React.FC = () => {
+  const [name, setName] = useState("");
   const [username, setUsername] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const navigate = useNavigate();
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    // Handle signup logic here
-    console.log("Signup submitted", { username, email, password });
+    try {
+      await signup({ name, username, email, password });
+      navigate("/login");
+    } catch (error) {
+      console.error("Signup error", error);
+    }
   };
 
   return (
     <form onSubmit={handleSubmit}>
+      <div className="form-group">
+        <input
+          type="text"
+          className="form-control"
+          placeholder="Name"
+          value={name}
+          onChange={(e) => setName(e.target.value)}
+          required
+        />
+      </div>
       <div className="form-group">
         <input
           type="text"
