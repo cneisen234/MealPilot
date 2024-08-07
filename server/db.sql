@@ -55,3 +55,13 @@ CREATE TABLE friend_requests
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     UNIQUE(sender_id, receiver_id)
 );
+
+CREATE TABLE notifications
+(
+    id SERIAL PRIMARY KEY,
+    user_id INTEGER REFERENCES users(id),
+    content TEXT NOT NULL,
+    type VARCHAR(50) NOT NULL,
+    "read" BOOLEAN DEFAULT false,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
