@@ -1,10 +1,12 @@
-// src/contexts/AuthContext.tsx
+// src/context/AuthContext.tsx
+
 import React, { createContext, useState, useEffect, useContext } from "react";
 
 interface AuthContextType {
   isAuthenticated: boolean;
   login: (token: string) => void;
   logout: () => void;
+  checkAuthStatus: () => void;
 }
 
 const AuthContext = createContext<AuthContextType | null>(null);
@@ -14,9 +16,13 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
 }) => {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
 
-  useEffect(() => {
+  const checkAuthStatus = () => {
     const token = localStorage.getItem("token");
     setIsAuthenticated(!!token);
+  };
+
+  useEffect(() => {
+    checkAuthStatus();
   }, []);
 
   const login = (token: string) => {
@@ -30,7 +36,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
   };
 
   return (
-    <AuthContext.Provider value={{ isAuthenticated, login, logout }}>
+    <AuthContext.Provider
+      value={{ isAuthenticated, login, logout, checkAuthStatus }}>
       {children}
     </AuthContext.Provider>
   );

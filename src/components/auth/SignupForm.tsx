@@ -1,8 +1,7 @@
 // src/components/auth/SignupForm.tsx
-import React, { useEffect, useState } from "react";
+import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import axios from "axios";
-import { signup, testConnection } from "../../utils/api";
+import { signup } from "../../utils/api";
 
 const SignupForm: React.FC = () => {
   const [name, setName] = useState("");

@@ -38,7 +38,7 @@ const Home: React.FC = () => {
     <div
       style={{
         backgroundColor: "var(--background-color)",
-        minHeight: "calc(100vh - 80px)",
+        minHeight: "100vh",
         position: "relative",
         overflow: "hidden",
       }}>
@@ -62,44 +62,47 @@ const Home: React.FC = () => {
       ))}
 
       {/* Content */}
-      <div
-        className="container"
-        style={{
-          display: "flex",
-          flexDirection: "column",
-          alignItems: "flex-start",
-          justifyContent: "center",
-          height: "100%",
-          position: "relative",
-          zIndex: 1,
-        }}>
-        <h1
-          style={{
-            fontSize: "3.5rem",
-            marginBottom: "1rem",
-            color: "var(--primary-color)",
-          }}>
-          Find Your Vibe
-        </h1>
-        <p
-          style={{
-            fontSize: "1.5rem",
-            marginBottom: "2rem",
-            maxWidth: "600px",
-            color: "var(--text-color)",
-          }}>
-          Connect with your tribe. Chase adventures. Level up your life.
-        </p>
-        <Link
-          to="/signup"
-          className="btn"
-          style={{
-            textDecoration: "none",
-            fontSize: "1.2rem",
-            padding: "15px 30px",
-          }}>
-          Start Your Quest
-        </Link>
+      <div className="center-container">
+        <div className="content-wrapper">
+          <div className="home-content">
+            <h1
+              style={{
+                fontSize: "3.5rem",
+                marginBottom: "1rem",
+                color: "var(--primary-color)",
+              }}>
+              Find Your Vibe
+            </h1>
+            <p
+              style={{
+                fontSize: "1.5rem",
+                marginBottom: "2rem",
+                color: "var(--text-color)",
+              }}>
+              Connect with your tribe. Chase adventures. Level up your life.
+            </p>
+            <Link
+              to="/signup"
+              className="btn"
+              style={{
+                textDecoration: "none",
+                fontSize: "1.2rem",
+                padding: "15px 30px",
+                marginBottom: "20px",
+                display: "inline-block",
+              }}>
+              Start Your Quest
+            </Link>
+            <div className="auth-links">
+              <Link to="/login" className="auth-link">
+                Login
+              </Link>
+              <Link to="/signup" className="auth-link">
+                Sign Up
+              </Link>
+            </div>
+          </div>
+        </div>
       </div>
     </div>
   );

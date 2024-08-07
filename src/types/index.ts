@@ -9,6 +9,16 @@ export interface User {
   interestsVisibility: PrivacySetting;
   friends: Friend[];
   pendingFriendRequests: FriendRequest[];
+  city?: string | null;
+  state?: string | null;
+  paymentTier: PaymentTier;
+}
+
+export enum PaymentTier {
+  Owner = 1,
+  Premium = 2,
+  Basic = 3,
+  Free = 4,
 }
 
 export enum PrivacySetting {

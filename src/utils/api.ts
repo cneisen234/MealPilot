@@ -13,8 +13,6 @@ const api = axios.create({
   },
 });
 
-export const testConnection = () => api.get('/test');
-
 // Request interceptor
 api.interceptors.request.use(
   (config) => {
@@ -81,8 +79,14 @@ export const getProfile = () => {
   return api.get('/users/profile');
 };
 
-export const updateProfile = (profileData: Partial<User>) => {
-  return api.put('/users/profile', profileData);
+export const updateProfile = async (userId: number, profileData: Partial<User>) => {
+  const response = await api.put(`/users/${userId}/profile`, profileData);
+  return response.data;
+};
+
+export const updateProfilePicture = async (userId: number, base64Image: string) => {
+  const response = await api.put(`/users/${userId}/profile-picture`, { avatar: base64Image });
+  return response.data;
 };
 
 export const getFriends = () => {

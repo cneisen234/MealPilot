@@ -1,8 +1,18 @@
 // src/components/common/Header.tsx
+
 import React from "react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
+import { useAuth } from "../../context/AuthContext";
 
 const Header: React.FC = () => {
+  const { isAuthenticated, logout } = useAuth();
+  const navigate = useNavigate();
+
+  const handleLogout = () => {
+    logout();
+    navigate("/");
+  };
+
   return (
     <header
       style={{
@@ -27,24 +37,41 @@ const Header: React.FC = () => {
         VibeQuest
       </div>
       <nav>
-        <Link
-          to="/login"
-          style={{
-            color: "var(--text-color)",
-            marginRight: "1rem",
-            textDecoration: "none",
-            fontWeight: "600",
-          }}>
-          Login
-        </Link>
-        <Link
-          to="/signup"
-          className="btn"
-          style={{
-            textDecoration: "none",
-          }}>
-          Join the Quest
-        </Link>
+        {isAuthenticated ? (
+          <button
+            onClick={handleLogout}
+            style={{
+              color: "var(--text-color)",
+              textDecoration: "none",
+              fontWeight: "600",
+              background: "none",
+              border: "none",
+              cursor: "pointer",
+            }}>
+            Logout
+          </button>
+        ) : (
+          <>
+            <Link
+              to="/login"
+              style={{
+                color: "var(--text-color)",
+                marginRight: "1rem",
+                textDecoration: "none",
+                fontWeight: "600",
+              }}>
+              Login
+            </Link>
+            <Link
+              to="/signup"
+              className="btn"
+              style={{
+                textDecoration: "none",
+              }}>
+              Join the Quest
+            </Link>
+          </>
+        )}
       </nav>
     </header>
   );

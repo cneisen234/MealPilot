@@ -5,48 +5,7 @@ import ProfileView from "../components/ProfileView";
 import AddFriendModal from "../components/AddFriendModal";
 import { User, Interest, Item, FriendRequest, PrivacySetting } from "../types";
 
-const dummyFriends: User[] = [
-  {
-    id: 1,
-    name: "Alice Johnson",
-    username: "alice_j",
-    avatar: "https://i.pravatar.cc/150?img=1",
-    bio: "Love traveling and photography!",
-    bioVisibility: PrivacySetting.Public,
-    interests: [
-      {
-        category: "Photography",
-        items: [
-          { name: "DSLR Cameras", rating: 9 },
-          { name: "Landscape Photography", rating: 8 },
-          { name: "Photo Editing", rating: 7 },
-        ],
-        visibility: PrivacySetting.Public,
-      },
-      {
-        category: "Travel",
-        items: [
-          { name: "Backpacking", rating: 9 },
-          { name: "Cultural Experiences", rating: 10 },
-          { name: "Travel Planning", rating: 8 },
-        ],
-        visibility: PrivacySetting.Public,
-      },
-      {
-        category: "Cooking",
-        items: [
-          { name: "Italian Cuisine", rating: 7 },
-          { name: "Baking", rating: 6 },
-          { name: "Vegan Recipes", rating: 8 },
-        ],
-        visibility: PrivacySetting.Public,
-      },
-    ],
-    interestsVisibility: PrivacySetting.Public,
-    friends: [],
-    pendingFriendRequests: [],
-  },
-];
+const dummyFriends: User[] = [];
 
 const Friends: React.FC = () => {
   const [friends, setFriends] = useState<User[]>(dummyFriends);
