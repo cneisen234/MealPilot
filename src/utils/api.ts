@@ -1,6 +1,6 @@
 // src/utils/api.ts
 import axios, { AxiosInstance, AxiosError, AxiosResponse } from 'axios';
-import { Interest, User } from '../types';
+import { FriendRequest, Interest, Item, User } from '../types';
 
 const url = process.env.NODE_ENV === 'production' 
   ? '/api'
@@ -89,8 +89,50 @@ export const updateProfilePicture = async (userId: number, base64Image: string) 
   return response.data;
 };
 
+export const addInterestCategory = async (newInterest: Omit<Interest, 'id'>): Promise<Interest> => {
+  const response = await api.post<Interest>('/interests', newInterest);
+  return response.data;
+};
+
+export const addItemToCategory = async (categoryId: number, item: { name: string; rating: number }): Promise<Item> => {
+  const response = await api.post<Item>(`/interests/${categoryId}/items`, item);
+  return response.data;
+};
+
+export const removeItemFromCategory = async (categoryId: number, itemId: number): Promise<void> => {
+  await api.delete(`/interests/${categoryId}/items/${itemId}`);
+};
+
+export const updateItemRating = async (categoryId: number, itemId: number, newRating: number): Promise<void> => {
+  await api.put(`/interests/${categoryId}/items/${itemId}`, { rating: newRating });
+};
+
+export const deleteInterestCategory = async (categoryId: number): Promise<void> => {
+  await api.delete(`/interests/${categoryId}`);
+};
+
 export const getFriends = () => {
   return api.get('/friends');
+};
+
+export const getFriendRequests = () => {
+  return api.get('/friend-requests');
+};
+
+export const handleFriendRequest = (requestId: number, status: 'accepted' | 'rejected') => {
+  return api.put(`/friend-requests/${requestId}`, { status });
+};
+
+export const sendFriendRequest = (request: Omit<FriendRequest, "id" | "createdAt">) => {
+  return api.post('/friend-requests', request);
+};
+
+export const getNotifications = () => {
+  return api.get('/notifications');
+};
+
+export const markNotificationAsRead = (notificationId: number) => {
+  return api.put(`/notifications/${notificationId}`);
 };
 
 export const getInterests = () => {

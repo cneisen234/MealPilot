@@ -1,8 +1,7 @@
-// src/components/common/Header.tsx
-
 import React from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { useAuth } from "../../context/AuthContext";
+import Notifications from "./Notifications";
 
 const Header: React.FC = () => {
   const { isAuthenticated, logout } = useAuth();
@@ -36,20 +35,24 @@ const Header: React.FC = () => {
         }}>
         VibeQuest
       </div>
-      <nav>
+      <nav style={{ display: "flex", alignItems: "center" }}>
         {isAuthenticated ? (
-          <button
-            onClick={handleLogout}
-            style={{
-              color: "var(--text-color)",
-              textDecoration: "none",
-              fontWeight: "600",
-              background: "none",
-              border: "none",
-              cursor: "pointer",
-            }}>
-            Logout
-          </button>
+          <>
+            <Notifications />
+            <button
+              onClick={handleLogout}
+              style={{
+                color: "var(--text-color)",
+                textDecoration: "none",
+                fontWeight: "600",
+                background: "none",
+                border: "none",
+                cursor: "pointer",
+                marginLeft: "20px",
+              }}>
+              Logout
+            </button>
+          </>
         ) : (
           <>
             <Link

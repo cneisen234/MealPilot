@@ -2,16 +2,17 @@ export interface User {
   id: number;
   name: string;
   username: string;
+  email: string;
   avatar: string;
   bio: string;
-  bioVisibility: PrivacySetting;
+  bio_visibility: PrivacySetting;
   interests: Interest[];
   interestsVisibility: PrivacySetting;
   friends: Friend[];
   pendingFriendRequests: FriendRequest[];
   city?: string | null;
   state?: string | null;
-  paymentTier: PaymentTier;
+  payment_tier: PaymentTier;
 }
 
 export enum PaymentTier {
@@ -55,14 +56,23 @@ export enum FriendRequestStatus {
 }
 
 export interface Item {
+  id: number;
   name: string;
   rating: number;
 }
 
 export interface Interest {
-  id?: number;
-  userId?: number;
+  id: number;
+  userId: number;
   category: string;
-  items: Item[];
   visibility: PrivacySetting;
+  items: Item[];
+}
+
+export interface Notification {
+  id: number;
+  content: string;
+  type: string;
+  read: boolean;
+  created_at: string;
 }

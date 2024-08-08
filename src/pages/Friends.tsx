@@ -1,17 +1,89 @@
-// src/pages/Friends.tsx
-import React, { useState } from "react";
-import { FaSearch, FaUserPlus, FaEnvelope, FaComment } from "react-icons/fa";
+import React, { useState, useEffect } from "react";
+import {
+  FaSearch,
+  FaUserPlus,
+  FaEnvelope,
+  FaComment,
+  FaCheck,
+  FaTimes,
+} from "react-icons/fa";
 import ProfileView from "../components/ProfileView";
 import AddFriendModal from "../components/AddFriendModal";
-import { User, Interest, Item, FriendRequest, PrivacySetting } from "../types";
-
-const dummyFriends: User[] = [];
+import { User, FriendRequest, FriendRequestStatus } from "../types";
+import {
+  getFriendRequests,
+  getFriends,
+  getProfile,
+  sendFriendRequest,
+} from "../utils/api";
 
 const Friends: React.FC = () => {
-  const [friends, setFriends] = useState<User[]>(dummyFriends);
+  const [friends, setFriends] = useState<User[]>([]);
+  const [friendRequests, setFriendRequests] = useState<User[]>([]);
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedFriend, setSelectedFriend] = useState<User | null>(null);
   const [isAddFriendModalOpen, setIsAddFriendModalOpen] = useState(false);
+  const [currentUserId, setCurrentUserId] = useState<number | null>(null);
+
+  useEffect(() => {
+    fetchCurrentUser();
+    fetchFriends();
+    fetchFriendRequests();
+  }, []);
+
+  const fetchCurrentUser = async () => {
+    try {
+      const response = getProfile();
+      setCurrentUserId((await response).data.id);
+    } catch (error) {
+      console.error("Error fetching current user:", error);
+    }
+  };
+
+  const fetchFriends = async () => {
+    try {
+      const response = await getFriends();
+      setFriends(response.data);
+    } catch (error) {
+      console.error("Error fetching friends:", error);
+    }
+  };
+
+  const fetchFriendRequests = async () => {
+    try {
+      const response = getFriendRequests();
+      setFriendRequests((await response).data);
+    } catch (error) {
+      console.error("Error fetching friend requests:", error);
+    }
+  };
+
+  const handleFriendRequest = async (
+    requestId: number,
+    status: "accepted" | "rejected"
+  ) => {
+    try {
+      await getFriendRequests();
+      if (status === "accepted") {
+        fetchFriends();
+      }
+      fetchFriendRequests();
+    } catch (error) {
+      console.error("Error handling friend request:", error);
+    }
+  };
+
+  const handleSendFriendRequest = async (
+    request: Omit<FriendRequest, "id" | "createdAt">
+  ) => {
+    try {
+      await sendFriendRequest(request);
+      // Optionally, you can show a success message here
+    } catch (error) {
+      console.error("Error sending friend request:", error);
+      // Optionally, you can show an error message here
+    }
+  };
 
   const filteredFriends = friends.filter(
     (friend) =>
@@ -59,6 +131,66 @@ const Friends: React.FC = () => {
         </button>
       </div>
 
+      {/* Friend Requests Section */}
+      {friendRequests.length > 0 && (
+        <div style={{ marginBottom: "20px" }}>
+          <h2>Friend Requests</h2>
+          {friendRequests.map((request) => (
+            <div
+              key={request.id}
+              style={{
+                display: "flex",
+                alignItems: "center",
+                marginBottom: "10px",
+                background: "var(--surface-color)",
+                padding: "10px",
+                borderRadius: "10px",
+              }}>
+              <img
+                src={request.avatar || "/default-avatar.png"}
+                alt={request.name}
+                style={{
+                  width: "40px",
+                  height: "40px",
+                  borderRadius: "50%",
+                  marginRight: "10px",
+                }}
+              />
+              <span style={{ flex: 1 }}>
+                {request.name} (@{request.username})
+              </span>
+              <button
+                onClick={() => handleFriendRequest(request.id, "accepted")}
+                style={{
+                  background: "var(--primary-color)",
+                  color: "white",
+                  border: "none",
+                  borderRadius: "5px",
+                  padding: "5px 10px",
+                  marginLeft: "10px",
+                  cursor: "pointer",
+                }}>
+                <FaCheck /> Accept
+              </button>
+              <button
+                onClick={() => handleFriendRequest(request.id, "rejected")}
+                style={{
+                  background: "var(--secondary-color)",
+                  color: "white",
+                  border: "none",
+                  borderRadius: "5px",
+                  padding: "5px 10px",
+                  marginLeft: "10px",
+                  cursor: "pointer",
+                }}>
+                <FaTimes /> Reject
+              </button>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {/* Search Bar */}
       <div
         style={{
           display: "flex",
@@ -86,6 +218,7 @@ const Friends: React.FC = () => {
         />
       </div>
 
+      {/* Friends List */}
       <div
         style={{
           flex: 1,
@@ -120,7 +253,7 @@ const Friends: React.FC = () => {
                 (e.currentTarget.style.transform = "translateY(0)")
               }>
               <img
-                src={friend.avatar}
+                src={friend.avatar || "/default-avatar.png"}
                 alt={friend.name}
                 style={{
                   width: "80px",
@@ -164,7 +297,8 @@ const Friends: React.FC = () => {
                   }}
                   title="Send Message"
                   onClick={(e) => {
-                    e.stopPropagation(); /* Add message functionality */
+                    e.stopPropagation();
+                    // Add message functionality
                   }}>
                   <FaComment />
                 </button>
@@ -178,7 +312,8 @@ const Friends: React.FC = () => {
                   }}
                   title="Send Email"
                   onClick={(e) => {
-                    e.stopPropagation(); /* Add email functionality */
+                    e.stopPropagation();
+                    // Add email functionality
                   }}>
                   <FaEnvelope />
                 </button>
@@ -198,12 +333,8 @@ const Friends: React.FC = () => {
       {isAddFriendModalOpen && (
         <AddFriendModal
           onClose={() => setIsAddFriendModalOpen(false)}
-          currentUserId={0}
-          onSendFriendRequest={function (
-            request: Omit<FriendRequest, "id" | "createdAt">
-          ): void {
-            throw new Error("Function not implemented.");
-          }}
+          currentUserId={currentUserId!}
+          onSendFriendRequest={handleSendFriendRequest}
         />
       )}
     </div>

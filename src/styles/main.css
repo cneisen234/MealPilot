@@ -277,6 +277,8 @@ main {
     color: var(--secondary-color);
 }
 
+
+
 @keyframes rise {
     0% {
         transform: translateY(0);

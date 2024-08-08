@@ -18,19 +18,27 @@ const EditProfileModal: React.FC<EditProfileModalProps> = ({
   const [bio, setBio] = useState(user.bio || "");
   const [city, setCity] = useState(user.city || "");
   const [state, setState] = useState(user.state || "");
-  const [bioVisibility, setBioVisibility] = useState(user.bioVisibility);
+  const [bioVisibility, setBioVisibility] = useState(user.bio_visibility);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
-      const updatedUser = await updateProfile(user.id, {
+      const updatedUserData = {
+        ...user,
         name,
         username,
         bio,
         city,
         state,
-        bioVisibility,
-      });
+        bio_visibility: bioVisibility,
+      };
+      const response = await updateProfile(user.id, updatedUserData);
+
+      const updatedUser = {
+        ...response,
+        interests: user.interests, // Keep the original interests
+      };
+
       onSave(updatedUser);
     } catch (error) {
       console.error("Error updating profile:", error);
@@ -120,11 +128,26 @@ const EditProfileModal: React.FC<EditProfileModalProps> = ({
               Bio
             </label>
             <textarea
-              id="bio"
               value={bio}
-              onChange={(e) => setBio(e.target.value)}
-              style={{ ...inputStyle, minHeight: "100px", resize: "vertical" }}
+              onChange={(e) => {
+                const text = e.target.value;
+                if (text.length <= 255) {
+                  setBio(text);
+                }
+              }}
+              maxLength={255}
+              placeholder="Enter your bio (max 255 characters)"
+              style={{
+                width: "96%",
+                padding: "10px",
+                borderRadius: "5px",
+                border: "1px solid var(--primary-color)",
+                marginBottom: "10px",
+              }}
             />
+          </div>
+          <div style={{ fontSize: "0.8em", color: "gray", textAlign: "right" }}>
+            {bio.length}/255 characters
           </div>
           <div style={{ marginBottom: "15px" }}>
             <label

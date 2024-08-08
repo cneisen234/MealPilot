@@ -1,7 +1,12 @@
 // src/App.tsx
 
 import React, { useEffect } from "react";
-import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
+import {
+  BrowserRouter as Router,
+  Routes,
+  Route,
+  Navigate,
+} from "react-router-dom";
 import Home from "./pages/Home";
 import Login from "./pages/Login";
 import Signup from "./pages/Signup";
@@ -33,9 +38,28 @@ const AppContent: React.FC = () => {
         {isAuthenticated && <SideNavbar />}
         <main style={{ flex: 1, overflow: "auto", padding: "20px" }}>
           <Routes>
-            <Route path="/" element={<Home />} />
-            <Route path="/login" element={<Login />} />
-            <Route path="/signup" element={<Signup />} />
+            <Route
+              path="/"
+              element={
+                isAuthenticated ? <Navigate to="/profile" replace /> : <Home />
+              }
+            />
+            <Route
+              path="/login"
+              element={
+                isAuthenticated ? <Navigate to="/profile" replace /> : <Login />
+              }
+            />
+            <Route
+              path="/signup"
+              element={
+                isAuthenticated ? (
+                  <Navigate to="/profile" replace />
+                ) : (
+                  <Signup />
+                )
+              }
+            />
             <Route
               path="/profile"
               element={<PrivateRoute element={<Profile />} />}

@@ -1,6 +1,7 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { FaTimes, FaSearch, FaUserPlus } from "react-icons/fa";
-import { User, FriendRequest } from "../types";
+import { User, FriendRequest, FriendRequestStatus } from "../types";
+import api from "../utils/api";
 
 interface AddFriendModalProps {
   onClose: () => void;
@@ -16,6 +17,56 @@ const AddFriendModal: React.FC<AddFriendModalProps> = ({
   onSendFriendRequest,
 }) => {
   const [searchTerm, setSearchTerm] = useState("");
+  const [users, setUsers] = useState<User[]>([]);
+  const [filteredUsers, setFilteredUsers] = useState<User[]>([]);
+
+  useEffect(() => {
+    const fetchUsers = async () => {
+      try {
+        const response = await api.get("/users/not-friends");
+        setUsers(response.data);
+        setFilteredUsers(response.data);
+      } catch (error) {
+        console.error("Error fetching users:", error);
+      }
+    };
+
+    fetchUsers();
+  }, []);
+
+  useEffect(() => {
+    const filtered = users.filter(
+      (user) =>
+        user.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        user.username.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        user.email.toLowerCase().includes(searchTerm.toLowerCase())
+    );
+    setFilteredUsers(filtered);
+  }, [searchTerm, users]);
+
+  const handleSendFriendRequest = async (receiverId: number) => {
+    try {
+      const request = {
+        senderId: currentUserId,
+        receiverId,
+        status: FriendRequestStatus.Pending,
+      };
+      await onSendFriendRequest(request);
+
+      // Close the modal or update UI as needed
+      onClose();
+    } catch (error) {
+      console.error("Error sending friend request:", error);
+    }
+  };
+
+  const getInitials = (name: string) => {
+    return name
+      .split(" ")
+      .map((word) => word[0])
+      .join("")
+      .toUpperCase();
+  };
 
   return (
     <div
@@ -86,7 +137,73 @@ const AddFriendModal: React.FC<AddFriendModalProps> = ({
             }}
           />
         </div>
-        {/* User list would go here */}
+        <div style={{ maxHeight: "400px", overflowY: "auto" }}>
+          {filteredUsers.map((user) => (
+            <div
+              key={user.id}
+              style={{
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "space-between",
+                padding: "10px 0",
+                borderBottom: "1px solid rgba(0, 0, 0, 0.1)",
+              }}>
+              <div style={{ display: "flex", alignItems: "center" }}>
+                {user.avatar ? (
+                  <img
+                    src={user.avatar}
+                    alt={user.name}
+                    style={{
+                      width: "40px",
+                      height: "40px",
+                      borderRadius: "50%",
+                      marginRight: "10px",
+                    }}
+                  />
+                ) : (
+                  <div
+                    style={{
+                      width: "40px",
+                      height: "40px",
+                      borderRadius: "50%",
+                      backgroundColor: "var(--primary-color)",
+                      color: "white",
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      marginRight: "10px",
+                      fontSize: "16px",
+                      fontWeight: "bold",
+                    }}>
+                    {getInitials(user.name)}
+                  </div>
+                )}
+                <div>
+                  <div style={{ fontWeight: "bold" }}>{user.name}</div>
+                  <div
+                    style={{ fontSize: "0.8em", color: "var(--text-color)" }}>
+                    @{user.username}
+                  </div>
+                </div>
+              </div>
+              <button
+                onClick={() => handleSendFriendRequest(user.id)}
+                style={{
+                  background: "var(--primary-color)",
+                  color: "white",
+                  border: "none",
+                  borderRadius: "5px",
+                  padding: "5px 10px",
+                  cursor: "pointer",
+                  display: "flex",
+                  alignItems: "center",
+                }}>
+                <FaUserPlus style={{ marginRight: "5px" }} />
+                Add
+              </button>
+            </div>
+          ))}
+        </div>
       </div>
     </div>
   );
