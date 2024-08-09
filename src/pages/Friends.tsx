@@ -6,24 +6,31 @@ import {
   FaComment,
   FaCheck,
   FaTimes,
+  FaLock,
 } from "react-icons/fa";
 import ProfileView from "../components/ProfileView";
 import AddFriendModal from "../components/AddFriendModal";
-import { User, FriendRequest, FriendRequestStatus } from "../types";
+import {
+  User,
+  FriendRequest,
+  FriendRequestStatus,
+  PaymentTier,
+} from "../types";
 import {
   getFriendRequests,
   getFriends,
   getProfile,
   sendFriendRequest,
+  handleFriendRequest,
 } from "../utils/api";
 
 const Friends: React.FC = () => {
+  const [user, setUser] = useState<User | null>(null);
   const [friends, setFriends] = useState<User[]>([]);
   const [friendRequests, setFriendRequests] = useState<User[]>([]);
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedFriend, setSelectedFriend] = useState<User | null>(null);
   const [isAddFriendModalOpen, setIsAddFriendModalOpen] = useState(false);
-  const [currentUserId, setCurrentUserId] = useState<number | null>(null);
 
   useEffect(() => {
     fetchCurrentUser();
@@ -33,8 +40,8 @@ const Friends: React.FC = () => {
 
   const fetchCurrentUser = async () => {
     try {
-      const response = getProfile();
-      setCurrentUserId((await response).data.id);
+      const response = await getProfile();
+      setUser(response.data);
     } catch (error) {
       console.error("Error fetching current user:", error);
     }
@@ -51,23 +58,23 @@ const Friends: React.FC = () => {
 
   const fetchFriendRequests = async () => {
     try {
-      const response = getFriendRequests();
-      setFriendRequests((await response).data);
+      const response = await getFriendRequests();
+      setFriendRequests(response.data);
     } catch (error) {
       console.error("Error fetching friend requests:", error);
     }
   };
 
-  const handleFriendRequest = async (
+  const handleFriendRequestAction = async (
     requestId: number,
     status: "accepted" | "rejected"
   ) => {
     try {
-      await getFriendRequests();
+      await handleFriendRequest(requestId, status);
       if (status === "accepted") {
-        fetchFriends();
+        await fetchFriends();
       }
-      fetchFriendRequests();
+      await fetchFriendRequests();
     } catch (error) {
       console.error("Error handling friend request:", error);
     }
@@ -91,15 +98,16 @@ const Friends: React.FC = () => {
       friend.username.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
-  return (
-    <div
-      style={{
-        height: "100%",
-        display: "flex",
-        flexDirection: "column",
-        padding: "20px",
-        boxSizing: "border-box",
-      }}>
+  const getInitials = (name: string) => {
+    return name
+      .split(" ")
+      .map((n) => n[0])
+      .join("")
+      .toUpperCase();
+  };
+
+  const renderFriendsList = () => (
+    <>
       <div
         style={{
           display: "flex",
@@ -146,21 +154,42 @@ const Friends: React.FC = () => {
                 padding: "10px",
                 borderRadius: "10px",
               }}>
-              <img
-                src={request.avatar || "/default-avatar.png"}
-                alt={request.name}
-                style={{
-                  width: "40px",
-                  height: "40px",
-                  borderRadius: "50%",
-                  marginRight: "10px",
-                }}
-              />
+              {request.avatar ? (
+                <img
+                  src={request.avatar}
+                  alt={request.name}
+                  style={{
+                    width: "40px",
+                    height: "40px",
+                    borderRadius: "50%",
+                    marginRight: "10px",
+                  }}
+                />
+              ) : (
+                <div
+                  style={{
+                    width: "40px",
+                    height: "40px",
+                    borderRadius: "50%",
+                    backgroundColor: "var(--primary-color)",
+                    color: "white",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    marginRight: "10px",
+                    fontSize: "16px",
+                    fontWeight: "bold",
+                  }}>
+                  {getInitials(request.name)}
+                </div>
+              )}
               <span style={{ flex: 1 }}>
                 {request.name} (@{request.username})
               </span>
               <button
-                onClick={() => handleFriendRequest(request.id, "accepted")}
+                onClick={() =>
+                  handleFriendRequestAction(request.id, "accepted")
+                }
                 style={{
                   background: "var(--primary-color)",
                   color: "white",
@@ -173,7 +202,9 @@ const Friends: React.FC = () => {
                 <FaCheck /> Accept
               </button>
               <button
-                onClick={() => handleFriendRequest(request.id, "rejected")}
+                onClick={() =>
+                  handleFriendRequestAction(request.id, "rejected")
+                }
                 style={{
                   background: "var(--secondary-color)",
                   color: "white",
@@ -252,16 +283,35 @@ const Friends: React.FC = () => {
               onMouseLeave={(e) =>
                 (e.currentTarget.style.transform = "translateY(0)")
               }>
-              <img
-                src={friend.avatar || "/default-avatar.png"}
-                alt={friend.name}
-                style={{
-                  width: "80px",
-                  height: "80px",
-                  borderRadius: "50%",
-                  marginBottom: "10px",
-                }}
-              />
+              {friend.avatar ? (
+                <img
+                  src={friend.avatar}
+                  alt={friend.name}
+                  style={{
+                    width: "80px",
+                    height: "80px",
+                    borderRadius: "50%",
+                    marginBottom: "10px",
+                  }}
+                />
+              ) : (
+                <div
+                  style={{
+                    width: "80px",
+                    height: "80px",
+                    borderRadius: "50%",
+                    backgroundColor: "var(--primary-color)",
+                    color: "white",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    marginBottom: "10px",
+                    fontSize: "24px",
+                    fontWeight: "bold",
+                  }}>
+                  {getInitials(friend.name)}
+                </div>
+              )}
               <div
                 style={{
                   fontWeight: "bold",
@@ -322,6 +372,80 @@ const Friends: React.FC = () => {
           ))}
         </div>
       </div>
+    </>
+  );
+
+  const renderUpgradeMessage = () => (
+    <div
+      style={{
+        position: "absolute",
+        top: 0,
+        left: 0,
+        right: 0,
+        bottom: 0,
+        display: "flex",
+        flexDirection: "column",
+        alignItems: "center",
+        justifyContent: "center",
+        backgroundColor: "rgba(255, 255, 255, 0.9)",
+        zIndex: 10,
+      }}>
+      <FaLock
+        size={50}
+        style={{ color: "var(--primary-color)", marginBottom: "20px" }}
+      />
+      <h2 style={{ marginBottom: "20px" }}>Upgrade to Access Friends List</h2>
+      <p style={{ marginBottom: "20px", textAlign: "center", maxWidth: "80%" }}>
+        Unlock the ability to connect with friends and expand your network by
+        upgrading your account.
+      </p>
+      <button
+        onClick={() => {
+          /* Navigate to upgrade page */
+        }}
+        style={{
+          background: "var(--primary-color)",
+          color: "white",
+          border: "none",
+          borderRadius: "25px",
+          padding: "10px 20px",
+          fontSize: "16px",
+          cursor: "pointer",
+        }}>
+        Upgrade Now
+      </button>
+    </div>
+  );
+
+  if (!user) {
+    return <div>Loading...</div>;
+  }
+
+  return (
+    <div
+      style={{
+        height: "100%",
+        display: "flex",
+        flexDirection: "column",
+        padding: "20px",
+        boxSizing: "border-box",
+        position: "relative",
+      }}>
+      {PaymentTier[user.payment_tier as unknown as keyof typeof PaymentTier] ===
+      PaymentTier.Free ? (
+        <>
+          <div
+            style={{
+              filter: "blur(5px)",
+              pointerEvents: "none",
+            }}>
+            {renderFriendsList()}
+          </div>
+          {renderUpgradeMessage()}
+        </>
+      ) : (
+        renderFriendsList()
+      )}
 
       {selectedFriend && (
         <ProfileView
@@ -330,13 +454,24 @@ const Friends: React.FC = () => {
         />
       )}
 
-      {isAddFriendModalOpen && (
-        <AddFriendModal
-          onClose={() => setIsAddFriendModalOpen(false)}
-          currentUserId={currentUserId!}
-          onSendFriendRequest={handleSendFriendRequest}
-        />
-      )}
+      {isAddFriendModalOpen &&
+        PaymentTier[
+          user.payment_tier as unknown as keyof typeof PaymentTier
+        ] !== PaymentTier.Free && (
+          <AddFriendModal
+            onClose={() => setIsAddFriendModalOpen(false)}
+            currentUserId={user.id}
+            onSendFriendRequest={handleSendFriendRequest}
+            maxFriends={
+              PaymentTier[
+                user.payment_tier as unknown as keyof typeof PaymentTier
+              ] === PaymentTier.Basic
+                ? 10
+                : Infinity
+            }
+            currentFriendsCount={friends.length}
+          />
+        )}
     </div>
   );
 };

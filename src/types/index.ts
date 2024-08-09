@@ -76,3 +76,11 @@ export interface Notification {
   read: boolean;
   created_at: string;
 }
+
+export interface Recommendation {
+  id: number;
+  category: string;
+  item: string;
+  description: string;
+  rating: number;
+}

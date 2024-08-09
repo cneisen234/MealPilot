@@ -97,6 +97,24 @@ app.post("/api/auth/signup", async (req, res) => {
   }
 });
 
+const PaymentTier = {
+  Free: 1,
+  Basic: 2,
+  Premium: 3,
+  Owner: 4,
+};
+
+const checkPaymentTier = async (userId, requiredTier) => {
+  const result = await pool.query(
+    "SELECT payment_tier FROM users WHERE id = $1",
+    [userId]
+  );
+  if (result.rows.length === 0) {
+    throw new Error("User not found");
+  }
+  return PaymentTier[result.rows[0].payment_tier] >= requiredTier;
+};
+
 // Get logged-in user profile
 app.get("/api/users/profile", authMiddleware, async (req, res) => {
   try {
@@ -112,19 +130,36 @@ app.get("/api/users/profile", authMiddleware, async (req, res) => {
 
     const user = userResult.rows[0];
 
-    const interestsResult = await pool.query(
-      `
-      SELECT i.id, i.category, i.visibility, 
-             json_agg(json_build_object('id', it.id, 'name', it.name, 'rating', it.rating)) AS items
-      FROM interests i
-      LEFT JOIN items it ON i.id = it.interest_id
-      WHERE i.user_id = $1
-      GROUP BY i.id
-    `,
-      [userId]
-    );
-
-    user.interests = interestsResult.rows;
+    // Fetch interests based on payment tier
+    let interestsResult;
+    if (PaymentTier[user.payment_tier] >= PaymentTier.Basic) {
+      interestsResult = await pool.query(
+        `
+        SELECT i.id, i.category, i.visibility, 
+               json_agg(json_build_object('id', it.id, 'name', it.name, 'rating', it.rating)) AS items
+        FROM interests i
+        LEFT JOIN items it ON i.id = it.interest_id
+        WHERE i.user_id = $1
+        GROUP BY i.id
+      `,
+        [userId]
+      );
+      user.interests = interestsResult.rows;
+    } else {
+      // For Free tier, limit to 3 categories and 5 items per category
+      interestsResult = await pool.query(
+        `
+        SELECT i.id, i.category, i.visibility, 
+               (SELECT json_agg(json_build_object('id', it.id, 'name', it.name, 'rating', it.rating))
+                FROM (SELECT * FROM items WHERE interest_id = i.id LIMIT 5) it) AS items
+        FROM interests i
+        WHERE i.user_id = $1
+        LIMIT 3
+      `,
+        [userId]
+      );
+      user.interests = interestsResult.rows;
+    }
 
     res.json(user);
   } catch (error) {
@@ -373,6 +408,14 @@ app.get("/api/friends", authMiddleware, async (req, res) => {
   try {
     const userId = req.user.id;
 
+    // Check if user has access to friends list
+    const hasAccess = await checkPaymentTier(userId, PaymentTier.Basic);
+    if (!hasAccess) {
+      return res
+        .status(403)
+        .json({ message: "Upgrade required to access friends list" });
+    }
+
     const query = `
       SELECT u.id, u.name, u.username, u.avatar
       FROM users u
@@ -382,7 +425,13 @@ app.get("/api/friends", authMiddleware, async (req, res) => {
 
     const result = await pool.query(query, [userId]);
 
-    res.json(result.rows);
+    // For Basic tier, limit to 10 friends
+    const friends = result.rows.slice(
+      0,
+      PaymentTier[req.user.payment_tier] === PaymentTier.Basic ? 10 : undefined
+    );
+
+    res.json(friends);
   } catch (error) {
     console.error("Error fetching friends:", error);
     res.status(500).json({ message: "Server error" });
@@ -677,18 +726,36 @@ app.put(
   }
 );
 
-// Dummy AI recommendation
-app.post("/api/recommend", authMiddleware, (req, res) => {
-  const { userId } = req.body;
-  const userInterests = interests.filter((i) => i.userId === parseInt(userId));
-  const categories = [...new Set(userInterests.map((i) => i.category))];
+app.get("/api/recommendations", authMiddleware, async (req, res) => {
+  try {
+    const userId = req.user.id;
 
-  const recommendations = categories.map((category) => ({
-    category,
-    recommendation: `AI recommended ${category} item`,
-  }));
+    // Check if user has access to recommendations
+    const hasAccess = await checkPaymentTier(userId, PaymentTier.Premium);
+    if (!hasAccess) {
+      return res
+        .status(403)
+        .json({ message: "Upgrade to Premium to access recommendations" });
+    }
 
-  res.json(recommendations);
+    // Implement your recommendation logic here
+    // For now, we'll return dummy data
+    const recommendations = [
+      {
+        id: 1,
+        category: "Books",
+        item: "The Hitchhiker's Guide to the Galaxy",
+        description:
+          "A sci-fi comedy classic that matches your interest in humorous literature and space exploration.",
+        rating: 4.5,
+      },
+    ];
+
+    res.json(recommendations);
+  } catch (error) {
+    console.error("Error fetching recommendations:", error);
+    res.status(500).json({ message: "Server error" });
+  }
 });
 
 // Start server

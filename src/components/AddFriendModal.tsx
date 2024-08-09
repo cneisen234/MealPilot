@@ -9,12 +9,16 @@ interface AddFriendModalProps {
   onSendFriendRequest: (
     request: Omit<FriendRequest, "id" | "createdAt">
   ) => void;
+  maxFriends: number;
+  currentFriendsCount: number;
 }
 
 const AddFriendModal: React.FC<AddFriendModalProps> = ({
   onClose,
   currentUserId,
   onSendFriendRequest,
+  maxFriends,
+  currentFriendsCount,
 }) => {
   const [searchTerm, setSearchTerm] = useState("");
   const [users, setUsers] = useState<User[]>([]);
@@ -45,6 +49,13 @@ const AddFriendModal: React.FC<AddFriendModalProps> = ({
   }, [searchTerm, users]);
 
   const handleSendFriendRequest = async (receiverId: number) => {
+    if (currentFriendsCount >= maxFriends) {
+      alert(
+        "You've reached the maximum number of friends for your current plan."
+      );
+      return;
+    }
+
     try {
       const request = {
         senderId: currentUserId,
@@ -110,6 +121,11 @@ const AddFriendModal: React.FC<AddFriendModalProps> = ({
         <h2 style={{ marginBottom: "20px", color: "var(--primary-color)" }}>
           Add New Friend
         </h2>
+        {currentFriendsCount >= maxFriends && (
+          <p style={{ color: "red", marginBottom: "10px" }}>
+            You've reached the maximum number of friends for your current plan.
+          </p>
+        )}
         <div
           style={{
             display: "flex",
@@ -189,15 +205,22 @@ const AddFriendModal: React.FC<AddFriendModalProps> = ({
               <button
                 onClick={() => handleSendFriendRequest(user.id)}
                 style={{
-                  background: "var(--primary-color)",
+                  background:
+                    currentFriendsCount < maxFriends
+                      ? "var(--primary-color)"
+                      : "gray",
                   color: "white",
                   border: "none",
                   borderRadius: "5px",
                   padding: "5px 10px",
-                  cursor: "pointer",
+                  cursor:
+                    currentFriendsCount < maxFriends
+                      ? "pointer"
+                      : "not-allowed",
                   display: "flex",
                   alignItems: "center",
-                }}>
+                }}
+                disabled={currentFriendsCount >= maxFriends}>
                 <FaUserPlus style={{ marginRight: "5px" }} />
                 Add
               </button>

@@ -1,13 +1,19 @@
-// src/components/common/SideNavbar.tsx
 import React from "react";
 import { Link, useLocation } from "react-router-dom";
-import { FaUser, FaRobot, FaUserFriends, FaArrowUp } from "react-icons/fa";
+import {
+  FaUser,
+  FaRobot,
+  FaUserFriends,
+  FaArrowUp,
+  FaLightbulb,
+} from "react-icons/fa";
 
 const NavItem: React.FC<{
   to: string;
   icon: React.ReactNode;
   children: React.ReactNode;
-}> = ({ to, icon, children }) => {
+  title?: string;
+}> = ({ to, icon, children, title }) => {
   const location = useLocation();
   const isActive = location.pathname === to;
 
@@ -34,7 +40,9 @@ const NavItem: React.FC<{
           (e.currentTarget.style.color = isActive
             ? "var(--primary-color)"
             : "var(--text-color)")
-        }>
+        }
+        title={title} // Add tooltip for full text
+      >
         <span style={{ marginRight: "10px", fontSize: "1.2em" }}>{icon}</span>
         {children}
       </Link>
@@ -61,6 +69,12 @@ const SideNavbar: React.FC = () => {
         </NavItem>
         <NavItem to="/friends" icon={<FaUserFriends />}>
           Friends List
+        </NavItem>
+        <NavItem
+          to="/recommendations"
+          icon={<FaLightbulb />}
+          title="Recommendations">
+          Recs
         </NavItem>
         <NavItem to="/upgrade" icon={<FaArrowUp />}>
           Upgrade

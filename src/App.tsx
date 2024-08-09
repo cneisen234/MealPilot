@@ -1,5 +1,3 @@
-// src/App.tsx
-
 import React, { useEffect } from "react";
 import {
   BrowserRouter as Router,
@@ -14,6 +12,7 @@ import Profile from "./pages/Profile";
 import Interests from "./pages/Interests";
 import Chatbot from "./pages/Chatbot";
 import Friends from "./pages/Friends";
+import Recommendations from "./pages/Recommendations"; // Import the new Recommendations component
 import Upgrade from "./pages/Upgrade";
 import Header from "./components/common/Header";
 import SideNavbar from "./components/common/SideNavbar";
@@ -75,6 +74,10 @@ const AppContent: React.FC = () => {
             <Route
               path="/friends"
               element={<PrivateRoute element={<Friends />} />}
+            />
+            <Route
+              path="/recommendations"
+              element={<PrivateRoute element={<Recommendations />} />}
             />
             <Route
               path="/upgrade"

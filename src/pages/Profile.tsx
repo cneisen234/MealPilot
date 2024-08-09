@@ -12,47 +12,16 @@ import {
 import EditProfileModal from "../components/profile/EditProfileModal";
 import AddInterestCategoryModal from "../components/interests/AddInterestCategoryModal";
 import ConfirmDeleteModal from "../components/ConfirmDeleteModal";
+import InfoModal from "../components/InfoModal";
+import StarRating from "../components/StarRating";
 import {
   FaChevronDown,
   FaChevronUp,
   FaPlus,
   FaMinus,
   FaStar,
+  FaLock,
 } from "react-icons/fa";
-
-const StarRating: React.FC<{
-  rating: number;
-  onRatingChange: (rating: number) => void;
-}> = ({ rating, onRatingChange }) => {
-  return (
-    <div style={{ display: "flex", alignItems: "center" }}>
-      {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map((star) => (
-        <FaStar
-          key={star}
-          style={{
-            cursor: "pointer",
-            color: star <= rating ? "var(--primary-color)" : "#e0e0e0",
-          }}
-          onClick={() => onRatingChange(star)}
-        />
-      ))}
-      <input
-        type="range"
-        min="1"
-        max="10"
-        value={rating}
-        onChange={(e) => onRatingChange(Number(e.target.value))}
-        style={{
-          position: "absolute",
-          width: "1px",
-          height: "1px",
-          overflow: "hidden",
-          clip: "rect(1px, 1px, 1px, 1px)",
-        }}
-      />
-    </div>
-  );
-};
 
 const Profile: React.FC = () => {
   const [user, setUser] = useState<User | null>(null);
@@ -68,6 +37,8 @@ const Profile: React.FC = () => {
   const [deletingCategory, setDeletingCategory] = useState<Interest | null>(
     null
   );
+  const [infoModalMessage, setInfoModalMessage] = useState("");
+  const [isInfoModalOpen, setIsInfoModalOpen] = useState(false);
 
   useEffect(() => {
     const fetchUser = async () => {
@@ -82,41 +53,41 @@ const Profile: React.FC = () => {
     fetchUser();
   }, []);
 
-  const toggleCategory = (interestId: number) => {
-    setExpandedCategory(expandedCategory === interestId ? null : interestId);
-    setSelectedCategory(
-      user?.interests.find((i) => i.id === interestId) || null
-    );
+  const getMembershipLimits = (paymentTier: PaymentTier) => {
+    switch (paymentTier) {
+      case PaymentTier.Free: // 1
+        return { maxCategories: 3, maxItems: 5 };
+      case PaymentTier.Basic: // 2
+        return { maxCategories: 10, maxItems: 20 };
+      case PaymentTier.Premium: // 3
+      case PaymentTier.Owner: // 4
+        return { maxCategories: 20, maxItems: 50 };
+      default:
+        return { maxCategories: 3, maxItems: 5 }; // Default to Free tier limits
+    }
   };
 
-  const handleProfilePictureClick = () => {
-    const input = document.createElement("input");
-    input.type = "file";
-    input.accept = "image/*";
-    input.onchange = (e) => {
-      const file = (e.target as HTMLInputElement).files?.[0];
-      if (file && user) {
-        const reader = new FileReader();
-        reader.onloadend = () => {
-          const base64String = reader.result as string;
-          updateProfilePicture(user.id, base64String)
-            .then((updatedUser) => {
-              setUser(updatedUser);
-            })
-            .catch((error) =>
-              console.error("Error updating profile picture:", error)
-            );
-        };
-        reader.readAsDataURL(file);
-      }
-    };
-    input.click();
+  const canAddCategory = () => {
+    if (!user) return false;
+    const userTier =
+      PaymentTier[user.payment_tier as unknown as keyof typeof PaymentTier];
+    const { maxCategories } = getMembershipLimits(userTier);
+    return user.interests.length < maxCategories;
+  };
+
+  const canAddItem = (categoryId: number) => {
+    if (!user) return false;
+    const userTier =
+      PaymentTier[user.payment_tier as unknown as keyof typeof PaymentTier];
+    const { maxItems } = getMembershipLimits(userTier);
+    const category = user.interests.find((int) => int.id === categoryId);
+    return category ? category.items.length < maxItems : false;
   };
 
   const handleAddInterestCategory = async (
     newInterest: Omit<Interest, "id">
   ) => {
-    if (user) {
+    if (user && canAddCategory()) {
       try {
         const response = await addInterestCategory(newInterest);
         setUser((prevUser) => {
@@ -128,26 +99,25 @@ const Profile: React.FC = () => {
           }
           return prevUser;
         });
+        setIsAddInterestModalOpen(false);
       } catch (error) {
         console.error("Error adding interest category:", error);
       }
+    } else {
+      setInfoModalMessage(
+        "You've reached the maximum number of categories for your membership level."
+      );
+      setIsInfoModalOpen(true);
     }
   };
 
-  const getInitials = (name: string) => {
-    return name
-      .split(" ")
-      .map((n) => n[0])
-      .join("")
-      .toUpperCase();
-  };
-
-  const handleCategorySelect = (interest: Interest) => {
-    setSelectedCategory(interest);
-  };
-
   const handleAddItem = async (categoryId: number) => {
-    if (newItemName.trim() && newItemRating >= 1 && newItemRating <= 10) {
+    if (
+      newItemName.trim() &&
+      newItemRating >= 1 &&
+      newItemRating <= 10 &&
+      canAddItem(categoryId)
+    ) {
       try {
         const newItem = await addItemToCategory(categoryId, {
           name: newItemName.trim(),
@@ -169,6 +139,11 @@ const Profile: React.FC = () => {
       } catch (error) {
         console.error("Error adding item:", error);
       }
+    } else if (!canAddItem(categoryId)) {
+      setInfoModalMessage(
+        "You've reached the maximum number of items for this category based on your membership level."
+      );
+      setIsInfoModalOpen(true);
     }
   };
 
@@ -191,7 +166,6 @@ const Profile: React.FC = () => {
       });
     } catch (error) {
       console.error("Error removing item:", error);
-      // Optionally, show an error message to the user
     }
   };
 
@@ -201,7 +175,6 @@ const Profile: React.FC = () => {
     newRating: number
   ) => {
     try {
-      console.log(newRating);
       await updateItemRating(categoryId, itemId, newRating);
       setUser((prevUser) => {
         if (prevUser) {
@@ -250,6 +223,45 @@ const Profile: React.FC = () => {
         setDeletingCategory(null);
       }
     }
+  };
+
+  const toggleCategory = (interestId: number) => {
+    setExpandedCategory(expandedCategory === interestId ? null : interestId);
+    setSelectedCategory(
+      user?.interests.find((i) => i.id === interestId) || null
+    );
+  };
+
+  const handleProfilePictureClick = () => {
+    const input = document.createElement("input");
+    input.type = "file";
+    input.accept = "image/*";
+    input.onchange = (e) => {
+      const file = (e.target as HTMLInputElement).files?.[0];
+      if (file && user) {
+        const reader = new FileReader();
+        reader.onloadend = () => {
+          const base64String = reader.result as string;
+          updateProfilePicture(user.id, base64String)
+            .then((updatedUser) => {
+              setUser(updatedUser);
+            })
+            .catch((error) =>
+              console.error("Error updating profile picture:", error)
+            );
+        };
+        reader.readAsDataURL(file);
+      }
+    };
+    input.click();
+  };
+
+  const getInitials = (name: string) => {
+    return name
+      .split(" ")
+      .map((n) => n[0])
+      .join("")
+      .toUpperCase();
   };
 
   if (!user) {
@@ -402,15 +414,23 @@ const Profile: React.FC = () => {
             position: "absolute",
             top: "20px",
             right: "20px",
-            background: "var(--secondary-color)",
+            background: canAddCategory() ? "var(--secondary-color)" : "gray",
             color: "white",
             border: "none",
             padding: "5px 10px",
             borderRadius: "5px",
-            cursor: "pointer",
+            cursor: canAddCategory() ? "pointer" : "not-allowed",
             fontSize: "0.9em",
-          }}>
-          <FaPlus style={{ marginRight: "5px" }} /> New Category
+            display: "flex",
+            alignItems: "center",
+          }}
+          disabled={!canAddCategory()}>
+          {canAddCategory() ? (
+            <FaPlus style={{ marginRight: "5px" }} />
+          ) : (
+            <FaLock style={{ marginRight: "5px" }} />
+          )}
+          New Category
         </button>
         <div style={{ display: "flex", flexWrap: "wrap", gap: "10px" }}>
           {user?.interests?.map((interest) => (
@@ -510,15 +530,20 @@ const Profile: React.FC = () => {
                       <button
                         onClick={() => handleAddItem(interest.id)}
                         style={{
-                          background: "var(--primary-color)",
+                          background: canAddItem(interest.id)
+                            ? "var(--primary-color)"
+                            : "gray",
                           color: "white",
                           border: "none",
                           padding: "5px 10px",
                           borderRadius: "3px",
-                          cursor: "pointer",
+                          cursor: canAddItem(interest.id)
+                            ? "pointer"
+                            : "not-allowed",
                           fontSize: "0.9em",
-                        }}>
-                        <FaPlus />
+                        }}
+                        disabled={!canAddItem(interest.id)}>
+                        {canAddItem(interest.id) ? <FaPlus /> : <FaLock />}
                       </button>
                     </div>
                   </div>
@@ -572,6 +597,12 @@ const Profile: React.FC = () => {
         onClose={() => setDeletingCategory(null)}
         onConfirm={confirmDeleteCategory}
         itemName={deletingCategory?.category || ""}
+      />
+
+      <InfoModal
+        isOpen={isInfoModalOpen}
+        onClose={() => setIsInfoModalOpen(false)}
+        message={infoModalMessage}
       />
     </div>
   );
