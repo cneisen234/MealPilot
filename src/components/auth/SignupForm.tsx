@@ -1,20 +1,35 @@
-// src/components/auth/SignupForm.tsx
 import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { signup } from "../../utils/api";
+import { signup, login } from "../../utils/api";
+import { useAuth } from "../../context/AuthContext";
 
-const SignupForm: React.FC = () => {
+const Signup: React.FC = () => {
   const [name, setName] = useState("");
   const [username, setUsername] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const navigate = useNavigate();
+  const { checkAuthStatus } = useAuth();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
-      await signup({ name, username, email, password });
-      navigate("/login");
+      // Signup
+      const signupResponse = await signup({ name, username, email, password });
+      console.log("Signup successful", signupResponse.data);
+
+      // Login
+      const loginResponse = await login({ email, password });
+      console.log("Login successful", loginResponse.data);
+
+      // Store the token
+      localStorage.setItem("token", loginResponse.data.token);
+
+      // Update auth status
+      await checkAuthStatus();
+
+      // Redirect to onboarding page
+      navigate("/onboarding");
     } catch (error) {
       console.error("Signup error", error);
     }
@@ -72,4 +87,4 @@ const SignupForm: React.FC = () => {
   );
 };
 
-export default SignupForm;
+export default Signup;

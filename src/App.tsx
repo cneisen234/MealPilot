@@ -4,6 +4,7 @@ import {
   Routes,
   Route,
   Navigate,
+  useLocation,
 } from "react-router-dom";
 import Home from "./pages/Home";
 import Login from "./pages/Login";
@@ -12,7 +13,7 @@ import Profile from "./pages/Profile";
 import Interests from "./pages/Interests";
 import Chatbot from "./pages/Chatbot";
 import Friends from "./pages/Friends";
-import Recommendations from "./pages/Recommendations"; // Import the new Recommendations component
+import Recommendations from "./pages/Recommendations";
 import Upgrade from "./pages/Upgrade";
 import Header from "./components/common/Header";
 import SideNavbar from "./components/common/SideNavbar";
@@ -20,22 +21,31 @@ import Footer from "./components/common/Footer";
 import "./styles/main.css";
 import PrivateRoute from "./components/PrivateRoute";
 import { AuthProvider, useAuth } from "./context/AuthContext";
+import Onboarding from "./components/Onboarding";
 
 const AppContent: React.FC = () => {
   const { isAuthenticated, checkAuthStatus } = useAuth();
+  const location = useLocation();
 
   useEffect(() => {
     checkAuthStatus();
   }, [checkAuthStatus]);
 
+  const isOnboardingRoute = location.pathname === "/onboarding";
+
   return (
     <div
       className="app"
       style={{ display: "flex", flexDirection: "column", height: "100vh" }}>
-      {isAuthenticated && <Header />}
+      {isAuthenticated && !isOnboardingRoute && <Header />}
       <div style={{ display: "flex", flex: 1, overflow: "hidden" }}>
-        {isAuthenticated && <SideNavbar />}
-        <main style={{ flex: 1, overflow: "auto", padding: "20px" }}>
+        {isAuthenticated && !isOnboardingRoute && <SideNavbar />}
+        <main
+          style={{
+            flex: 1,
+            overflow: "auto",
+            padding: isOnboardingRoute ? 0 : "20px",
+          }}>
           <Routes>
             <Route
               path="/"
@@ -53,11 +63,15 @@ const AppContent: React.FC = () => {
               path="/signup"
               element={
                 isAuthenticated ? (
-                  <Navigate to="/profile" replace />
+                  <Navigate to="/onboarding" replace />
                 ) : (
                   <Signup />
                 )
               }
+            />
+            <Route
+              path="/onboarding"
+              element={<PrivateRoute element={<Onboarding />} />}
             />
             <Route
               path="/profile"
@@ -86,7 +100,7 @@ const AppContent: React.FC = () => {
           </Routes>
         </main>
       </div>
-      {isAuthenticated && <Footer />}
+      {isAuthenticated && !isOnboardingRoute && <Footer />}
     </div>
   );
 };
