@@ -6,6 +6,10 @@ require("dotenv").config();
 const jwt = require("jsonwebtoken");
 const authMiddleware = require("./middleware/auth");
 require("dotenv").config();
+const crypto = require("crypto");
+const sgMail = require("@sendgrid/mail");
+const openai = require("./openai");
+const cleanAIResponse = require("./cleanAIResponse");
 
 const app = express();
 const port = process.env.PORT || 5000;
@@ -13,6 +17,147 @@ const port = process.env.PORT || 5000;
 // Middleware
 app.use(cors());
 app.use(express.json());
+
+// Set up SendGrid
+sgMail.setApiKey(process.env.SENDGRID_API_KEY);
+
+// Request password reset
+app.post("/api/auth/forgot-password", async (req, res) => {
+  const { email } = req.body;
+
+  try {
+    const user = await pool.query("SELECT * FROM users WHERE email = $1", [
+      email,
+    ]);
+
+    if (user.rows.length === 0) {
+      return res.status(404).json({ message: "User not found" });
+    }
+
+    const token = crypto.randomBytes(20).toString("hex");
+    const expires = new Date(Date.now() + 3600000); // 1 hour from now
+
+    await pool.query(
+      "UPDATE users SET reset_password_token = $1, reset_password_expires = $2 WHERE id = $3",
+      [token, expires, user.rows[0].id]
+    );
+
+    const resetUrl = `${process.env.FRONTEND_URL}/reset-password/${token}`;
+
+    const htmlContent = `
+    <html>
+    <body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px;">
+      <div style="text-align: center; margin-bottom: 20px;">
+        <div style="background-color: #966FD6; color: white; font-size: 24px; font-weight: bold; padding: 10px 20px; display: inline-block; border-radius: 5px;">
+          VibeQuest
+        </div>
+      </div>
+      <div style="background-color: #f8f9fa; border-radius: 5px; padding: 20px; margin-bottom: 20px;">
+        <h2 style="color: #966FD6; margin-top: 0;">Password Reset Request</h2>
+        <p>Hello,</p>
+        <p>You are receiving this because you (or someone else) have requested to reset the password for your VibeQuest account.</p>
+        <p>Please click the button below to complete the process:</p>
+        <div style="text-align: center; margin: 30px 0;">
+          <a href="${resetUrl}" style="background-color: #966FD6; color: white; padding: 12px 20px; text-decoration: none; border-radius: 5px; font-weight: bold;">Reset Your Password</a>
+        </div>
+        <p>If you did not request this, please ignore this email and your password will remain unchanged.</p>
+      </div>
+      <div style="text-align: center; font-size: 12px; color: #666;">
+        <p>&copy; 2024 VibeQuest. All rights reserved.</p>
+      </div>
+    </body>
+    </html>
+    `;
+
+    const msg = {
+      to: user.rows[0].email,
+      from: process.env.SENDGRID_FROM_EMAIL,
+      subject: "VibeQuest Password Reset Request",
+      html: htmlContent,
+      text: `Reset your VibeQuest password by visiting: ${resetUrl}`,
+    };
+
+    await sgMail.send(msg);
+    res.status(200).json({ message: "Password reset email sent" });
+  } catch (error) {
+    console.error("Error in forgot password:", error);
+    res.status(500).json({ message: "Error processing your request" });
+  }
+});
+
+// Reset password
+app.post("/api/auth/reset-password/:token", async (req, res) => {
+  const { token } = req.params;
+  const { password } = req.body;
+
+  try {
+    const user = await pool.query(
+      "SELECT * FROM users WHERE reset_password_token = $1 AND reset_password_expires > $2",
+      [token, new Date()]
+    );
+
+    if (user.rows.length === 0) {
+      return res
+        .status(400)
+        .json({ message: "Password reset token is invalid or has expired" });
+    }
+
+    const hashedPassword = await bcrypt.hash(password, 10);
+
+    await pool.query(
+      "UPDATE users SET password = $1, reset_password_token = NULL, reset_password_expires = NULL WHERE id = $2",
+      [hashedPassword, user.rows[0].id]
+    );
+
+    res.status(200).json({ message: "Password has been reset" });
+  } catch (error) {
+    console.error("Error in reset password:", error);
+    res.status(500).json({ message: "Error resetting password" });
+  }
+});
+
+app.post("/api/contact-us", async (req, res) => {
+  const { name, email, subject, message } = req.body;
+
+  try {
+    const htmlContent = `
+    <html>
+    <body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px;">
+      <div style="text-align: center; margin-bottom: 20px;">
+        <div style="background-color: #966FD6; color: white; font-size: 24px; font-weight: bold; padding: 10px 20px; display: inline-block; border-radius: 5px;">
+          VibeQuest
+        </div>
+      </div>
+      <div style="background-color: #f8f9fa; border-radius: 5px; padding: 20px; margin-bottom: 20px;">
+        <h2 style="color: #966FD6; margin-top: 0;">New Contact Form Submission</h2>
+        <p><strong>Name:</strong> ${name}</p>
+        <p><strong>Email:</strong> ${email}</p>
+        <p><strong>Subject:</strong> ${subject}</p>
+        <h3 style="color: #966FD6;">Message:</h3>
+        <p>${message}</p>
+      </div>
+      <div style="text-align: center; font-size: 12px; color: #666;">
+        <p>&copy; 2024 VibeQuest. All rights reserved.</p>
+      </div>
+    </body>
+    </html>
+    `;
+
+    const msg = {
+      to: "chris@integritytechsoftware.com",
+      from: process.env.SENDGRID_FROM_EMAIL,
+      subject: `VibeQuest Contact: ${subject}`,
+      html: htmlContent,
+      text: `New contact from ${name} (${email}): ${message}`,
+    };
+
+    await sgMail.send(msg);
+    res.status(200).json({ message: "Message sent successfully" });
+  } catch (error) {
+    console.error("Error sending contact form:", error);
+    res.status(500).json({ message: "Error sending message" });
+  }
+});
 
 app.post("/api/auth/login", async (req, res) => {
   const { email, password } = req.body;
@@ -94,6 +239,93 @@ app.post("/api/auth/signup", async (req, res) => {
   } catch (error) {
     console.error("Error during signup:", error);
     res.status(500).json({ message: "Error creating user" });
+  }
+});
+
+app.post("/api/close-account", authMiddleware, async (req, res) => {
+  const { password } = req.body;
+  const userId = req.user.id;
+
+  try {
+    // Verify password
+    const user = await pool.query("SELECT * FROM users WHERE id = $1", [
+      userId,
+    ]);
+    if (user.rows.length === 0) {
+      return res.status(404).json({ message: "User not found" });
+    }
+
+    const isValid = await bcrypt.compare(password, user.rows[0].password);
+    if (!isValid) {
+      return res.status(401).json({ message: "Invalid password" });
+    }
+
+    // Begin transaction
+    await pool.query("BEGIN");
+
+    // Delete user's data (adjust these queries based on your database schema)
+    await pool.query(
+      "DELETE FROM friend_requests WHERE sender_id = $1 OR receiver_id = $1",
+      [userId]
+    );
+    await pool.query(
+      "DELETE FROM friends WHERE user_id = $1 OR friend_id = $1",
+      [userId]
+    );
+    await pool.query(
+      "DELETE FROM items WHERE interest_id IN (SELECT id FROM interests WHERE user_id = $1)",
+      [userId]
+    );
+    await pool.query("DELETE FROM interests WHERE user_id = $1", [userId]);
+    await pool.query("DELETE FROM users WHERE id = $1", [userId]);
+
+    // Commit transaction
+    await pool.query("COMMIT");
+
+    res.json({ message: "Account closed successfully" });
+  } catch (error) {
+    await pool.query("ROLLBACK");
+    console.error("Error closing account:", error);
+    res.status(500).json({ message: "Error closing account" });
+  }
+});
+
+app.get("/api/auth/check-email", async (req, res) => {
+  const { email } = req.query;
+  try {
+    const result = await pool.query("SELECT * FROM users WHERE email = $1", [
+      email,
+    ]);
+    res.json({ available: result.rows.length === 0 });
+  } catch (error) {
+    console.error("Error checking email availability:", error);
+    res.status(500).json({ message: "Server error" });
+  }
+});
+
+app.get("/api/auth/check-username", async (req, res) => {
+  const { username } = req.query;
+  try {
+    const result = await pool.query("SELECT * FROM users WHERE username = $1", [
+      username,
+    ]);
+    res.json({ available: result.rows.length === 0 });
+  } catch (error) {
+    console.error("Error checking username availability:", error);
+    res.status(500).json({ message: "Server error" });
+  }
+});
+
+app.get("/api/auth/check-email-exists", async (req, res) => {
+  const { email } = req.query;
+  try {
+    const result = await pool.query("SELECT * FROM users WHERE email = $1", [
+      email,
+    ]);
+    res.json({ exists: result.rows.length > 0 });
+  } catch (error) {
+    console.error("Error checking email existence:", error);
+    res.status(500).json({ message: "Server error" });
   }
 });
 
@@ -438,6 +670,66 @@ app.get("/api/friends", authMiddleware, async (req, res) => {
   }
 });
 
+app.get("/api/friends/:friendId/profile", authMiddleware, async (req, res) => {
+  try {
+    const { friendId } = req.params;
+    const userId = req.user.id;
+
+    // Check if the users are friends
+    const friendshipCheck = await pool.query(
+      "SELECT * FROM friends WHERE (user_id = $1 AND friend_id = $2) OR (user_id = $2 AND friend_id = $1)",
+      [userId, friendId]
+    );
+
+    if (friendshipCheck.rows.length === 0) {
+      return res
+        .status(403)
+        .json({ message: "You don't have permission to view this profile" });
+    }
+
+    // Fetch friend's profile data
+    const friendQuery = await pool.query(
+      `SELECT id, name, username, avatar, bio, bio_visibility, interests_visibility
+       FROM users WHERE id = $1`,
+      [friendId]
+    );
+
+    if (friendQuery.rows.length === 0) {
+      return res.status(404).json({ message: "Friend not found" });
+    }
+
+    const friend = friendQuery.rows[0];
+
+    // Respect privacy settings
+    const profile = {
+      id: friend.id,
+      name: friend.name,
+      username: friend.username,
+      avatar: friend.avatar,
+      bio: friend.bio_visibility === "public" ? friend.bio : null,
+      interests: [],
+    };
+
+    // Fetch interests if allowed
+    if (friend.interests_visibility === "public") {
+      const interestsQuery = await pool.query(
+        `SELECT i.category, json_agg(json_build_object('name', it.name, 'rating', it.rating)) as items
+         FROM interests i
+         LEFT JOIN items it ON i.id = it.interest_id
+         WHERE i.user_id = $1
+         GROUP BY i.id`,
+        [friendId]
+      );
+      profile.interests = interestsQuery.rows;
+    }
+
+    res.json(profile);
+  } catch (error) {
+    console.error("Error fetching friend profile:", error);
+    res.status(500).json({ message: "Server error" });
+  }
+});
+
 // Update the POST /api/friend-requests endpoint in server.js
 
 app.post("/api/friend-requests", authMiddleware, async (req, res) => {
@@ -757,6 +1049,182 @@ app.get("/api/recommendations", authMiddleware, async (req, res) => {
     res.status(500).json({ message: "Server error" });
   }
 });
+
+app.post("/api/get-recommendation", authMiddleware, async (req, res) => {
+  try {
+    const userId = req.user.id;
+    const { query, friendIds } = req.body;
+
+    // Fetch user data
+    const userQuery = await pool.query(
+      "SELECT bio, city, state FROM users WHERE id = $1",
+      [userId]
+    );
+    const user = userQuery.rows[0];
+
+    // Fetch user interests
+    const userInterestsQuery = await pool.query(
+      "SELECT category, array_agg(items.name) as items FROM interests JOIN items ON interests.id = items.interest_id WHERE user_id = $1 GROUP BY category",
+      [userId]
+    );
+    const userInterests = userInterestsQuery.rows;
+
+    let friendsData = [];
+    if (friendIds && friendIds.length > 0) {
+      // Check payment tier only if friends are included
+      const hasAccess = await checkPaymentTier(userId, PaymentTier.Basic);
+      if (!hasAccess) {
+        return res.status(403).json({
+          message:
+            "Including friends in recommendations is not available on your current plan.",
+        });
+      }
+
+      // Fetch friends' data
+      const friendsQuery = await pool.query(
+        "SELECT id, bio, city, state FROM users WHERE id = ANY($1)",
+        [friendIds]
+      );
+      friendsData = friendsQuery.rows;
+
+      // Fetch friends' interests
+      for (let friend of friendsData) {
+        const friendInterestsQuery = await pool.query(
+          "SELECT category, array_agg(items.name) as items FROM interests JOIN items ON interests.id = items.interest_id WHERE user_id = $1 GROUP BY category",
+          [friend.id]
+        );
+        friend.interests = friendInterestsQuery.rows;
+      }
+    }
+    // Prepare the prompt for OpenAI
+    let prompt = `Based on the following user information, provide a personalized recommendation:
+
+    User:
+    Bio: ${user.bio}
+    Location: ${user.city}, ${user.state}
+    Interests: ${userInterests
+      .map((i) => `${i.category}: ${i.items.join(", ")}`)
+      .join("; ")}
+
+    User query: ${query}`;
+
+    if (friendsData.length > 0) {
+      prompt += `\n\nAdditionally, consider the following friends' information:
+
+      ${friendsData
+        .map(
+          (friend, index) => `
+      Friend ${index + 1}:
+      Bio: ${friend.bio}
+      Location: ${friend.city}, ${friend.state}
+      Interests: ${friend.interests
+        .map((i) => `${i.category}: ${i.items.join(", ")}`)
+        .join("; ")}
+      `
+        )
+        .join("\n")}
+
+      Please provide a detailed recommendation that takes into account the user's and their friends' interests, locations, and bios. Focus on finding mutual interests and activities that would be enjoyable for the entire group.`;
+    }
+
+    // Call OpenAI API
+    const completion = await openai.chat.completions.create({
+      model: "gpt-4o-mini",
+      messages: [{ role: "user", content: prompt }],
+      max_tokens: 500,
+    });
+
+    res.json({ recommendation: completion.choices[0].message.content });
+  } catch (error) {
+    console.error("Error getting recommendation:", error);
+    res
+      .status(500)
+      .json({ error: "An error occurred while getting the recommendation" });
+  }
+});
+
+app.post(
+  "/api/interests/add-item-from-chat",
+  authMiddleware,
+  async (req, res) => {
+    try {
+      const { userId, category, item } = req.body;
+
+      // Verify user
+      if (userId !== req.user.id) {
+        return res.status(403).json({ message: "Unauthorized action" });
+      }
+
+      // Fetch user's current interests
+      const userInterestsQuery = await pool.query(
+        "SELECT * FROM interests WHERE user_id = $1",
+        [userId]
+      );
+      const userInterests = userInterestsQuery.rows;
+
+      // Check if adding a new category
+      const isNewCategory = !userInterests.some(
+        (i) => i.category.toLowerCase() === category.toLowerCase()
+      );
+
+      // Determine the required tier based on current counts
+      let requiredTier;
+      if (isNewCategory) {
+        if (userInterests.length < 3) requiredTier = PaymentTier.Free;
+        else if (userInterests.length < 10) requiredTier = PaymentTier.Basic;
+        else requiredTier = PaymentTier.Premium;
+      } else {
+        const categoryItems = await pool.query(
+          "SELECT COUNT(*) FROM items WHERE interest_id = (SELECT id FROM interests WHERE user_id = $1 AND category = $2)",
+          [userId, category]
+        );
+        const itemCount = parseInt(categoryItems.rows[0].count);
+
+        if (itemCount < 5) requiredTier = PaymentTier.Free;
+        else if (itemCount < 20) requiredTier = PaymentTier.Basic;
+        else requiredTier = PaymentTier.Premium;
+      }
+
+      // Check if user has required tier
+      const hasAccess = await checkPaymentTier(userId, requiredTier);
+      if (!hasAccess) {
+        return res.status(403).json({
+          message:
+            "Your current plan doesn't allow adding more interests or items. Please upgrade to add more.",
+        });
+      }
+
+      // Add the category if it's new
+      let categoryId;
+      if (isNewCategory) {
+        const newCategoryQuery = await pool.query(
+          "INSERT INTO interests (user_id, category) VALUES ($1, $2) RETURNING id",
+          [userId, category]
+        );
+        categoryId = newCategoryQuery.rows[0].id;
+      } else {
+        const existingCategoryQuery = await pool.query(
+          "SELECT id FROM interests WHERE user_id = $1 AND category = $2",
+          [userId, category]
+        );
+        categoryId = existingCategoryQuery.rows[0].id;
+      }
+
+      // Add the new item
+      await pool.query(
+        "INSERT INTO items (interest_id, name) VALUES ($1, $2)",
+        [categoryId, item]
+      );
+
+      res.json({ message: "Interest item added successfully" });
+    } catch (error) {
+      console.error("Error adding interest item:", error);
+      res
+        .status(500)
+        .json({ error: "An error occurred while adding the interest item" });
+    }
+  }
+);
 
 // Start server
 app.listen(port, () => {

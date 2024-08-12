@@ -1,6 +1,11 @@
 import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { FaArrowRight, FaInfoCircle, FaPlus } from "react-icons/fa";
+import {
+  FaArrowRight,
+  FaInfoCircle,
+  FaPlus,
+  FaMapMarkerAlt,
+} from "react-icons/fa";
 import { useAuth } from "../context/AuthContext";
 import {
   getProfile,
@@ -12,6 +17,7 @@ import { User, Interest, PrivacySetting } from "../types";
 import { motion, AnimatePresence } from "framer-motion";
 import "../styles/onboarding.css";
 import StarRating from "../components/StarRating";
+import Loading from "./Loading";
 
 const MAX_CATEGORIES = 3;
 const MAX_ITEMS_PER_CATEGORY = 5;
@@ -20,6 +26,8 @@ const Onboarding: React.FC = () => {
   const [step, setStep] = useState(0);
   const [user, setUser] = useState<User | null>(null);
   const [bio, setBio] = useState("");
+  const [city, setCity] = useState("");
+  const [state, setState] = useState("");
   const [categories, setCategories] = useState<string[]>([]);
   const [items, setItems] = useState<{
     [category: string]: { name: string; rating: number }[];
@@ -38,6 +46,8 @@ const Onboarding: React.FC = () => {
         const response = await getProfile();
         setUser(response.data);
         setBio(response.data.bio || "");
+        setCity(response.data.city || "");
+        setState(response.data.state || "");
       } catch (error) {
         console.error("Error fetching user profile:", error);
       }
@@ -100,7 +110,18 @@ const Onboarding: React.FC = () => {
     if (!user) return;
 
     try {
-      await updateProfile(user.id, { ...user, bio });
+      console.log("Updating profile with bio, city, and state:", {
+        bio,
+        city,
+        state,
+      });
+      const updatedUser = await updateProfile(user.id, {
+        ...user,
+        bio,
+        city,
+        state,
+      });
+      console.log("Updated user:", updatedUser);
 
       for (const category of categories) {
         const newInterest: Omit<Interest, "id"> = {
@@ -166,6 +187,37 @@ const Onboarding: React.FC = () => {
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             className="onboarding-step">
+            <h2>Where are you based?</h2>
+            <p>
+              Let us know your city and state to connect you with local vibes!
+            </p>
+            <div className="input-group">
+              <input
+                type="text"
+                value={city}
+                onChange={(e) => setCity(e.target.value)}
+                placeholder="City"
+                className="location-input"
+              />
+            </div>
+            <div className="input-group">
+              <input
+                type="text"
+                value={state}
+                onChange={(e) => setState(e.target.value)}
+                placeholder="State"
+                className="location-input"
+              />
+            </div>
+          </motion.div>
+        );
+      case 2:
+        return (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="onboarding-step">
             <h2>What are you passionate about?</h2>
             <p>Add some categories that represent your interests.</p>
             <div className="input-group">
@@ -201,7 +253,7 @@ const Onboarding: React.FC = () => {
             </p>
           </motion.div>
         );
-      case 2:
+      case 3:
         return (
           <motion.div
             initial={{ opacity: 0 }}
@@ -274,7 +326,7 @@ const Onboarding: React.FC = () => {
   );
 
   if (!user) {
-    return <div>Loading...</div>;
+    return <Loading />;
   }
 
   return (
@@ -286,14 +338,17 @@ const Onboarding: React.FC = () => {
         {step >= introSteps.length && (
           <button
             onClick={
-              step === introSteps.length + 2 ? finishOnboarding : handleNext
+              step === introSteps.length + 3 ? finishOnboarding : handleNext
             }
             className="next-button"
             disabled={
-              (step === introSteps.length + 1 && categories.length === 0) ||
-              (step === introSteps.length + 2 && !hasAddedItems)
+              (step === introSteps.length && !bio.trim()) ||
+              (step === introSteps.length + 1 &&
+                (!city.trim() || !state.trim())) ||
+              (step === introSteps.length + 2 && categories.length === 0) ||
+              (step === introSteps.length + 3 && !hasAddedItems)
             }>
-            {step === introSteps.length + 2 ? "Finish" : "Next"}{" "}
+            {step === introSteps.length + 3 ? "Finish" : "Next"}{" "}
             <FaArrowRight />
           </button>
         )}

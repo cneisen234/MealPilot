@@ -79,6 +79,27 @@ export const getProfile = () => {
   return api.get('/users/profile');
 };
 
+export const requestPasswordReset = (email: string) => {
+  return api.post('/auth/forgot-password', { email });
+};
+
+export const resetPassword = (token: string, password: string) => {
+  return api.post(`/auth/reset-password/${token}`, { password });
+};
+
+export const sendContactForm = (formData: {
+  name: string;
+  email: string;
+  subject: string;
+  message: string;
+}) => {
+  return api.post('/contact-us', formData);
+};
+
+export const closeAccount = (password: string) => {
+  return api.post('/close-account', { password });
+};
+
 export const updateProfile = async (userId: number, profileData: Partial<User>) => {
   const response = await api.put(`/users/${userId}/profile`, profileData);
   return response.data;
@@ -127,6 +148,10 @@ export const sendFriendRequest = (request: Omit<FriendRequest, "id" | "createdAt
   return api.post('/friend-requests', request);
 };
 
+export const getFriendProfile = (friendId: number) => {
+  return api.get(`/friends/${friendId}/profile`);
+};
+
 export const getNotifications = () => {
   return api.get('/notifications');
 };
@@ -147,6 +172,25 @@ export const addInterest = (interestData: Omit<Interest, 'id' | 'userId'>) => {
   return api.post('/interests', interestData);
 };
 
-// Add more API methods as needed
+export const checkEmailAvailability = (email: string) => {
+  return api.get(`/auth/check-email?email=${encodeURIComponent(email)}`);
+};
+
+export const checkUsernameAvailability = (username: string) => {
+  return api.get(`/auth/check-username?username=${encodeURIComponent(username)}`);
+};
+
+export const checkEmailExists = (email: string) => {
+  return api.get(`/auth/check-email-exists?email=${encodeURIComponent(email)}`);
+};
+
+export const getRecommendation = (query: string, friendIds: number[] = []) => {
+  return api.post('/get-recommendation', { query, friendIds });
+};
+
+export const addInterestItemFromChat = (userId: number, category: string, item: string) => {
+  return api.post('/interests/add-item-from-chat', { userId, category, item });
+};
 
 export default api;
+

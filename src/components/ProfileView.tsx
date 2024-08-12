@@ -1,23 +1,70 @@
-// src/components/ProfileView.tsx
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { FaTimes, FaChevronDown, FaChevronUp } from "react-icons/fa";
-import { User } from "../types";
+import { getFriendProfile } from "../utils/api";
+
+interface FriendProfile {
+  id: number;
+  name: string;
+  username: string;
+  avatar: string | null;
+  bio: string | null;
+  interests: Array<{
+    category: string;
+    items: Array<{ name: string; rating: number }>;
+  }>;
+}
 
 interface ProfileViewProps {
-  friend: User;
+  friendId: number;
   onClose: () => void;
 }
 
-const ProfileView: React.FC<ProfileViewProps> = ({ friend, onClose }) => {
+const ProfileView: React.FC<ProfileViewProps> = ({ friendId, onClose }) => {
+  const [friend, setFriend] = useState<FriendProfile | null>(null);
   const [expandedInterest, setExpandedInterest] = useState<string | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    const loadFriendProfile = async () => {
+      try {
+        setIsLoading(true);
+        const response = await getFriendProfile(friendId);
+        setFriend(response.data);
+      } catch (error) {
+        console.error("Error loading friend profile:", error);
+        setError("Failed to load friend profile. Please try again later.");
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    loadFriendProfile();
+  }, [friendId]);
 
   const toggleInterest = (category: string) => {
-    if (expandedInterest === category) {
-      setExpandedInterest(null);
-    } else {
-      setExpandedInterest(category);
-    }
+    setExpandedInterest((prev) => (prev === category ? null : category));
   };
+
+  const getInitials = (name: string) => {
+    return name
+      .split(" ")
+      .map((n) => n[0])
+      .join("")
+      .toUpperCase();
+  };
+
+  if (isLoading) {
+    return <div>Loading...</div>;
+  }
+
+  if (error) {
+    return <div>{error}</div>;
+  }
+
+  if (!friend) {
+    return <div>Friend not found</div>;
+  }
 
   return (
     <div
@@ -64,16 +111,35 @@ const ProfileView: React.FC<ProfileViewProps> = ({ friend, onClose }) => {
             alignItems: "center",
             marginBottom: "20px",
           }}>
-          <img
-            src={friend.avatar}
-            alt={friend.name}
-            style={{
-              width: "100px",
-              height: "100px",
-              borderRadius: "50%",
-              marginRight: "20px",
-            }}
-          />
+          {friend.avatar ? (
+            <img
+              src={friend.avatar}
+              alt={friend.name}
+              style={{
+                width: "100px",
+                height: "100px",
+                borderRadius: "50%",
+                marginRight: "20px",
+              }}
+            />
+          ) : (
+            <div
+              style={{
+                width: "100px",
+                height: "100px",
+                borderRadius: "50%",
+                marginRight: "20px",
+                backgroundColor: "var(--primary-color)",
+                color: "white",
+                display: "flex",
+                justifyContent: "center",
+                alignItems: "center",
+                fontSize: "36px",
+                fontWeight: "bold",
+              }}>
+              {getInitials(friend.name)}
+            </div>
+          )}
           <div>
             <h2 style={{ color: "var(--primary-color)", marginBottom: "5px" }}>
               {friend.name}
@@ -100,61 +166,65 @@ const ProfileView: React.FC<ProfileViewProps> = ({ friend, onClose }) => {
           <h3 style={{ color: "var(--primary-color)", marginBottom: "10px" }}>
             Interests
           </h3>
-          {friend.interests.map((interest, index) => (
-            <div key={index} style={{ marginBottom: "10px" }}>
-              <div
-                onClick={() => toggleInterest(interest.category)}
-                style={{
-                  background: "rgba(150, 111, 214, 0.1)",
-                  color: "var(--primary-color)",
-                  padding: "10px 15px",
-                  borderRadius: "15px",
-                  fontSize: "16px",
-                  cursor: "pointer",
-                  display: "flex",
-                  justifyContent: "space-between",
-                  alignItems: "center",
-                }}>
-                {interest.category}
-                {expandedInterest === interest.category ? (
-                  <FaChevronUp />
-                ) : (
-                  <FaChevronDown />
+          {friend.interests && friend.interests.length > 0 ? (
+            friend.interests.map((interest, index) => (
+              <div key={index} style={{ marginBottom: "10px" }}>
+                <div
+                  onClick={() => toggleInterest(interest.category)}
+                  style={{
+                    background: "rgba(150, 111, 214, 0.1)",
+                    color: "var(--primary-color)",
+                    padding: "10px 15px",
+                    borderRadius: "15px",
+                    fontSize: "16px",
+                    cursor: "pointer",
+                    display: "flex",
+                    justifyContent: "space-between",
+                    alignItems: "center",
+                  }}>
+                  {interest.category}
+                  {expandedInterest === interest.category ? (
+                    <FaChevronUp />
+                  ) : (
+                    <FaChevronDown />
+                  )}
+                </div>
+                {expandedInterest === interest.category && (
+                  <div style={{ marginTop: "10px", paddingLeft: "15px" }}>
+                    {interest.items.map((item, itemIndex) => (
+                      <div
+                        key={itemIndex}
+                        style={{
+                          display: "flex",
+                          justifyContent: "space-between",
+                          alignItems: "center",
+                          marginBottom: "5px",
+                          color: "var(--text-color)",
+                        }}>
+                        <span>{item.name}</span>
+                        <span
+                          style={{
+                            background: "var(--primary-color)",
+                            color: "white",
+                            borderRadius: "50%",
+                            width: "25px",
+                            height: "25px",
+                            display: "flex",
+                            justifyContent: "center",
+                            alignItems: "center",
+                            fontSize: "12px",
+                          }}>
+                          {item.rating}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
                 )}
               </div>
-              {expandedInterest === interest.category && (
-                <div style={{ marginTop: "10px", paddingLeft: "15px" }}>
-                  {interest.items.map((item, itemIndex) => (
-                    <div
-                      key={itemIndex}
-                      style={{
-                        display: "flex",
-                        justifyContent: "space-between",
-                        alignItems: "center",
-                        marginBottom: "5px",
-                        color: "var(--text-color)",
-                      }}>
-                      <span>{item.name}</span>
-                      <span
-                        style={{
-                          background: "var(--primary-color)",
-                          color: "white",
-                          borderRadius: "50%",
-                          width: "25px",
-                          height: "25px",
-                          display: "flex",
-                          justifyContent: "center",
-                          alignItems: "center",
-                          fontSize: "12px",
-                        }}>
-                        {item.rating}
-                      </span>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
-          ))}
+            ))
+          ) : (
+            <p>No interests to display.</p>
+          )}
         </div>
       </div>
     </div>

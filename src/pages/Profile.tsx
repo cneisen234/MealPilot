@@ -21,7 +21,10 @@ import {
   FaMinus,
   FaStar,
   FaLock,
+  FaTimes,
 } from "react-icons/fa";
+import { Link } from "react-router-dom";
+import Loading from "../components/Loading";
 
 const Profile: React.FC = () => {
   const [user, setUser] = useState<User | null>(null);
@@ -265,7 +268,7 @@ const Profile: React.FC = () => {
   };
 
   if (!user) {
-    return <div>Loading...</div>;
+    return <Loading />;
   }
 
   return (
@@ -571,6 +574,50 @@ const Profile: React.FC = () => {
             <p>No interests added yet</p>
           </div>
         )}
+      </div>
+      {/* Account Management section */}
+      <div
+        style={{
+          background: "var(--surface-color)",
+          borderRadius: "15px",
+          padding: "20px",
+          boxShadow: "0 4px 6px rgba(0, 0, 0, 0.1)",
+        }}>
+        <h2
+          style={{
+            fontSize: "1.6em",
+            color: "var(--primary-color)",
+            marginBottom: "20px",
+          }}>
+          Account Management
+        </h2>
+        <div
+          style={{
+            display: "flex",
+            justifyContent: "space-between",
+            alignItems: "center",
+            padding: "15px 0",
+            borderBottom: "1px solid rgba(0, 0, 0, 0.1)",
+          }}>
+          <span style={{ fontSize: "1.1em", color: "var(--text-color)" }}>
+            Close Account
+          </span>
+          <Link
+            to="/close-account"
+            className="btn"
+            style={{
+              backgroundColor: "#ff6b6b", // A softer red color
+              color: "white",
+              border: "none",
+              padding: "10px 15px",
+              borderRadius: "25px",
+              textDecoration: "none",
+              display: "flex",
+              alignItems: "center",
+            }}>
+            <FaTimes style={{ marginRight: "5px" }} /> Close Account
+          </Link>
+        </div>
       </div>
 
       {isEditModalOpen && (

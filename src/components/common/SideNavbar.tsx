@@ -6,6 +6,7 @@ import {
   FaUserFriends,
   FaArrowUp,
   FaLightbulb,
+  FaEnvelope,
 } from "react-icons/fa";
 
 const NavItem: React.FC<{
@@ -78,6 +79,9 @@ const SideNavbar: React.FC = () => {
         </NavItem>
         <NavItem to="/upgrade" icon={<FaArrowUp />}>
           Upgrade
+        </NavItem>
+        <NavItem to="/contact-us" icon={<FaEnvelope />} title="Contact Us">
+          Contact Us
         </NavItem>
       </ul>
     </nav>

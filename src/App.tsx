@@ -22,6 +22,10 @@ import "./styles/main.css";
 import PrivateRoute from "./components/PrivateRoute";
 import { AuthProvider, useAuth } from "./context/AuthContext";
 import Onboarding from "./components/Onboarding";
+import ForgotPassword from "./components/auth/ForgotPassword";
+import ResetPassword from "./components/auth/ResetPassword";
+import ContactUs from "./pages/ContactUs";
+import CloseAccount from "./components/profile/CloseAccount";
 
 const AppContent: React.FC = () => {
   const { isAuthenticated, checkAuthStatus } = useAuth();
@@ -69,6 +73,10 @@ const AppContent: React.FC = () => {
                 )
               }
             />
+            <Route path="/forgot-password" element={<ForgotPassword />} />
+            <Route path="/reset-password/:token" element={<ResetPassword />} />
+            <Route path="/contact-us" element={<ContactUs />} />
+            <Route path="/close-account" element={<CloseAccount />} />
             <Route
               path="/onboarding"
               element={<PrivateRoute element={<Onboarding />} />}

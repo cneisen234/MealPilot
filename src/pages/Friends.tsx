@@ -23,6 +23,7 @@ import {
   sendFriendRequest,
   handleFriendRequest,
 } from "../utils/api";
+import Loading from "../components/Loading";
 
 const Friends: React.FC = () => {
   const [user, setUser] = useState<User | null>(null);
@@ -418,7 +419,7 @@ const Friends: React.FC = () => {
   );
 
   if (!user) {
-    return <div>Loading...</div>;
+    return <Loading />;
   }
 
   return (
@@ -449,7 +450,11 @@ const Friends: React.FC = () => {
 
       {selectedFriend && (
         <ProfileView
-          friend={selectedFriend}
+          friendId={
+            typeof selectedFriend === "object"
+              ? selectedFriend.id
+              : selectedFriend
+          }
           onClose={() => setSelectedFriend(null)}
         />
       )}

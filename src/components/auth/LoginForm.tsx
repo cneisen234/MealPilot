@@ -18,8 +18,10 @@ const LoginForm: React.FC = () => {
       console.log("Login submitted", response.data);
       localStorage.setItem("token", response.data.token);
       authLogin(response.data.token);
-      checkAuthStatus(); // Force an update of the authentication state
-      navigate("/profile");
+      setTimeout(() => {
+        checkAuthStatus();
+        navigate("/profile");
+      }, 100);
     } catch (error) {
       console.error("Login error", error);
     }
