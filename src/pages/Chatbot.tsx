@@ -7,22 +7,38 @@ import {
   FaUserFriends,
 } from "react-icons/fa";
 import Select, { MultiValue } from "react-select";
-import { getRecommendation, getFriends, getProfile } from "../utils/api";
+import {
+  getRecommendation,
+  getFriends,
+  getProfile,
+  getRemainingPrompts,
+  updatePromptCount,
+} from "../utils/api";
 import { useAuth } from "../context/AuthContext";
 import Loading from "../components/Loading";
 import FormattedAIResponse from "../components/FormattedAiResponse";
 import { Message, PaymentTier, User } from "../types";
+import axios from "axios";
+import AnimatedTechIcon from "../components/animatedTechIcon";
 
 interface FriendOption {
   value: number;
   label: string;
 }
 
+const getInitials = (name: string) => {
+  return name
+    .split(" ")
+    .map((word) => word[0])
+    .join("")
+    .toUpperCase();
+};
+
 const Chatbot: React.FC = () => {
   const [messages, setMessages] = useState<Message[]>([
     {
       id: 1,
-      text: "Hello! How can I assist you today?",
+      text: "Hey there! Lets discover some new interests together! Ask me about some places you'd like to travel, resturants you'd enjoy, or even some new things to check out on your streaming service of choice. Ask me anything at all and I will look at your profile and give you personalized recommendations that I am confident you will enjoy. Use me as a stepping stone for new discoveries!",
       sender: "ai",
       timestamp: new Date(),
     },
@@ -39,6 +55,31 @@ const Chatbot: React.FC = () => {
   const [selectedFriendOptions, setSelectedFriendOptions] = useState<
     FriendOption[]
   >([]);
+  const [remainingPrompts, setRemainingPrompts] = useState<
+    number | "Unlimited"
+  >(0);
+  // @ts-ignore
+
+  const promptsAreLimited =
+    currentUser &&
+    [PaymentTier.Free, PaymentTier.Basic].includes(
+      PaymentTier[
+        currentUser.payment_tier as unknown as keyof typeof PaymentTier
+      ]
+    );
+
+  const fetchRemainingPrompts = async () => {
+    try {
+      const response = await getRemainingPrompts();
+      setRemainingPrompts(response.data.remaining);
+    } catch (error) {
+      console.error("Error fetching remaining prompts:", error);
+    }
+  };
+
+  useEffect(() => {
+    fetchRemainingPrompts();
+  }, []);
 
   useEffect(() => {
     const fetchUserAndFriends = async () => {
@@ -101,6 +142,10 @@ const Chatbot: React.FC = () => {
           timestamp: new Date(),
         };
         setMessages((prevMessages) => [...prevMessages, aiMessage]);
+        if (promptsAreLimited) {
+          await updatePromptCount();
+          await fetchRemainingPrompts();
+        }
       } catch (error) {
         console.error("Error getting recommendation:", error);
         const errorMessage: Message = {
@@ -159,7 +204,7 @@ const Chatbot: React.FC = () => {
           marginBottom: "20px",
         }}>
         <h1 style={{ color: "var(--primary-color)", margin: 0 }}>
-          AI Assistant
+          <AnimatedTechIcon size={50} speed={3} /> VibeQuest AI
         </h1>
         {canUseFriendSelection && (
           <div style={{ width: "300px" }}>
@@ -239,15 +284,6 @@ const Chatbot: React.FC = () => {
                   display: "flex",
                   alignItems: "center",
                 }}>
-                {message.sender === "ai" && (
-                  <FaRobot
-                    style={{
-                      marginRight: "10px",
-                      fontSize: "1.2em",
-                      color: "var(--primary-color)",
-                    }}
-                  />
-                )}
                 <div>
                   {message.sender === "ai" ? (
                     <FormattedAIResponse
@@ -270,13 +306,41 @@ const Chatbot: React.FC = () => {
                     })}
                   </div>
                 </div>
-                {message.sender === "user" && (
-                  <FaUser style={{ marginLeft: "10px", fontSize: "1.2em" }} />
-                )}
+                {message.sender === "user" &&
+                  (currentUser?.avatar ? (
+                    <img
+                      src={currentUser.avatar}
+                      alt={currentUser.name}
+                      style={{
+                        width: "40px",
+                        height: "40px",
+                        borderRadius: "50%",
+                        marginLeft: "10px",
+                      }}
+                    />
+                  ) : (
+                    <div
+                      style={{
+                        width: "40px",
+                        height: "40px",
+                        borderRadius: "50%",
+                        backgroundColor: "white",
+                        color: "var(--primary-color)",
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "center",
+                        marginLeft: "10px",
+                        fontSize: "16px",
+                        fontWeight: "bold",
+                      }}>
+                      {/* @ts-ignore */}
+                      {getInitials(currentUser.name)}
+                    </div>
+                  ))}
               </div>
             </div>
           ))}
-          {isLoading && <Loading />}
+          {isLoading && <AnimatedTechIcon size={100} speed={10} />}
         </div>
         <div
           style={{
@@ -289,6 +353,7 @@ const Chatbot: React.FC = () => {
             value={input}
             onChange={(e) => setInput(e.target.value)}
             onKeyPress={(e) => e.key === "Enter" && handleSend()}
+            disabled={isLoading || remainingPrompts === 0}
             placeholder="Type your message..."
             style={{
               flex: 1,
@@ -302,6 +367,7 @@ const Chatbot: React.FC = () => {
           />
           <button
             onClick={handleSend}
+            disabled={isLoading || remainingPrompts === 0}
             style={{
               background: "var(--primary-color)",
               border: "none",
@@ -323,6 +389,19 @@ const Chatbot: React.FC = () => {
             }>
             <FaPaperPlane color="white" />
           </button>
+        </div>
+        <div style={{ textAlign: "right", margin: 10 }}>
+          {Number(remainingPrompts) === 0 &&
+          remainingPrompts !== "Unlimited" ? (
+            <p style={{ color: "red" }}>Out of prompts for today</p>
+          ) : (
+            <p>
+              Remaining prompts today:{" "}
+              {remainingPrompts === "Unlimited"
+                ? "Unlimited"
+                : remainingPrompts}
+            </p>
+          )}
         </div>
       </div>
     </div>

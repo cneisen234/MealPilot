@@ -1,0 +1,71 @@
+.animated-tech-icon {
+    display: inline-block;
+    vertical-align: middle;
+}
+
+.animated-tech-icon-svg {
+    width: 100%;
+    height: 100%;
+}
+
+.animated-tech-icon-ring {
+    fill: none;
+    stroke: var(--primary-color);
+    stroke-width: 2;
+    stroke-dasharray: 20 5;
+}
+
+.animated-tech-icon-hexagon {
+    fill: none;
+    stroke: var(--secondary-color);
+    stroke-width: 2;
+    transform-origin: center;
+}
+
+.animated-tech-icon-center {
+    fill: var(--accent-color);
+}
+
+.animated-tech-icon-orbit {
+    fill: var(--primary-color);
+}
+
+.animated-tech-icon-orbit:nth-child(2) {
+    fill: var(--secondary-color);
+}
+
+@keyframes spin {
+    0% {
+        transform: perspective(500px) rotateY(0deg) rotateX(0deg);
+    }
+
+    100% {
+        transform: perspective(500px) rotateY(360deg) rotateX(360deg);
+    }
+}
+
+@keyframes spinHexagon {
+    0% {
+        transform: rotate(0deg);
+    }
+
+    100% {
+        transform: rotate(360deg);
+    }
+}
+
+@keyframes dash {
+    to {
+        stroke-dashoffset: 1000;
+    }
+}
+
+@keyframes glow {
+    from {
+        opacity: 0.8;
+    }
+
+    to {
+        opacity: 1;
+    }
+}

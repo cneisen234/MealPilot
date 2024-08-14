@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { User, PaymentTier, Interest, PrivacySetting, Item } from "../types";
+import { User, PaymentTier, Interest } from "../types";
 import {
   getProfile,
   updateProfilePicture,
@@ -8,6 +8,7 @@ import {
   removeItemFromCategory,
   deleteInterestCategory,
   updateItemRating,
+  getUserLocation,
 } from "../utils/api";
 import EditProfileModal from "../components/profile/EditProfileModal";
 import AddInterestCategoryModal from "../components/interests/AddInterestCategoryModal";
@@ -24,7 +25,7 @@ import {
   FaTimes,
 } from "react-icons/fa";
 import { Link } from "react-router-dom";
-import Loading from "../components/Loading";
+import AnimatedTechIcon from "../components/animatedTechIcon";
 
 const Profile: React.FC = () => {
   const [user, setUser] = useState<User | null>(null);
@@ -42,19 +43,40 @@ const Profile: React.FC = () => {
   );
   const [infoModalMessage, setInfoModalMessage] = useState("");
   const [isInfoModalOpen, setIsInfoModalOpen] = useState(false);
+  const [userLocation, setUserLocation] = useState<{
+    city: string;
+    state: string;
+  } | null>(null);
 
   useEffect(() => {
-    const fetchUser = async () => {
-      try {
-        const response = await getProfile();
-        setUser(response.data);
-      } catch (error) {
-        console.error("Error fetching user profile:", error);
-      }
-    };
-
-    fetchUser();
+    fetchUserProfile();
+    fetchUserLocation();
   }, []);
+
+  const fetchUserProfile = async () => {
+    try {
+      const response = await getProfile();
+      setUser(response.data);
+    } catch (error) {
+      console.error("Error fetching user profile:", error);
+    }
+  };
+
+  const fetchUserLocation = async () => {
+    try {
+      const geoLocation = await getUserLocation();
+      setUserLocation(geoLocation);
+    } catch (error) {
+      console.error("Error fetching user location:", error);
+      // Fall back to profile location if geolocation fails
+      if (user) {
+        setUserLocation({
+          city: user.city || "Unknown",
+          state: user.state || "Unknown",
+        });
+      }
+    }
+  };
 
   const getMembershipLimits = (paymentTier: PaymentTier) => {
     switch (paymentTier) {
@@ -268,7 +290,7 @@ const Profile: React.FC = () => {
   };
 
   if (!user) {
-    return <Loading />;
+    return <AnimatedTechIcon size={100} speed={10} />;
   }
 
   return (
@@ -365,9 +387,13 @@ const Profile: React.FC = () => {
             </p>
             <p style={{ color: "var(--text-color)", marginBottom: "10px" }}>
               <strong>Location:</strong>{" "}
-              {user.city && user.state
-                ? `${user.city}, ${user.state}`
-                : "Location not specified"}
+              {userLocation ? (
+                `${userLocation.city}, ${userLocation.state}`
+              ) : user ? (
+                `${user.city || "Unknown"}, ${user.state || "Unknown"}`
+              ) : (
+                <AnimatedTechIcon size={10} speed={10} />
+              )}
             </p>
             <p style={{ color: "var(--text-color)", marginBottom: "10px" }}>
               <strong>Membership:</strong>{" "}

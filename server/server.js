@@ -9,7 +9,7 @@ require("dotenv").config();
 const crypto = require("crypto");
 const sgMail = require("@sendgrid/mail");
 const openai = require("./openai");
-const cleanAIResponse = require("./cleanAIResponse");
+const axios = require("axios");
 
 const app = express();
 const port = process.env.PORT || 5000;
@@ -347,26 +347,135 @@ const checkPaymentTier = async (userId, requiredTier) => {
   return PaymentTier[result.rows[0].payment_tier] >= requiredTier;
 };
 
-// Get logged-in user profile
-app.get("/api/users/profile", authMiddleware, async (req, res) => {
+const checkPromptLimit = async (req, res, next) => {
+  const userId = req.user.id;
+  const currentDate = new Date().toISOString().split("T")[0];
+
   try {
-    const userId = req.user.id;
+    // Get user's current count and last reset date
     const userResult = await pool.query(
-      "SELECT id, name, username, email, avatar, bio, bio_visibility, interests_visibility, city, state, payment_tier FROM users WHERE id = $1",
+      "SELECT payment_tier, daily_prompt_count, last_prompt_reset FROM users WHERE id = $1",
       [userId]
     );
-
-    if (userResult.rows.length === 0) {
-      return res.status(404).json({ message: "User not found" });
-    }
-
     const user = userResult.rows[0];
 
-    // Fetch interests based on payment tier
-    let interestsResult;
-    if (PaymentTier[user.payment_tier] >= PaymentTier.Basic) {
-      interestsResult = await pool.query(
-        `
+    // Reset count if it's a new day (but don't update the database)
+    let effectiveCount = user.daily_prompt_count;
+    if (user.last_prompt_reset.toISOString().split("T")[0] !== currentDate) {
+      effectiveCount = 0;
+    }
+
+    // Check limits based on payment tier
+    let limit;
+    switch (user.payment_tier) {
+      case "Free":
+        limit = 6;
+        break;
+      case "Basic":
+        limit = 15;
+        break;
+      case "Premium":
+      case "Owner":
+        limit = Infinity;
+        break;
+      default:
+        limit = 6;
+    }
+
+    if (effectiveCount >= limit && limit !== Infinity) {
+      return res.status(403).json({ message: "Daily prompt limit reached" });
+    }
+
+    next();
+  } catch (error) {
+    console.error("Error checking prompt limit:", error);
+    res.status(500).json({ message: "Server error" });
+  }
+};
+
+// Update prompt count
+app.get("/api/remaining-prompts", authMiddleware, async (req, res) => {
+  const userId = req.user.id;
+  const currentDate = new Date().toISOString().split("T")[0];
+
+  try {
+    const userResult = await pool.query(
+      "SELECT payment_tier, daily_prompt_count, last_prompt_reset FROM users WHERE id = $1",
+      [userId]
+    );
+    const user = userResult.rows[0];
+
+    // Calculate effective count
+    let effectiveCount = user.daily_prompt_count;
+    if (user.last_prompt_reset.toISOString().split("T")[0] !== currentDate) {
+      effectiveCount = 0;
+    }
+
+    // Calculate limit based on payment tier
+    let limit;
+    switch (user.payment_tier) {
+      case "Free":
+        limit = 6;
+        break;
+      case "Basic":
+        limit = 15;
+        break;
+      case "Premium":
+      case "Owner":
+        limit = Infinity;
+        break;
+      default:
+        limit = 6;
+    }
+
+    const remaining =
+      limit === Infinity ? "Unlimited" : Number(limit) - Number(effectiveCount);
+
+    res.json({ remaining, limit, used: effectiveCount });
+  } catch (error) {
+    console.error("Error fetching remaining prompts:", error);
+    res.status(500).json({ message: "Server error" });
+  }
+});
+
+app.post("/api/update-prompt-count", authMiddleware, async (req, res) => {
+  const userId = req.user.id;
+  try {
+    await pool.query(
+      "UPDATE users SET daily_prompt_count = daily_prompt_count + 1 WHERE id = $1",
+      [userId]
+    );
+    res.json({ message: "Prompt count updated successfully" });
+  } catch (error) {
+    console.error("Error updating prompt count:", error);
+    res.status(500).json({ message: "Server error" });
+  }
+});
+
+// Get logged-in user profile
+app.get(
+  "/api/users/profile",
+  authMiddleware,
+  checkPromptLimit,
+  async (req, res) => {
+    try {
+      const userId = req.user.id;
+      const userResult = await pool.query(
+        "SELECT id, name, username, email, avatar, bio, bio_visibility, interests_visibility, city, state, payment_tier FROM users WHERE id = $1",
+        [userId]
+      );
+
+      if (userResult.rows.length === 0) {
+        return res.status(404).json({ message: "User not found" });
+      }
+
+      const user = userResult.rows[0];
+
+      // Fetch interests based on payment tier
+      let interestsResult;
+      if (PaymentTier[user.payment_tier] >= PaymentTier.Basic) {
+        interestsResult = await pool.query(
+          `
         SELECT i.id, i.category, i.visibility, 
                json_agg(json_build_object('id', it.id, 'name', it.name, 'rating', it.rating)) AS items
         FROM interests i
@@ -374,13 +483,13 @@ app.get("/api/users/profile", authMiddleware, async (req, res) => {
         WHERE i.user_id = $1
         GROUP BY i.id
       `,
-        [userId]
-      );
-      user.interests = interestsResult.rows;
-    } else {
-      // For Free tier, limit to 3 categories and 5 items per category
-      interestsResult = await pool.query(
-        `
+          [userId]
+        );
+        user.interests = interestsResult.rows;
+      } else {
+        // For Free tier, limit to 3 categories and 5 items per category
+        interestsResult = await pool.query(
+          `
         SELECT i.id, i.category, i.visibility, 
                (SELECT json_agg(json_build_object('id', it.id, 'name', it.name, 'rating', it.rating))
                 FROM (SELECT * FROM items WHERE interest_id = i.id LIMIT 5) it) AS items
@@ -388,17 +497,18 @@ app.get("/api/users/profile", authMiddleware, async (req, res) => {
         WHERE i.user_id = $1
         LIMIT 3
       `,
-        [userId]
-      );
-      user.interests = interestsResult.rows;
-    }
+          [userId]
+        );
+        user.interests = interestsResult.rows;
+      }
 
-    res.json(user);
-  } catch (error) {
-    console.error("Error fetching profile:", error);
-    res.status(500).json({ message: "Server error" });
+      res.json(user);
+    } catch (error) {
+      console.error("Error fetching profile:", error);
+      res.status(500).json({ message: "Server error" });
+    }
   }
-});
+);
 
 app.put("/api/users/:userId/profile", authMiddleware, async (req, res) => {
   try {
@@ -1225,6 +1335,23 @@ app.post(
     }
   }
 );
+
+app.post("/api/geocode", async (req, res) => {
+  try {
+    const { latitude, longitude } = req.body;
+    const response = await axios.get(
+      `https://api.opencagedata.com/geocode/v1/json?q=${latitude}+${longitude}&key=${process.env.OPENCAGE_API_KEY}`
+    );
+    const result = response.data.results[0].components;
+    res.json({
+      city: result.city || result.town || result.village || "Unknown",
+      state: result.state || "Unknown",
+    });
+  } catch (error) {
+    console.error("Geocoding error:", error);
+    res.status(500).json({ error: "Failed to get location details" });
+  }
+});
 
 // Start server
 app.listen(port, () => {

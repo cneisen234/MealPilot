@@ -15,7 +15,7 @@ const Login: React.FC = () => {
   const checkEmail = useCallback(async (email: string) => {
     if (email) {
       try {
-        const response = await checkEmailExists(email);
+        const response = await checkEmailExists(email.toLowerCase());
         setEmailError(
           response.data.exists
             ? ""
@@ -40,7 +40,7 @@ const Login: React.FC = () => {
     }
 
     try {
-      const response = await login({ email, password });
+      const response = await login({ email: email.toLowerCase(), password });
       console.log("Login submitted", response.data);
       localStorage.setItem("token", response.data.token);
       authLogin(response.data.token);

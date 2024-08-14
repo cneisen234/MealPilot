@@ -7,7 +7,9 @@ import {
   FaArrowUp,
   FaLightbulb,
   FaEnvelope,
+  FaClock,
 } from "react-icons/fa";
+import AnimatedTechIcon from "../animatedTechIcon";
 
 const NavItem: React.FC<{
   to: string;
@@ -65,8 +67,8 @@ const SideNavbar: React.FC = () => {
         <NavItem to="/profile" icon={<FaUser />}>
           Profile
         </NavItem>
-        <NavItem to="/chatbot" icon={<FaRobot />}>
-          Chatbot
+        <NavItem to="/chatbot" icon={<AnimatedTechIcon speed={2} />}>
+          VibeQuest AI
         </NavItem>
         <NavItem to="/friends" icon={<FaUserFriends />}>
           Friends List
@@ -76,6 +78,9 @@ const SideNavbar: React.FC = () => {
           icon={<FaLightbulb />}
           title="Recommendations">
           Recs
+        </NavItem>
+        <NavItem to="/coming-soon" icon={<FaClock />}>
+          Coming Soon
         </NavItem>
         <NavItem to="/upgrade" icon={<FaArrowUp />}>
           Upgrade

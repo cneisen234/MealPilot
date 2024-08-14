@@ -26,7 +26,7 @@ const SignupForm: React.FC = () => {
   const checkEmail = useCallback(async (email: string) => {
     if (email) {
       try {
-        const response = await checkEmailAvailability(email);
+        const response = await checkEmailAvailability(email.toLowerCase());
         setEmailError(
           response.data.available ? "" : "This email is already taken."
         );
@@ -84,7 +84,12 @@ const SignupForm: React.FC = () => {
       }
 
       // Proceed with signup
-      const signupResponse = await signup({ name, username, email, password });
+      const signupResponse = await signup({
+        name,
+        username,
+        email: email.toLowerCase(),
+        password,
+      });
       console.log("Signup successful", signupResponse.data);
 
       // Login

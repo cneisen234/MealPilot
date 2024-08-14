@@ -1,6 +1,5 @@
-import React from "react";
-import { User, PaymentTier } from "../types";
-import { addInterestItemFromChat } from "../utils/api";
+import React, { useState, useEffect, useRef } from "react";
+import { User } from "../types";
 
 interface FormattedAIResponseProps {
   response: string;
@@ -13,47 +12,40 @@ const FormattedAIResponse: React.FC<FormattedAIResponseProps> = ({
   currentUser,
   onInterestAdded,
 }) => {
-  const addInterest = async (recommendation: string) => {
-    try {
-      // Simple logic to extract category and item from recommendation
-      const [category, item] = recommendation.split(":").map((s) => s.trim());
+  const [displayedText, setDisplayedText] = useState("");
+  const typingSpeed = 5; // milliseconds per character
+  const containerRef = useRef<HTMLDivElement>(null);
 
-      await addInterestItemFromChat(currentUser.id, category, item);
-      onInterestAdded();
-      alert("Interest added successfully!");
-    } catch (error) {
-      console.error("Error adding interest:", error);
-      alert("Failed to add interest. Please try again.");
+  useEffect(() => {
+    let isMounted = true;
+    let charIndex = 0;
+
+    const typeText = () => {
+      if (!isMounted) return;
+
+      if (charIndex < response.length) {
+        setDisplayedText(response.substring(0, charIndex + 1));
+        charIndex++;
+        setTimeout(typeText, typingSpeed);
+      }
+    };
+
+    typeText();
+
+    return () => {
+      isMounted = false;
+    };
+  }, [response]);
+
+  useEffect(() => {
+    if (containerRef.current) {
+      containerRef.current.scrollTop = containerRef.current.scrollHeight;
     }
-  };
-
-  const canAddInterest = (category: string, item: string) => {
-    const userTier =
-      PaymentTier[
-        currentUser.payment_tier as unknown as keyof typeof PaymentTier
-      ];
-    const categoryCount = currentUser.interests.length;
-    const itemCount =
-      currentUser.interests.find((i) => i.category === category)?.items
-        .length || 0;
-
-    switch (userTier) {
-      case PaymentTier.Free:
-        return categoryCount < 3 && itemCount < 5;
-      case PaymentTier.Basic:
-        return categoryCount < 10 && itemCount < 20;
-      case PaymentTier.Premium:
-      case PaymentTier.Owner:
-        return categoryCount < 20 && itemCount < 50;
-      default:
-        return false;
-    }
-  };
+  }, [displayedText]);
 
   const formatText = (text: string) => {
     const paragraphs = text.split("\n\n");
     return paragraphs.map((paragraph, index) => {
-      // Handle ### formatting
       if (paragraph.startsWith("###")) {
         return (
           <h3
@@ -64,49 +56,29 @@ const FormattedAIResponse: React.FC<FormattedAIResponseProps> = ({
         );
       }
 
-      // Handle numbered points with bold text and "Add to Interests" button
-      const match = paragraph.match(/^(\d+)\.\s(.+)/);
+      const match = paragraph.match(/^(\d+)\.\s\*\*(.*?)\*\*:\s(.+)/);
       if (match) {
-        const [, number, content] = match;
-        const formattedContent = content.replace(
-          /\*\*(.*?)\*\*/g,
-          "<strong>$1</strong>"
-        );
-        const [category, item] = content.split(":").map((s) => s.trim());
-        const canAdd = canAddInterest(category, item);
-
+        const [, number, title, description] = match;
         return (
-          <div
-            key={index}
-            style={{
-              display: "flex",
-              alignItems: "center",
-              marginBottom: "10px",
-            }}>
-            <p style={{ flex: 1 }}>
-              <strong>{number}. </strong>
-              <span dangerouslySetInnerHTML={{ __html: formattedContent }} />
-            </p>
-            {canAdd && (
-              <button
-                onClick={() => addInterest(content)}
+          <div key={index} style={{ marginBottom: "10px" }}>
+            <p style={{ margin: 0 }}>
+              <span
                 style={{
-                  marginLeft: "10px",
-                  padding: "5px 10px",
-                  backgroundColor: "var(--primary-color)",
-                  color: "white",
-                  border: "none",
-                  borderRadius: "5px",
-                  cursor: "pointer",
+                  color: "var(--secondary-color)",
+                  marginRight: "10px",
                 }}>
-                Add to Interests
-              </button>
-            )}
+                {number}.
+              </span>
+              <span
+                style={{ color: "var(--primary-color)", fontWeight: "bold" }}>
+                {title}:
+              </span>{" "}
+              {description}
+            </p>
           </div>
         );
       }
 
-      // Handle regular paragraphs with bold text
       return (
         <p
           key={index}
@@ -118,7 +90,22 @@ const FormattedAIResponse: React.FC<FormattedAIResponseProps> = ({
     });
   };
 
-  return <div>{formatText(response)}</div>;
+  return (
+    <div
+      ref={containerRef}
+      style={{
+        display: "inline-block",
+        position: "relative",
+        maxHeight: "400px",
+        overflowY: "auto",
+        padding: "10px",
+        backgroundColor: "var(--surface-color)",
+        borderRadius: "10px",
+        boxShadow: "0 2px 5px rgba(0,0,0,0.1)",
+      }}>
+      {formatText(displayedText)}
+    </div>
+  );
 };
 
 export default FormattedAIResponse;

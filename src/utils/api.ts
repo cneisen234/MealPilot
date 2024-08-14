@@ -188,8 +188,44 @@ export const getRecommendation = (query: string, friendIds: number[] = []) => {
   return api.post('/get-recommendation', { query, friendIds });
 };
 
+export const getRemainingPrompts = () => {
+  return api.get('/remaining-prompts');
+};
+
+export const updatePromptCount = () => {
+  return api.post('/update-prompt-count');
+};
+
 export const addInterestItemFromChat = (userId: number, category: string, item: string) => {
   return api.post('/interests/add-item-from-chat', { userId, category, item });
+};
+
+interface GeolocationResult {
+  city: string;
+  state: string;
+}
+
+export const getUserLocation = (): Promise<GeolocationResult> => {
+  return new Promise((resolve, reject) => {
+    if (!navigator.geolocation) {
+      reject(new Error('Geolocation is not supported by your browser'));
+    } else {
+      navigator.geolocation.getCurrentPosition(
+        async (position) => {
+          try {
+            const { latitude, longitude } = position.coords;
+            const response = await axios.post('/api/geocode', { latitude, longitude });
+            resolve(response.data);
+          } catch (error) {
+            reject(new Error('Failed to get location details'));
+          }
+        },
+        () => {
+          reject(new Error('Unable to retrieve your location'));
+        }
+      );
+    }
+  });
 };
 
 export default api;

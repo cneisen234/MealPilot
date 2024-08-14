@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { FaTimes, FaChevronDown, FaChevronUp } from "react-icons/fa";
 import { getFriendProfile } from "../utils/api";
+import AnimatedTechIcon from "./animatedTechIcon";
 
 interface FriendProfile {
   id: number;
@@ -55,7 +56,7 @@ const ProfileView: React.FC<ProfileViewProps> = ({ friendId, onClose }) => {
   };
 
   if (isLoading) {
-    return <div>Loading...</div>;
+    return <AnimatedTechIcon size={100} speed={10} />;
   }
 
   if (error) {

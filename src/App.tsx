@@ -26,6 +26,7 @@ import ForgotPassword from "./components/auth/ForgotPassword";
 import ResetPassword from "./components/auth/ResetPassword";
 import ContactUs from "./pages/ContactUs";
 import CloseAccount from "./components/profile/CloseAccount";
+import ComingSoon from "./pages/ComingSoon";
 
 const AppContent: React.FC = () => {
   const { isAuthenticated, checkAuthStatus } = useAuth();
@@ -105,6 +106,7 @@ const AppContent: React.FC = () => {
               path="/upgrade"
               element={<PrivateRoute element={<Upgrade />} />}
             />
+            <Route path="/coming-soon" element={<ComingSoon />} />
           </Routes>
         </main>
       </div>

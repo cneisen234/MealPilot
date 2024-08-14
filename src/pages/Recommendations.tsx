@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { FaStar, FaLightbulb, FaLock } from "react-icons/fa";
-import Loading from "../components/Loading";
+import AnimatedTechIcon from "../components/animatedTechIcon";
 import { User, PaymentTier, Recommendation } from "../types";
 import { getProfile } from "../utils/api";
 
@@ -163,7 +163,7 @@ const Recommendations: React.FC = () => {
   );
 
   if (!user) {
-    return <Loading />;
+    return <AnimatedTechIcon size={100} speed={10} />;
   }
 
   return (

@@ -23,7 +23,7 @@ import {
   sendFriendRequest,
   handleFriendRequest,
 } from "../utils/api";
-import Loading from "../components/Loading";
+import AnimatedTechIcon from "../components/animatedTechIcon";
 
 const Friends: React.FC = () => {
   const [user, setUser] = useState<User | null>(null);
@@ -419,7 +419,7 @@ const Friends: React.FC = () => {
   );
 
   if (!user) {
-    return <Loading />;
+    return <AnimatedTechIcon size={100} speed={10} />;
   }
 
   return (

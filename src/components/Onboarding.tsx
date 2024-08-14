@@ -17,7 +17,7 @@ import { User, Interest, PrivacySetting } from "../types";
 import { motion, AnimatePresence } from "framer-motion";
 import "../styles/onboarding.css";
 import StarRating from "../components/StarRating";
-import Loading from "./Loading";
+import AnimatedTechIcon from "./animatedTechIcon";
 
 const MAX_CATEGORIES = 3;
 const MAX_ITEMS_PER_CATEGORY = 5;
@@ -326,7 +326,7 @@ const Onboarding: React.FC = () => {
   );
 
   if (!user) {
-    return <Loading />;
+    return <AnimatedTechIcon size={100} speed={10} />;
   }
 
   return (
