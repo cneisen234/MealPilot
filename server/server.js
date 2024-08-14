@@ -10,6 +10,9 @@ const crypto = require("crypto");
 const sgMail = require("@sendgrid/mail");
 const openai = require("./openai");
 const axios = require("axios");
+const stripe = require("stripe")(process.env.STRIPE_SECRET_KEY);
+const cron = require("node-cron");
+const moment = require("moment");
 
 const app = express();
 const port = process.env.PORT || 5000;
@@ -20,6 +23,100 @@ app.use(express.json());
 
 // Set up SendGrid
 sgMail.setApiKey(process.env.SENDGRID_API_KEY);
+
+async function getUserById(userId) {
+  const result = await pool.query("SELECT * FROM users WHERE id = $1", [
+    userId,
+  ]);
+  return result.rows[0];
+}
+
+async function updateUserTier(userId, newTier) {
+  await pool.query("UPDATE users SET payment_tier = $1 WHERE id = $2", [
+    newTier,
+    userId,
+  ]);
+}
+
+async function scheduleUserDowngrade(userId, newTier, downgradeDateEpoch) {
+  await pool.query(
+    "INSERT INTO scheduled_downgrades (user_id, new_tier, downgrade_date) VALUES ($1, $2, to_timestamp($3))",
+    [userId, newTier, downgradeDateEpoch]
+  );
+}
+
+async function updateUserStripeCustomerId(userId, stripeCustomerId) {
+  await pool.query("UPDATE users SET stripe_customer_id = $1 WHERE id = $2", [
+    stripeCustomerId,
+    userId,
+  ]);
+}
+
+async function getScheduledDowngrades() {
+  const result = await pool.query(
+    "SELECT * FROM scheduled_downgrades WHERE downgrade_date <= NOW()"
+  );
+  return result.rows;
+}
+
+async function applyDowngrade(userId, newTier) {
+  await pool.query("BEGIN");
+  try {
+    await updateUserTier(userId, newTier);
+    await pool.query("DELETE FROM scheduled_downgrades WHERE user_id = $1", [
+      userId,
+    ]);
+    await pool.query("COMMIT");
+  } catch (error) {
+    await pool.query("ROLLBACK");
+    throw error;
+  }
+}
+
+async function checkAndApplyScheduledDowngrades() {
+  const downgrades = await getScheduledDowngrades();
+  for (const downgrade of downgrades) {
+    try {
+      await applyDowngrade(downgrade.user_id, downgrade.new_tier);
+      console.log(
+        `Applied downgrade for user ${downgrade.user_id} to tier ${downgrade.new_tier}`
+      );
+    } catch (error) {
+      console.error(
+        `Error applying downgrade for user ${downgrade.user_id}:`,
+        error
+      );
+    }
+  }
+}
+
+async function sendSubscriptionConfirmation(email, amount, date) {
+  const msg = {
+    to: email,
+    from: process.env.SENDGRID_FROM_EMAIL,
+    subject: "Subscription Payment Confirmation",
+    html: `
+      <html>
+        <body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333;">
+          <div style="max-width: 600px; margin: 0 auto; padding: 20px;">
+            <h1 style="color: #966FD6;">VibeQuest Subscription Confirmation</h1>
+            <p>Thank you for your continued subscription to VibeQuest!</p>
+            <p>We've successfully processed your payment of $${amount} on ${date}.</p>
+            <p>If you have any questions, please don't hesitate to contact us.</p>
+            <p>Best regards,<br>The VibeQuest Team</p>
+          </div>
+        </body>
+      </html>
+    `,
+  };
+
+  try {
+    await sgMail.send(msg);
+    console.log("Subscription confirmation email sent");
+  } catch (error) {
+    console.error("Error sending subscription confirmation email", error);
+  }
+}
 
 // Request password reset
 app.post("/api/auth/forgot-password", async (req, res) => {
@@ -1351,6 +1448,670 @@ app.post("/api/geocode", async (req, res) => {
     console.error("Geocoding error:", error);
     res.status(500).json({ error: "Failed to get location details" });
   }
+});
+
+// Premium daily recommendations route
+app.get("/api/recommendations/daily", authMiddleware, async (req, res) => {
+  const client = await pool.connect();
+  try {
+    const userId = req.user.id;
+
+    // Check if user has Premium or Owner access
+    const hasPremiumAccess = await checkPaymentTier(
+      userId,
+      PaymentTier.Premium
+    );
+    if (!hasPremiumAccess) {
+      return res.status(403).json({
+        error:
+          "This feature is only available for Premium and Owner tier users",
+      });
+    }
+
+    const currentDate = new Date();
+    const formattedDate = currentDate.toLocaleDateString("en-US", {
+      weekday: "long",
+      year: "numeric",
+      month: "long",
+      day: "numeric",
+    });
+
+    // Start a transaction
+    await client.query("BEGIN");
+
+    // Check if we have cached recommendations for today
+    const cachedRecommendations = await client.query(
+      "SELECT recommendations FROM daily_recommendations WHERE user_id = $1 AND generated_at = $2",
+      [userId, currentDate]
+    );
+
+    if (cachedRecommendations.rows.length > 0) {
+      // Return cached recommendations
+      await client.query("COMMIT");
+      return res.json(cachedRecommendations.rows[0].recommendations);
+    }
+
+    // If no cached recommendations, generate new ones
+    const userResult = await client.query("SELECT * FROM users WHERE id = $1", [
+      userId,
+    ]);
+    const user = userResult.rows[0];
+
+    // Fetch user's interests
+    const interestsResult = await client.query(
+      "SELECT * FROM interests WHERE user_id = $1",
+      [userId]
+    );
+    const interests = interestsResult.rows;
+
+    // Get user's location
+    const location = `${user.city || "Unknown"}, ${user.state || "Unknown"}`;
+
+    // Generate prompt for OpenAI
+    const prompt = `Generate personalized daily recommendations for a user with the following details:
+    Today's Date: ${formattedDate}
+    Location: ${location}
+    Interests: ${interests.map((i) => i.category).join(", ")}
+    Bio: ${user.bio || "Not provided"}
+
+    Please provide 5 specific recommendations in the following format:
+    %%% [Category]
+    ** [Item Name] **
+    [Detailed description including why it's recommended, any local events related to it, or if it's a new release]
+    Rating: [1-10]
+
+    Ensure recommendations are specific to the user's location, interests, and TODAY'S DATE (${formattedDate}).
+    For local events, ONLY include events happening TODAY or VERY SOON (within the next few days).
+    For music, movies, or other releases, ONLY include items released THIS WEEK.
+    Double-check all dates and ensure they are accurate for TODAY'S DATE.
+    Include local events, new releases in music/movies/TV shows, and other timely suggestions.`;
+
+    // Call OpenAI API
+    const completion = await openai.chat.completions.create({
+      model: "gpt-4o-mini",
+      messages: [{ role: "user", content: prompt }],
+      max_tokens: 1000,
+    });
+
+    const aiRecommendations = completion.choices[0].message.content;
+
+    // Parse AI response
+    const parsedRecommendations = parseAIResponse(aiRecommendations);
+
+    // Delete previous recommendations
+    await client.query(
+      "DELETE FROM daily_recommendations WHERE user_id = $1 AND generated_at < $2",
+      [userId, currentDate]
+    );
+
+    // Store the new recommendations in the database
+    await client.query(
+      "INSERT INTO daily_recommendations (user_id, recommendations, generated_at) VALUES ($1, $2, $3)",
+      [userId, JSON.stringify(parsedRecommendations), currentDate]
+    );
+
+    // Commit the transaction
+    await client.query("COMMIT");
+
+    res.json(parsedRecommendations);
+  } catch (error) {
+    // Rollback the transaction in case of error
+    await client.query("ROLLBACK");
+    console.error("Error generating daily recommendations:", error);
+    res
+      .status(500)
+      .json({ error: "Server error while generating recommendations" });
+  } finally {
+    // Release the client back to the pool
+    client.release();
+  }
+});
+
+function parseAIResponse(aiResponse) {
+  const recommendations = [];
+  const sections = aiResponse.split("%%%").slice(1); // Split by %%% and remove first empty element
+
+  sections.forEach((section, index) => {
+    const [category, ...contentLines] = section.trim().split("\n");
+    const content = contentLines.join("\n");
+
+    const titleMatch = content.match(/\*\*(.*?)\*\*/);
+    const ratingMatch = content.match(/Rating: (\d+(\.\d+)?)/);
+
+    if (titleMatch && ratingMatch) {
+      recommendations.push({
+        id: index + 1,
+        category: category.trim(),
+        item: titleMatch[1].trim(),
+        description: content
+          .replace(/\*\*(.*?)\*\*/, "")
+          .replace(/Rating: \d+(\.\d+)?/, "")
+          .trim(),
+        rating: parseFloat(ratingMatch[1]),
+      });
+    }
+  });
+
+  return recommendations;
+}
+
+app.post("/api/users/:userId/upgrade", authMiddleware, async (req, res) => {
+  const { userId } = req.params;
+  const { newTier, paymentDetails } = req.body;
+
+  try {
+    // Create Stripe customer and charge
+    const customer = await stripe.customers.create({
+      payment_method: paymentDetails.paymentMethodId,
+      email: req.user.email,
+    });
+
+    await stripe.paymentIntents.create({
+      amount: newTier === "Basic" ? 999 : 1999, // Amount in cents
+      currency: "usd",
+      customer: customer.id,
+      payment_method: paymentDetails.paymentMethodId,
+      off_session: true,
+      confirm: true,
+    });
+
+    // Update user in database
+    await pool.query("UPDATE users SET payment_tier = $1 WHERE id = $2", [
+      newTier,
+      userId,
+    ]);
+
+    res.json({ message: "Upgrade successful" });
+  } catch (error) {
+    console.error("Error upgrading user:", error);
+    res.status(500).json({ error: "Error processing upgrade" });
+  }
+});
+
+// Downgrade user
+app.post("/api/users/:userId/downgrade", authMiddleware, async (req, res) => {
+  const { userId } = req.params;
+  const { newTier } = req.body;
+
+  try {
+    // Update user in database
+    await pool.query("UPDATE users SET payment_tier = $1 WHERE id = $2", [
+      newTier,
+      userId,
+    ]);
+
+    // If downgrading to Basic, keep only 10 most recent friends and interests
+    if (newTier === "Basic") {
+      await pool.query(
+        `
+        DELETE FROM friends
+        WHERE user_id = $1 AND id NOT IN (
+          SELECT id FROM friends
+          WHERE user_id = $1
+          ORDER BY created_at DESC
+          LIMIT 10
+        )
+      `,
+        [userId]
+      );
+
+      await pool.query(
+        `
+        DELETE FROM interests
+        WHERE user_id = $1 AND id NOT IN (
+          SELECT id FROM interests
+          WHERE user_id = $1
+          ORDER BY created_at DESC
+          LIMIT 10
+        )
+      `,
+        [userId]
+      );
+
+      await pool.query(
+        `
+        DELETE FROM items
+        WHERE interest_id IN (
+          SELECT id FROM interests
+          WHERE user_id = $1
+        ) AND id NOT IN (
+          SELECT id FROM items
+          WHERE interest_id IN (
+            SELECT id FROM interests
+            WHERE user_id = $1
+          )
+          ORDER BY created_at DESC
+          LIMIT 20
+        )
+      `,
+        [userId]
+      );
+    }
+
+    // If downgrading to Free, keep only 3 most recent interest categories and 5 most recent items
+    if (newTier === "Free") {
+      await pool.query("DELETE FROM friends WHERE user_id = $1", [userId]);
+
+      await pool.query(
+        `
+        DELETE FROM interests
+        WHERE user_id = $1 AND id NOT IN (
+          SELECT id FROM interests
+          WHERE user_id = $1
+          ORDER BY created_at DESC
+          LIMIT 3
+        )
+      `,
+        [userId]
+      );
+
+      await pool.query(
+        `
+        DELETE FROM items
+        WHERE interest_id IN (
+          SELECT id FROM interests
+          WHERE user_id = $1
+        ) AND id NOT IN (
+          SELECT id FROM items
+          WHERE interest_id IN (
+            SELECT id FROM interests
+            WHERE user_id = $1
+          )
+          ORDER BY created_at DESC
+          LIMIT 5
+        )
+      `,
+        [userId]
+      );
+    }
+
+    res.json({ message: "Downgrade successful" });
+  } catch (error) {
+    console.error("Error downgrading user:", error);
+    res.status(500).json({ error: "Error processing downgrade" });
+  }
+});
+
+app.post("/api/users/:userId/upgrade", authMiddleware, async (req, res) => {
+  const { userId } = req.params;
+  const { newTier, paymentMethodId } = req.body;
+
+  try {
+    const user = await getUserById(userId);
+    let customer = await getOrCreateStripeCustomer(user);
+
+    // Get the user's current subscription
+    const currentSubscription = await stripe.subscriptions.list({
+      customer: customer.id,
+      status: "active",
+      limit: 1,
+    });
+
+    let updatedSubscription;
+
+    if (currentSubscription.data.length > 0) {
+      // User has an existing subscription, update it
+      updatedSubscription = await stripe.subscriptions.update(
+        currentSubscription.data[0].id,
+        {
+          items: [
+            {
+              id: currentSubscription.data[0].items.data[0].id,
+              price: getPriceIdForTier(newTier),
+            },
+          ],
+          proration_behavior: "always_invoice",
+        }
+      );
+    } else {
+      // User doesn't have a subscription, create a new one
+      updatedSubscription = await stripe.subscriptions.create({
+        customer: customer.id,
+        items: [{ price: getPriceIdForTier(newTier) }],
+        default_payment_method: paymentMethodId,
+      });
+    }
+
+    // Update user in your database
+    await updateUserTier(userId, newTier);
+
+    res.json({ success: true, subscription: updatedSubscription });
+  } catch (error) {
+    console.error("Upgrade failed:", error);
+    res.status(400).json({ error: error.message });
+  }
+});
+
+app.post("/api/users/:userId/downgrade", authMiddleware, async (req, res) => {
+  const { userId } = req.params;
+  const { newTier } = req.body;
+
+  try {
+    const user = await getUserById(userId);
+    const customer = await getStripeCustomer(user);
+
+    if (!customer) {
+      throw new Error("No Stripe customer found for this user");
+    }
+
+    const currentSubscription = await stripe.subscriptions.list({
+      customer: customer.id,
+      status: "active",
+      limit: 1,
+    });
+
+    if (currentSubscription.data.length === 0) {
+      throw new Error("No active subscription found for this user");
+    }
+
+    const subscription = currentSubscription.data[0];
+
+    // Schedule the downgrade at the end of the current billing period
+    const updatedSubscription = await stripe.subscriptions.update(
+      subscription.id,
+      {
+        cancel_at_period_end: true,
+        proration_behavior: "none",
+      }
+    );
+
+    // Store the scheduled downgrade in your database
+    await scheduleUserDowngrade(
+      userId,
+      newTier,
+      subscription.current_period_end
+    );
+
+    res.json({
+      success: true,
+      message: "Downgrade scheduled for next billing cycle",
+      subscription: updatedSubscription,
+    });
+  } catch (error) {
+    console.error("Downgrade scheduling failed:", error);
+    res.status(400).json({ error: error.message });
+  }
+});
+
+// Helper functions
+
+async function getOrCreateStripeCustomer(user) {
+  if (user.stripeCustomerId) {
+    return await stripe.customers.retrieve(user.stripeCustomerId);
+  } else {
+    const customer = await stripe.customers.create({
+      email: user.email,
+      metadata: { userId: user.id },
+    });
+    await updateUserStripeCustomerId(user.id, customer.id);
+    return customer;
+  }
+}
+
+function getPriceIdForTier(tier) {
+  switch (tier) {
+    case "Basic":
+      return process.env.STRIPE_BASIC_PRICE_ID;
+    case "Premium":
+      return process.env.STRIPE_PREMIUM_PRICE_ID;
+    default:
+      throw new Error("Invalid tier");
+  }
+}
+
+async function sendAdminNotification(subject, message) {
+  const msg = {
+    to: "chris@integritytechsoftware.com",
+    from: process.env.SENDGRID_FROM_EMAIL,
+    subject: `VibeQuest Admin Alert: ${subject}`,
+    html: `
+      <html>
+        <body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333;">
+          <div style="max-width: 600px; margin: 0 auto; padding: 20px;">
+            <h1 style="color: #FF6347;">VibeQuest Admin Alert</h1>
+            <h2>${subject}</h2>
+            <p>${message}</p>
+            <p>Please investigate and take appropriate action.</p>
+            <p>This is an automated message from the VibeQuest system.</p>
+          </div>
+        </body>
+      </html>
+    `,
+  };
+
+  try {
+    await sgMail.send(msg);
+    console.log("Admin notification sent");
+  } catch (error) {
+    console.error("Error sending admin notification:", error);
+  }
+}
+
+async function handleSuccessfulPayment(invoice) {
+  console.log("Payment succeeded:", invoice.id);
+
+  try {
+    const user = await getUserByStripeCustomerId(invoice.customer);
+    if (!user) {
+      throw new Error("User not found for Stripe customer");
+    }
+
+    // Update user's subscription status if necessary
+    await updateUserSubscriptionStatus(user.id, "active");
+
+    // Send confirmation email to the user
+    const amount = (invoice.amount_paid / 100).toFixed(2); // Convert cents to dollars
+    const date = new Date(invoice.created * 1000).toLocaleDateString();
+    await sendSubscriptionConfirmation(user.email, amount, date);
+
+    console.log(`Successful payment processed for user ${user.id}`);
+  } catch (error) {
+    console.error("Error handling successful payment:", error);
+    await sendAdminNotification(
+      "Error handling successful payment",
+      `Invoice ${invoice.id}: ${error.message}`
+    );
+  }
+}
+
+async function handleFailedPayment(invoice) {
+  console.log("Payment failed:", invoice.id);
+
+  try {
+    const user = await getUserByStripeCustomerId(invoice.customer);
+    if (!user) {
+      throw new Error("User not found for Stripe customer");
+    }
+
+    // Update user's subscription status
+    await updateUserSubscriptionStatus(user.id, "past_due");
+
+    // Send notification to admin
+    await sendAdminNotification(
+      "Payment failed",
+      `Invoice ${invoice.id} payment failed for user ${user.id} (${user.email})`
+    );
+
+    console.log(`Failed payment recorded for user ${user.id}`);
+  } catch (error) {
+    console.error("Error handling failed payment:", error);
+    await sendAdminNotification(
+      "Error handling failed payment",
+      `Invoice ${invoice.id}: ${error.message}`
+    );
+  }
+}
+
+async function handleSubscriptionUpdate(subscription) {
+  console.log("Subscription updated:", subscription.id);
+
+  try {
+    const user = await getUserByStripeCustomerId(subscription.customer);
+    if (!user) {
+      throw new Error("User not found for Stripe customer");
+    }
+
+    // Update user's subscription details in your database
+    const status = subscription.status;
+    const currentPeriodEnd = new Date(subscription.current_period_end * 1000);
+    await updateUserSubscriptionStatus(user.id, status, currentPeriodEnd);
+
+    // If the subscription was cancelled, schedule the downgrade
+    if (subscription.cancel_at_period_end) {
+      const cancelDate = new Date(subscription.cancel_at * 1000);
+      await scheduleUserDowngrade(user.id, "Free", cancelDate);
+    }
+
+    console.log(`Subscription updated for user ${user.id}`);
+  } catch (error) {
+    console.error("Error handling subscription update:", error);
+    await sendAdminNotification(
+      "Error handling subscription update",
+      `Subscription ${subscription.id}: ${error.message}`
+    );
+  }
+}
+
+app.post(
+  "/stripe-webhook",
+  express.raw({ type: "application/json" }),
+  async (req, res) => {
+    const sig = req.headers["stripe-signature"];
+    let event;
+
+    try {
+      event = stripe.webhooks.constructEvent(
+        req.body,
+        sig,
+        process.env.STRIPE_WEBHOOK_SECRET
+      );
+    } catch (err) {
+      console.error("Webhook Error:", err.message);
+      return res.status(400).send(`Webhook Error: ${err.message}`);
+    }
+
+    // Handle the event
+    switch (event.type) {
+      case "invoice.payment_succeeded":
+        const paymentSucceeded = event.data.object;
+        await handleSuccessfulPayment(paymentSucceeded);
+        break;
+      case "invoice.payment_failed":
+        const paymentFailed = event.data.object;
+        await handleFailedPayment(paymentFailed);
+        break;
+      case "customer.subscription.updated":
+        const subscriptionUpdated = event.data.object;
+        await handleSubscriptionUpdate(subscriptionUpdated);
+        break;
+      // ... handle other event types
+      default:
+        console.log(`Unhandled event type ${event.type}`);
+    }
+
+    res.json({ received: true });
+  }
+);
+
+app.post("/api/update-payment-method", authMiddleware, async (req, res) => {
+  const { paymentMethodId } = req.body;
+  const userId = req.user.id;
+
+  try {
+    const user = await getUserById(userId);
+    if (!user.stripe_customer_id) {
+      throw new Error("User does not have a Stripe customer ID");
+    }
+
+    // Attach the new payment method to the customer
+    await stripe.paymentMethods.attach(paymentMethodId, {
+      customer: user.stripe_customer_id,
+    });
+
+    // Set it as the default payment method
+    await stripe.customers.update(user.stripe_customer_id, {
+      invoice_settings: {
+        default_payment_method: paymentMethodId,
+      },
+    });
+
+    res.json({ success: true, message: "Payment method updated successfully" });
+  } catch (error) {
+    console.error("Error updating payment method:", error);
+    res.status(400).json({ success: false, message: error.message });
+  }
+});
+
+app.get("/api/subscription-status", authMiddleware, async (req, res) => {
+  const userId = req.user.id;
+
+  try {
+    const user = await getUserById(userId);
+
+    // Check payment tier using the consistent method
+    const isOwner = await checkPaymentTier(userId, PaymentTier.Owner);
+    const isPremium = await checkPaymentTier(userId, PaymentTier.Premium);
+    const isBasic = await checkPaymentTier(userId, PaymentTier.Basic);
+
+    let plan;
+    if (isOwner) {
+      plan = "Owner";
+    } else if (isPremium) {
+      plan = "Premium";
+    } else if (isBasic) {
+      plan = "Basic";
+    } else {
+      plan = "Free";
+    }
+
+    // For paid tiers, fetch Stripe subscription details
+    if (plan !== "Free" && plan !== "Owner" && user.stripe_customer_id) {
+      const subscriptions = await stripe.subscriptions.list({
+        customer: user.stripe_customer_id,
+        status: "all",
+        limit: 1,
+      });
+
+      if (subscriptions.data.length > 0) {
+        const subscription = subscriptions.data[0];
+        const status = subscription.status;
+        const nextBillingDate = new Date(
+          subscription.current_period_end * 1000
+        ).toISOString();
+
+        let scheduledDowngrade = null;
+        if (subscription.cancel_at_period_end) {
+          scheduledDowngrade = {
+            newPlan: "Free",
+            date: new Date(subscription.cancel_at * 1000).toISOString(),
+          };
+        }
+
+        return res.json({
+          plan,
+          status,
+          nextBillingDate,
+          scheduledDowngrade,
+        });
+      }
+    }
+
+    // Default response for Free and Owner tiers, or if no Stripe subscription is found
+    return res.json({
+      plan,
+      status: "active",
+      nextBillingDate: null,
+      scheduledDowngrade: null,
+    });
+  } catch (error) {
+    console.error("Error fetching subscription status:", error);
+    res.status(500).json({ message: "Error fetching subscription status" });
+  }
+});
+
+cron.schedule("0 0 * * *", async () => {
+  console.log("Running scheduled downgrade checks");
+  await checkAndApplyScheduledDowngrades();
 });
 
 // Start server

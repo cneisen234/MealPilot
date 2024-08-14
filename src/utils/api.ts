@@ -1,6 +1,6 @@
 // src/utils/api.ts
 import axios, { AxiosInstance, AxiosError, AxiosResponse } from 'axios';
-import { FriendRequest, Interest, Item, User } from '../types';
+import { FriendRequest, Interest, Item, PaymentTier, User } from '../types';
 
 const url = process.env.NODE_ENV === 'production' 
   ? '/api'
@@ -188,6 +188,10 @@ export const getRecommendation = (query: string, friendIds: number[] = []) => {
   return api.post('/get-recommendation', { query, friendIds });
 };
 
+export const getDailyRecommendations = () => {
+  return api.get('/recommendations/daily');
+};
+
 export const getRemainingPrompts = () => {
   return api.get('/remaining-prompts');
 };
@@ -226,6 +230,34 @@ export const getUserLocation = (): Promise<GeolocationResult> => {
       );
     }
   });
+};
+
+export const upgradeUser = (userId: number, newTier: PaymentTier, paymentDetails: any) => {
+  return api.post(`/users/${userId}/upgrade`, { newTier, paymentDetails });
+};
+
+export const downgradeUser = (userId: number, newTier: PaymentTier) => {
+  return api.post(`/users/${userId}/downgrade`, { newTier });
+};
+
+export const updatePaymentMethod = async (paymentMethodId: string) => {
+  try {
+    const response = await api.post('/update-payment-method', { paymentMethodId });
+    return response.data;
+  } catch (error) {
+    // @ts-ignore
+    throw error.response?.data?.message || 'An error occurred while updating the payment method';
+  }
+};
+
+export const getSubscriptionStatus = async () => {
+  try {
+    const response = await api.get('/subscription-status');
+    return response.data;
+  } catch (error) {
+    // @ts-ignore
+    throw error.response?.data?.message || 'An error occurred while fetching subscription status';
+  }
 };
 
 export default api;

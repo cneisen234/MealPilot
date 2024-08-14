@@ -65,3 +65,21 @@ CREATE TABLE notifications
     "read" BOOLEAN DEFAULT false,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
+
+CREATE TABLE daily_recommendations
+(
+    user_id INTEGER REFERENCES users(id),
+    recommendations JSON,
+    generated_at DATE,
+    PRIMARY KEY (user_id, generated_at)
+);
+
+CREATE TABLE scheduled_downgrades
+(
+    id SERIAL PRIMARY KEY,
+    user_id INTEGER REFERENCES users(id),
+    new_tier VARCHAR(50) NOT NULL,
+    downgrade_date TIMESTAMP NOT NULL
+);
+
+CREATE INDEX idx_scheduled_downgrades_date ON scheduled_downgrades(downgrade_date);

@@ -140,7 +140,7 @@ const Onboarding: React.FC = () => {
         }
       }
 
-      navigate("/profile");
+      navigate("/profile", { state: { fromOnboarding: true } });
     } catch (error) {
       console.error("Error updating profile:", error);
     }

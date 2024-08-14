@@ -1,4 +1,4 @@
-import React, { useEffect } from "react";
+import React, { useEffect, useState } from "react";
 import {
   BrowserRouter as Router,
   Routes,
@@ -27,6 +27,11 @@ import ResetPassword from "./components/auth/ResetPassword";
 import ContactUs from "./pages/ContactUs";
 import CloseAccount from "./components/profile/CloseAccount";
 import ComingSoon from "./pages/ComingSoon";
+import { TutorialProvider } from "./context/TutorialContext";
+import NewUserTutorial from "./components/NewUserTutorial";
+import { Elements } from "@stripe/react-stripe-js";
+import { loadStripe } from "@stripe/stripe-js";
+import AnimatedTechIcon from "./components/animatedTechIcon";
 
 const AppContent: React.FC = () => {
   const { isAuthenticated, checkAuthStatus } = useAuth();
@@ -37,6 +42,9 @@ const AppContent: React.FC = () => {
   }, [checkAuthStatus]);
 
   const isOnboardingRoute = location.pathname === "/onboarding";
+  const stripePromise = loadStripe(
+    process.env.REACT_APP_STRIPE_PUBLISHABLE_KEY!
+  );
 
   return (
     <div
@@ -84,7 +92,15 @@ const AppContent: React.FC = () => {
             />
             <Route
               path="/profile"
-              element={<PrivateRoute element={<Profile />} />}
+              element={
+                <PrivateRoute
+                  element={
+                    <Elements stripe={stripePromise}>
+                      <Profile />
+                    </Elements>
+                  }
+                />
+              }
             />
             <Route
               path="/interests"
@@ -104,7 +120,15 @@ const AppContent: React.FC = () => {
             />
             <Route
               path="/upgrade"
-              element={<PrivateRoute element={<Upgrade />} />}
+              element={
+                <PrivateRoute
+                  element={
+                    <Elements stripe={stripePromise}>
+                      <Upgrade />
+                    </Elements>
+                  }
+                />
+              }
             />
             <Route path="/coming-soon" element={<ComingSoon />} />
           </Routes>
@@ -119,7 +143,10 @@ const App: React.FC = () => {
   return (
     <Router>
       <AuthProvider>
-        <AppContent />
+        <TutorialProvider>
+          <AppContent />
+          <NewUserTutorial />
+        </TutorialProvider>
       </AuthProvider>
     </Router>
   );

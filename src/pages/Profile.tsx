@@ -9,12 +9,16 @@ import {
   deleteInterestCategory,
   updateItemRating,
   getUserLocation,
+  updatePaymentMethod,
+  getSubscriptionStatus,
 } from "../utils/api";
 import EditProfileModal from "../components/profile/EditProfileModal";
 import AddInterestCategoryModal from "../components/interests/AddInterestCategoryModal";
 import ConfirmDeleteModal from "../components/ConfirmDeleteModal";
 import InfoModal from "../components/InfoModal";
 import StarRating from "../components/StarRating";
+import { useLocation } from "react-router-dom";
+import { useTutorial } from "../context/TutorialContext";
 import {
   FaChevronDown,
   FaChevronUp,
@@ -23,11 +27,16 @@ import {
   FaStar,
   FaLock,
   FaTimes,
+  FaUserPlus,
+  FaInfoCircle,
+  FaCreditCard,
 } from "react-icons/fa";
 import { Link } from "react-router-dom";
 import AnimatedTechIcon from "../components/animatedTechIcon";
+import { CardElement, useElements, useStripe } from "@stripe/react-stripe-js";
 
 const Profile: React.FC = () => {
+  const { startTutorial } = useTutorial();
   const [user, setUser] = useState<User | null>(null);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [isAddInterestModalOpen, setIsAddInterestModalOpen] = useState(false);
@@ -47,11 +56,37 @@ const Profile: React.FC = () => {
     city: string;
     state: string;
   } | null>(null);
+  const [showPaymentUpdate, setShowPaymentUpdate] = useState(false);
+  const [paymentUpdateError, setPaymentUpdateError] = useState<string | null>(
+    null
+  );
+  const [paymentUpdateSuccess, setPaymentUpdateSuccess] = useState(false);
+  const [subscriptionStatus, setSubscriptionStatus] = useState<any>(null);
+
+  const stripe = useStripe();
+  const elements = useElements();
+
+  interface LocationState {
+    fromOnboarding?: boolean;
+  }
+
+  const appLocation = useLocation();
 
   useEffect(() => {
     fetchUserProfile();
     fetchUserLocation();
+    fetchSubscriptionStatus();
   }, []);
+
+  useEffect(() => {
+    // Check if user just completed onboarding
+    const locationState = appLocation.state as LocationState;
+    if (locationState && locationState.fromOnboarding) {
+      startTutorial();
+      // Clear the state after showing the tutorial
+      window.history.replaceState({}, document.title);
+    }
+  }, [appLocation, startTutorial]);
 
   const fetchUserProfile = async () => {
     try {
@@ -78,6 +113,39 @@ const Profile: React.FC = () => {
     }
   };
 
+  const handleUpdatePaymentMethod = async (event: React.FormEvent) => {
+    event.preventDefault();
+    if (!stripe || !elements) {
+      return;
+    }
+
+    const cardElement = elements.getElement(CardElement);
+
+    if (cardElement) {
+      setPaymentUpdateError(null);
+      setPaymentUpdateSuccess(false);
+
+      const { error, paymentMethod } = await stripe.createPaymentMethod({
+        type: "card",
+        card: cardElement,
+      });
+
+      if (error) {
+        // @ts-ignore
+        setPaymentUpdateError(error.message);
+      } else {
+        try {
+          await updatePaymentMethod(paymentMethod.id);
+          setPaymentUpdateSuccess(true);
+          setShowPaymentUpdate(false);
+        } catch (updateError) {
+          // @ts-ignore
+          setPaymentUpdateError(updateError.message);
+        }
+      }
+    }
+  };
+
   const getMembershipLimits = (paymentTier: PaymentTier) => {
     switch (paymentTier) {
       case PaymentTier.Free: // 1
@@ -98,6 +166,15 @@ const Profile: React.FC = () => {
       PaymentTier[user.payment_tier as unknown as keyof typeof PaymentTier];
     const { maxCategories } = getMembershipLimits(userTier);
     return user.interests.length < maxCategories;
+  };
+
+  const fetchSubscriptionStatus = async () => {
+    try {
+      const status = await getSubscriptionStatus();
+      setSubscriptionStatus(status);
+    } catch (error) {
+      console.error("Error fetching subscription status:", error);
+    }
   };
 
   const canAddItem = (categoryId: number) => {
@@ -601,6 +678,7 @@ const Profile: React.FC = () => {
           </div>
         )}
       </div>
+      <br />
       {/* Account Management section */}
       <div
         style={{
@@ -617,6 +695,130 @@ const Profile: React.FC = () => {
           }}>
           Account Management
         </h2>
+        <div
+          style={{
+            padding: "15px 0",
+            borderBottom: "1px solid rgba(0, 0, 0, 0.1)",
+          }}>
+          <h3
+            style={{
+              fontSize: "1.2em",
+              color: "var(--text-color)",
+              marginBottom: "10px",
+            }}>
+            Subscription Status
+          </h3>
+          {subscriptionStatus ? (
+            <div>
+              <p>
+                <strong>Plan:</strong> {subscriptionStatus.plan}
+              </p>
+              <p>
+                <strong>Status:</strong> {subscriptionStatus.status}
+              </p>
+              {subscriptionStatus.nextBillingDate && (
+                <p>
+                  <strong>Next Billing Date:</strong>{" "}
+                  {new Date(
+                    subscriptionStatus.nextBillingDate
+                  ).toLocaleDateString()}
+                </p>
+              )}
+              {subscriptionStatus.scheduledDowngrade && (
+                <p style={{ color: "var(--secondary-color)" }}>
+                  <FaInfoCircle style={{ marginRight: "5px" }} />
+                  Scheduled downgrade to{" "}
+                  {subscriptionStatus.scheduledDowngrade.newPlan} on{" "}
+                  {new Date(
+                    subscriptionStatus.scheduledDowngrade.date
+                  ).toLocaleDateString()}
+                </p>
+              )}
+            </div>
+          ) : (
+            <p>Loading subscription status...</p>
+          )}
+        </div>
+
+        <div
+          style={{
+            display: "flex",
+            justifyContent: "space-between",
+            alignItems: "center",
+            padding: "15px 0",
+            borderBottom: "1px solid rgba(0, 0, 0, 0.1)",
+          }}>
+          <span style={{ fontSize: "1.1em", color: "var(--text-color)" }}>
+            Update Payment Method
+          </span>
+          <button
+            onClick={() => setShowPaymentUpdate(!showPaymentUpdate)}
+            style={{
+              backgroundColor: "var(--primary-color)",
+              color: "white",
+              border: "none",
+              padding: "10px 20px",
+              borderRadius: "25px",
+              cursor: "pointer",
+              fontSize: "16px",
+              fontWeight: "bold",
+              width: "180px",
+              display: "flex",
+              justifyContent: "center",
+              alignItems: "center",
+            }}>
+            {showPaymentUpdate ? (
+              <FaTimes style={{ paddingRight: 5 }} />
+            ) : (
+              <FaCreditCard style={{ paddingRight: 5 }} />
+            )}
+            {showPaymentUpdate ? "Cancel" : "Update"}
+          </button>
+        </div>
+
+        {showPaymentUpdate && (
+          <form
+            onSubmit={handleUpdatePaymentMethod}
+            style={{ marginTop: "20px" }}>
+            <CardElement
+              options={{
+                style: {
+                  base: {
+                    fontSize: "16px",
+                    color: "#424770",
+                    "::placeholder": { color: "#aab7c4" },
+                  },
+                },
+              }}
+            />
+            <button
+              type="submit"
+              disabled={!stripe}
+              style={{
+                marginTop: "20px",
+                backgroundColor: "var(--primary-color)",
+                color: "white",
+                border: "none",
+                padding: "10px 15px",
+                borderRadius: "25px",
+                cursor: "pointer",
+              }}>
+              Update Payment Method
+            </button>
+          </form>
+        )}
+
+        {paymentUpdateError && (
+          <div style={{ color: "red", marginTop: "10px" }}>
+            {paymentUpdateError}
+          </div>
+        )}
+
+        {paymentUpdateSuccess && (
+          <div style={{ color: "green", marginTop: "10px" }}>
+            Payment method updated successfully!
+          </div>
+        )}
         <div
           style={{
             display: "flex",
