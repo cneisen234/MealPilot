@@ -1,7 +1,8 @@
 import React, { useEffect, useState } from "react";
 import { FaCheck, FaTimes, FaCrown, FaInfoCircle } from "react-icons/fa";
-import PaymentModal from "../components/payments/PaymentModal";
 import ConfirmationModal from "../components/payments/ConfirmationModal";
+import UpgradeModal from "../components/payments/UpgradeModal";
+import InfoModal from "../components/InfoModal";
 import { PaymentTier, User } from "../types";
 import { upgradeUser, downgradeUser, getProfile } from "../utils/api";
 import { CardElement, useElements, useStripe } from "@stripe/react-stripe-js";
@@ -9,13 +10,12 @@ import AnimatedTechIcon from "../components/animatedTechIcon";
 
 const Upgrade: React.FC = () => {
   const [currentUser, setCurrentUser] = useState<User | null>(null);
-  const [showPaymentModal, setShowPaymentModal] = useState(false);
-  const [showConfirmationModal, setShowConfirmationModal] = useState(false);
+  const [showUpgradeModal, setShowUpgradeModal] = useState(false);
+  const [showDowngradeModal, setShowDowngradeModal] = useState(false);
   const [selectedTier, setSelectedTier] = useState<PaymentTier | null>(null);
   const [isLoading, setIsLoading] = useState(true);
-
-  const stripe = useStripe();
-  const elements = useElements();
+  const [infoModalMessage, setInfoModalMessage] = useState("");
+  const [showInfoModal, setShowInfoModal] = useState(false);
 
   useEffect(() => {
     const fetchUser = async () => {
@@ -24,60 +24,29 @@ const Upgrade: React.FC = () => {
         setCurrentUser(response.data);
       } catch (error) {
         console.error("Error fetching user profile:", error);
+        setInfoModalMessage("Error loading user data. Please try again.");
+        setShowInfoModal(true);
       } finally {
         setIsLoading(false);
       }
     };
 
     fetchUser();
-  }, []);
+  }, [showInfoModal]);
 
   const handleTierSelect = (tier: PaymentTier) => {
     setSelectedTier(tier);
-    if (tier === PaymentTier.Free) {
-      setShowConfirmationModal(true);
-      // @ts-ignore
-    } else if (tier > currentUser.payment_tier) {
-      setShowPaymentModal(true);
-    } else {
-      setShowConfirmationModal(true);
-    }
-  };
-
-  const handleUpgrade = async (paymentDetails: any) => {
-    if (!stripe || !elements || !currentUser || !selectedTier) {
-      return;
-    }
-
-    const cardElement = elements.getElement(CardElement);
-
-    if (cardElement) {
-      const { error, paymentMethod } = await stripe.createPaymentMethod({
-        type: "card",
-        card: cardElement,
-      });
-
-      if (error) {
-        console.error("Error creating payment method:", error);
-        return;
-      }
-
-      try {
-        const response = await upgradeUser(
-          currentUser.id,
-          selectedTier,
-          paymentMethod.id
-        );
-        setCurrentUser(response.data.user);
-        alert(
-          `Upgrade successful! Your new plan will be charged ${response.data.proratedAmount} for the remainder of this billing cycle.`
-        );
-      } catch (error) {
-        console.error("Error upgrading user:", error);
-        alert("Error processing upgrade. Please try again.");
+    if (currentUser) {
+      const currentTier =
+        PaymentTier[
+          currentUser.payment_tier as unknown as keyof typeof PaymentTier
+        ];
+      if (tier < currentTier) {
+        setShowUpgradeModal(true);
+      } else if (tier > currentTier) {
+        setShowDowngradeModal(true);
       }
     }
-    setShowPaymentModal(false);
   };
 
   const handleDowngrade = async () => {
@@ -85,26 +54,22 @@ const Upgrade: React.FC = () => {
       try {
         const response = await downgradeUser(currentUser.id, selectedTier);
         setCurrentUser(response.data.user);
-        alert(
+        setInfoModalMessage(
           `Downgrade scheduled. Your current benefits will remain active until ${new Date(
             response.data.downgradeDateEpoch * 1000
-          ).toLocaleDateString()}. After this date, your plan will change to ${selectedTier}.`
+          ).toLocaleDateString()}. After this date, your plan will change to ${
+            PaymentTier[selectedTier]
+          }.`
         );
+        setShowInfoModal(true);
       } catch (error) {
         console.error("Error downgrading user:", error);
-        alert("Error processing downgrade. Please try again.");
+        setInfoModalMessage("Error processing downgrade. Please try again.");
+        setShowInfoModal(true);
       }
     }
-    setShowConfirmationModal(false);
+    setShowDowngradeModal(false);
   };
-
-  if (isLoading) {
-    return <AnimatedTechIcon size={100} speed={10} />;
-  }
-
-  if (!currentUser) {
-    return <div>Error loading user data. Please try again.</div>;
-  }
 
   const planFeatures = [
     {
@@ -221,32 +186,91 @@ const Upgrade: React.FC = () => {
         onClick={() => handleTierSelect(tier)}
         style={{
           marginTop: "20px",
-          background: recommended
-            ? "var(--primary-color)"
-            : "var(--surface-color)",
-          color: recommended ? "white" : "var(--primary-color)",
-          border: `2px solid var(--primary-color)`,
+          background:
+            currentUser &&
+            tier ===
+              PaymentTier[
+                currentUser.payment_tier as unknown as keyof typeof PaymentTier
+              ]
+              ? "#d3d3d3"
+              : recommended
+              ? "var(--primary-color)"
+              : "var(--surface-color)",
+          color:
+            recommended ||
+            (currentUser &&
+              tier ===
+                PaymentTier[
+                  currentUser.payment_tier as unknown as keyof typeof PaymentTier
+                ])
+              ? "white"
+              : "var(--primary-color)",
+          border:
+            currentUser &&
+            tier ===
+              PaymentTier[
+                currentUser.payment_tier as unknown as keyof typeof PaymentTier
+              ]
+              ? "none"
+              : `2px solid var(--primary-color)`,
           borderRadius: "25px",
           padding: "10px 20px",
           fontSize: "16px",
           fontWeight: "bold",
-          cursor: "pointer",
+          cursor:
+            currentUser &&
+            tier ===
+              PaymentTier[
+                currentUser.payment_tier as unknown as keyof typeof PaymentTier
+              ]
+              ? "default"
+              : "pointer",
           transition: "all 0.3s ease",
         }}
         onMouseEnter={(e) => {
-          e.currentTarget.style.transform = "scale(1.05)";
-          if (!recommended)
-            e.currentTarget.style.background = "var(--primary-color)";
-          if (!recommended) e.currentTarget.style.color = "white";
+          if (
+            !(
+              tier ===
+              PaymentTier[
+                currentUser?.payment_tier as unknown as keyof typeof PaymentTier
+              ]
+            )
+          ) {
+            e.currentTarget.style.transform = "scale(1.05)";
+            if (!recommended)
+              e.currentTarget.style.background = "var(--primary-color)";
+            if (!recommended) e.currentTarget.style.color = "white";
+          }
         }}
         onMouseLeave={(e) => {
-          e.currentTarget.style.transform = "scale(1)";
-          if (!recommended)
-            e.currentTarget.style.background = "var(--surface-color)";
-          if (!recommended)
-            e.currentTarget.style.color = "var(--primary-color)";
-        }}>
-        {currentUser && tier === currentUser.payment_tier
+          if (
+            !(
+              tier ===
+              PaymentTier[
+                currentUser?.payment_tier as unknown as keyof typeof PaymentTier
+              ]
+            )
+          ) {
+            e.currentTarget.style.transform = "scale(1)";
+            if (!recommended)
+              e.currentTarget.style.background = "var(--surface-color)";
+            if (!recommended)
+              e.currentTarget.style.color = "var(--primary-color)";
+          }
+        }}
+        // @ts-ignore
+        disabled={
+          currentUser &&
+          tier ===
+            PaymentTier[
+              currentUser.payment_tier as unknown as keyof typeof PaymentTier
+            ]
+        }>
+        {currentUser &&
+        tier ===
+          PaymentTier[
+            currentUser.payment_tier as unknown as keyof typeof PaymentTier
+          ]
           ? "Current Plan"
           : "Select Plan"}
       </button>
@@ -309,25 +333,30 @@ const Upgrade: React.FC = () => {
         ))}
       </div>
 
-      {showPaymentModal && selectedTier && (
-        <PaymentModal
+      {showUpgradeModal && selectedTier && currentUser && (
+        <UpgradeModal
           tier={selectedTier}
-          onClose={() => setShowPaymentModal(false)}
-          onConfirm={handleUpgrade}
+          currentUser={currentUser}
+          onClose={() => setShowUpgradeModal(false)}
+          confirm={() => setShowInfoModal(true)}
+          message={setInfoModalMessage}
         />
       )}
 
-      {showConfirmationModal && (
+      {showDowngradeModal && selectedTier && (
         <ConfirmationModal
-          message={`Are you sure you want to ${
-            selectedTier === PaymentTier.Free
-              ? "downgrade to the Free tier"
-              : "change your plan"
-          }? This may result in loss of data and features.`}
-          onClose={() => setShowConfirmationModal(false)}
+          message={`Are you sure you want to downgrade to the ${PaymentTier[selectedTier]} tier? This may result in loss of data and features.`}
+          additionalInfo="Your current plan benefits will remain active until the end of your billing cycle. After that date, your plan will be downgraded."
+          onClose={() => setShowDowngradeModal(false)}
           onConfirm={handleDowngrade}
         />
       )}
+
+      <InfoModal
+        isOpen={showInfoModal}
+        onClose={() => setShowInfoModal(false)}
+        message={infoModalMessage}
+      />
     </div>
   );
 };

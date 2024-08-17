@@ -14,7 +14,8 @@ CREATE TABLE users
     avatar TEXT,
     bio TEXT,
     bio_visibility privacy_setting DEFAULT 'public',
-    interests_visibility privacy_setting DEFAULT 'public'
+    interests_visibility privacy_setting DEFAULT 'public',
+    subscription_updated_at TIMESTAMP DEFAULT NOW()
 );
 
 -- Interests table
@@ -80,6 +81,32 @@ CREATE TABLE scheduled_downgrades
     user_id INTEGER REFERENCES users(id),
     new_tier VARCHAR(50) NOT NULL,
     downgrade_date TIMESTAMP NOT NULL
+);
+
+CREATE TABLE subscription_logs
+(
+    id SERIAL PRIMARY KEY,
+    user_id INTEGER REFERENCES users(id),
+    old_tier VARCHAR(50),
+    new_tier VARCHAR(50),
+    changed_at TIMESTAMP DEFAULT NOW()
+);
+
+CREATE TABLE user_privileges
+(
+    user_id INTEGER PRIMARY KEY REFERENCES users(id),
+    max_interests INTEGER DEFAULT 3,
+    max_friends INTEGER DEFAULT 0
+);
+
+CREATE TABLE upgrade_attempts
+(
+    id SERIAL PRIMARY KEY,
+    user_id INTEGER REFERENCES users(id),
+    new_tier VARCHAR(50),
+    payment_intent_id VARCHAR(255),
+    status VARCHAR(50),
+    created_at TIMESTAMP DEFAULT NOW()
 );
 
 CREATE INDEX idx_scheduled_downgrades_date ON scheduled_downgrades(downgrade_date);

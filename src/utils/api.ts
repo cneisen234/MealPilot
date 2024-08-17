@@ -232,8 +232,18 @@ export const getUserLocation = (): Promise<GeolocationResult> => {
   });
 };
 
-export const upgradeUser = (userId: number, newTier: PaymentTier, paymentDetails: any) => {
-  return api.post(`/users/${userId}/upgrade`, { newTier, paymentDetails });
+export const upgradeUser = async (userId: number, newTier: PaymentTier, paymentMethodId: string, isConfirmation: boolean = false) => {
+  const response = await api.post(`/users/${userId}/upgrade`, { 
+    newTier, 
+    paymentMethodId,
+    isConfirmation 
+  });
+  return response.data;
+};
+
+export const confirmUpgrade = async (userId: number, paymentIntentId: string, newTier: PaymentTier) => {
+  const response = await api.post(`/users/${userId}/confirm-upgrade`, { paymentIntentId, newTier });
+  return response.data;
 };
 
 export const downgradeUser = (userId: number, newTier: PaymentTier) => {
