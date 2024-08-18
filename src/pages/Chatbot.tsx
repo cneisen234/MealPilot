@@ -1,11 +1,5 @@
 import React, { useState, useEffect, useRef } from "react";
-import {
-  FaPaperPlane,
-  FaRobot,
-  FaTimes,
-  FaUser,
-  FaUserFriends,
-} from "react-icons/fa";
+import { FaPaperPlane, FaTimes } from "react-icons/fa";
 import Select, { MultiValue } from "react-select";
 import {
   getRecommendation,
@@ -15,10 +9,8 @@ import {
   updatePromptCount,
 } from "../utils/api";
 import { useAuth } from "../context/AuthContext";
-import Loading from "../components/Loading";
 import FormattedAIResponse from "../components/FormattedAiResponse";
 import { Message, PaymentTier, User } from "../types";
-import axios from "axios";
 import AnimatedTechIcon from "../components/animatedTechIcon";
 
 interface FriendOption {

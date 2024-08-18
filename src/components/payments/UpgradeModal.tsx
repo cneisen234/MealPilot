@@ -1,9 +1,12 @@
-import React, { useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import { PaymentTier, User } from "../../types";
 import { CardElement, useStripe, useElements } from "@stripe/react-stripe-js";
-import { FaCrown, FaSpinner } from "react-icons/fa";
-import { upgradeUser, confirmUpgrade, getProfile } from "../../utils/api";
-import InfoModal from "../InfoModal";
+import { FaCreditCard, FaCrown, FaInfoCircle, FaSpinner } from "react-icons/fa";
+import {
+  upgradeUser,
+  confirmUpgrade,
+  checkPrimaryPaymentMethod,
+} from "../../utils/api";
 
 interface UpgradeModalProps {
   tier: PaymentTier;
@@ -24,19 +27,54 @@ const UpgradeModal: React.FC<UpgradeModalProps> = ({
   const elements = useElements();
   const [isProcessing, setIsProcessing] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [agreedToTerms, setAgreedToTerms] = useState(false);
+  const [highlightCheckbox, setHighlightCheckbox] = useState(false);
+  const [isCardComplete, setIsCardComplete] = useState(false);
+  const [addPaymentMessage, setAddPaymentMessage] = useState(false);
+  const checkboxRef = useRef<HTMLInputElement>(null);
+  const [hasPrimaryPaymentMethod, setHasPrimaryPaymentMethod] = useState(false);
+  const [usePrimaryPaymentMethod, setUsePrimaryPaymentMethod] = useState(false);
+  const [primaryPaymentMethod, setPrimaryPaymentMethod] = useState<{
+    last4: string;
+    brand: string;
+  } | null>(null);
+
+  useEffect(() => {
+    const checkPaymentMethod = async () => {
+      try {
+        const response = await checkPrimaryPaymentMethod(currentUser.id);
+        console.log(response);
+        // @ts-ignore
+        setHasPrimaryPaymentMethod(response?.hasPrimaryPaymentMethod);
+        setPrimaryPaymentMethod({
+          // @ts-ignore
+          last4: response.last4,
+          // @ts-ignore
+          brand: response.brand,
+        });
+      } catch (error) {
+        console.error("Error checking primary payment method:", error);
+      }
+    };
+    checkPaymentMethod();
+  }, [currentUser.id]);
 
   const handleSubmit = async (event: React.FormEvent) => {
     event.preventDefault();
 
-    if (!stripe || !elements) {
-      setError("Stripe has not been initialized.");
+    if (!usePrimaryPaymentMethod && !isCardComplete) {
+      setAddPaymentMessage(true);
       return;
     }
 
-    const cardElement = elements.getElement(CardElement);
+    if (!agreedToTerms) {
+      setHighlightCheckbox(true);
+      checkboxRef.current?.scrollIntoView({ behavior: "smooth" });
+      return;
+    }
 
-    if (!cardElement) {
-      setError("Unable to find card element.");
+    if (!stripe || (!elements && !usePrimaryPaymentMethod)) {
+      setError("Stripe has not been initialized.");
       return;
     }
 
@@ -44,19 +82,31 @@ const UpgradeModal: React.FC<UpgradeModalProps> = ({
     setError(null);
 
     try {
-      const { error, paymentMethod } = await stripe.createPaymentMethod({
-        type: "card",
-        card: cardElement,
-      });
+      let paymentMethodId: string | undefined;
 
-      if (error) {
-        throw new Error(error.message);
+      if (!usePrimaryPaymentMethod) {
+        const cardElement = elements!.getElement(CardElement);
+        if (!cardElement) {
+          throw new Error("Unable to find card element.");
+        }
+
+        const { error, paymentMethod } = await stripe.createPaymentMethod({
+          type: "card",
+          card: cardElement,
+        });
+
+        if (error) {
+          throw new Error(error.message);
+        }
+
+        paymentMethodId = paymentMethod.id;
       }
 
       const { clientSecret, newTier } = await upgradeUser(
         currentUser.id,
         tier,
-        paymentMethod.id
+        // @ts-ignore
+        paymentMethodId
       );
 
       const { error: confirmError, paymentIntent } =
@@ -68,6 +118,7 @@ const UpgradeModal: React.FC<UpgradeModalProps> = ({
 
       if (paymentIntent.status === "succeeded") {
         await confirmUpgrade(currentUser.id, paymentIntent.id, newTier);
+        setAddPaymentMessage(false);
       } else {
         throw new Error("Payment was not successful. Please try again.");
       }
@@ -84,7 +135,10 @@ const UpgradeModal: React.FC<UpgradeModalProps> = ({
   const price = tier === PaymentTier.Basic ? "9.99" : "19.99";
   const nextBillingDate = new Date();
   nextBillingDate.setMonth(nextBillingDate.getMonth() + 1);
-
+  const isBasicToPremiumUpgrade =
+    PaymentTier[
+      currentUser.payment_tier as unknown as keyof typeof PaymentTier
+    ] === PaymentTier.Basic && tier === PaymentTier.Premium;
   return (
     <div
       style={{
@@ -134,24 +188,108 @@ const UpgradeModal: React.FC<UpgradeModalProps> = ({
         <p style={{ marginBottom: "20px", color: "var(--text-color)" }}>
           Your next billing date will be: {nextBillingDate.toLocaleDateString()}
         </p>
+        <h3 style={{ color: "var(--primary-color)" }}>
+          <FaInfoCircle /> Important Subscription Information
+        </h3>
+        <ul>
+          <li>Your subscription will begin immediately upon confirmation.</li>
+          <li>
+            To cancel, you must downgrade to the free tier through your account
+            settings.
+          </li>
+          <li>No refunds will be given for partial months.</li>
+          <li>
+            Your subscription will continue until you choose to downgrade or
+            cancel.
+          </li>
+          {isBasicToPremiumUpgrade && (
+            <li>
+              For the first month you will be charged a prorated amount that is
+              based on the premium price subtracted by your remaining basic
+              plan. This is designed to keep cost fair to you.
+            </li>
+          )}
+        </ul>
         <form onSubmit={handleSubmit}>
-          <div style={{ marginBottom: "20px" }}>
-            <CardElement
-              options={{
-                style: {
-                  base: {
-                    fontSize: "16px",
-                    color: "var(--text-color)",
-                    "::placeholder": {
-                      color: "#aab7c4",
+          {hasPrimaryPaymentMethod && (
+            <>
+              <div style={{ marginBottom: "20px" }}>
+                <label style={{ display: "flex", alignItems: "center" }}>
+                  <input
+                    type="checkbox"
+                    checked={usePrimaryPaymentMethod}
+                    onChange={(e) =>
+                      setUsePrimaryPaymentMethod(e.target.checked)
+                    }
+                    style={{ marginRight: "10px" }}
+                  />
+                  Use {primaryPaymentMethod?.brand} ending in{" "}
+                  {primaryPaymentMethod?.last4}
+                </label>
+              </div>
+            </>
+          )}
+          {!usePrimaryPaymentMethod && (
+            <div style={{ marginBottom: "20px" }}>
+              <CardElement
+                options={{
+                  style: {
+                    base: {
+                      fontSize: "16px",
+                      color: "var(--text-color)",
+                      "::placeholder": {
+                        color: "#aab7c4",
+                      },
+                    },
+                    invalid: {
+                      color: "#9e2146",
+                      backgroundColor: "red",
                     },
                   },
-                  invalid: {
-                    color: "#9e2146",
-                  },
-                },
-              }}
-            />
+                }}
+                onChange={(event) => {
+                  setIsCardComplete(event.complete);
+                }}
+              />
+            </div>
+          )}
+          {addPaymentMessage && (
+            <div className="form-group" style={{ marginTop: "20px" }}>
+              <label
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  color: "red",
+                  transition: "color 0.3s ease",
+                }}>
+                Please add a valid payment
+              </label>
+            </div>
+          )}
+          <div className="form-group" style={{ marginTop: "20px" }}>
+            <label
+              style={{
+                display: "flex",
+                alignItems: "center",
+                color: highlightCheckbox ? "red" : "inherit",
+                transition: "color 0.3s ease",
+              }}>
+              <input
+                ref={checkboxRef}
+                type="checkbox"
+                checked={agreedToTerms}
+                onChange={(e) => {
+                  setAgreedToTerms(e.target.checked);
+                  setHighlightCheckbox(false);
+                }}
+                style={{
+                  marginRight: "10px",
+                  outline: highlightCheckbox ? "2px solid red" : "none",
+                  transition: "outline 0.3s ease",
+                }}
+              />
+              I have read and agree to the subscription terms.
+            </label>
           </div>
           <div
             style={{

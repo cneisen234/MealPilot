@@ -31,7 +31,6 @@ import { TutorialProvider } from "./context/TutorialContext";
 import NewUserTutorial from "./components/NewUserTutorial";
 import { Elements } from "@stripe/react-stripe-js";
 import { loadStripe } from "@stripe/stripe-js";
-import AnimatedTechIcon from "./components/animatedTechIcon";
 
 const AppContent: React.FC = () => {
   const { isAuthenticated, checkAuthStatus } = useAuth();

@@ -270,5 +270,19 @@ export const getSubscriptionStatus = async () => {
   }
 };
 
+export const cancelDowngrade = (userId: number) => {
+  return api.post(`/users/${userId}/cancel-downgrade`);
+};
+
+export const checkPrimaryPaymentMethod = async (userId: number): Promise<boolean> => {
+  try {
+    const response = await api.get(`/check-primary-payment-method/${userId}`);
+    return response.data;
+  } catch (error) {
+    console.error('Error checking primary payment method:', error);
+    throw error;
+  }
+};
+
 export default api;
 

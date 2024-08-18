@@ -1,6 +1,5 @@
 // src/components/interests/AddInterestCategoryModal.tsx
 
-import userEvent from "@testing-library/user-event";
 import React, { useState } from "react";
 import { PrivacySetting, Interest, User } from "../../types";
 
@@ -79,6 +78,7 @@ const AddInterestCategoryModal: React.FC<AddInterestCategoryModalProps> = ({
               type="text"
               id="category"
               value={category}
+              maxLength={50}
               onChange={(e) => setCategory(e.target.value)}
               style={inputStyle}
               required

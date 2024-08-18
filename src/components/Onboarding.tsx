@@ -106,6 +106,12 @@ const Onboarding: React.FC = () => {
     }
   };
 
+  const areAllItemsRanked = () => {
+    return Object.values(items).every((categoryItems) =>
+      categoryItems.every((item) => item.rating > 0)
+    );
+  };
+
   const finishOnboarding = async () => {
     if (!user) return;
 
@@ -225,6 +231,7 @@ const Onboarding: React.FC = () => {
                 type="text"
                 value={newCategory}
                 onChange={(e) => setNewCategory(e.target.value)}
+                maxLength={50}
                 placeholder="E.g., Travel, Coffee, Photography"
                 className="category-input"
               />
@@ -280,6 +287,7 @@ const Onboarding: React.FC = () => {
                         [cat]: { ...prev[cat], name: e.target.value },
                       }))
                     }
+                    maxLength={100}
                     placeholder={`Add an item to ${cat}`}
                     className="item-input"
                   />
@@ -326,7 +334,18 @@ const Onboarding: React.FC = () => {
   );
 
   if (!user) {
-    return <AnimatedTechIcon size={100} speed={10} />;
+    return (
+      <AnimatedTechIcon
+        style={{
+          position: "fixed",
+          top: "50%",
+          left: "50%",
+          transform: "translate(-50%, -50%)",
+        }}
+        size={100}
+        speed={10}
+      />
+    );
   }
 
   return (
@@ -346,7 +365,8 @@ const Onboarding: React.FC = () => {
               (step === introSteps.length + 1 &&
                 (!city.trim() || !state.trim())) ||
               (step === introSteps.length + 2 && categories.length === 0) ||
-              (step === introSteps.length + 3 && !hasAddedItems)
+              (step === introSteps.length + 3 && !hasAddedItems) ||
+              !areAllItemsRanked()
             }>
             {step === introSteps.length + 3 ? "Finish" : "Next"}{" "}
             <FaArrowRight />

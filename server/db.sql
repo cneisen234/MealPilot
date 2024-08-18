@@ -15,7 +15,8 @@ CREATE TABLE users
     bio TEXT,
     bio_visibility privacy_setting DEFAULT 'public',
     interests_visibility privacy_setting DEFAULT 'public',
-    subscription_updated_at TIMESTAMP DEFAULT NOW()
+    subscription_updated_at TIMESTAMP DEFAULT NOW(),
+    stripe_subscription_id VARCHAR(255)
 );
 
 -- Interests table

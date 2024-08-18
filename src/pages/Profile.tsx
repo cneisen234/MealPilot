@@ -11,6 +11,7 @@ import {
   getUserLocation,
   updatePaymentMethod,
   getSubscriptionStatus,
+  checkPrimaryPaymentMethod,
 } from "../utils/api";
 import EditProfileModal from "../components/profile/EditProfileModal";
 import AddInterestCategoryModal from "../components/interests/AddInterestCategoryModal";
@@ -62,6 +63,7 @@ const Profile: React.FC = () => {
   );
   const [paymentUpdateSuccess, setPaymentUpdateSuccess] = useState(false);
   const [subscriptionStatus, setSubscriptionStatus] = useState<any>(null);
+  const [primaryPaymentMethod, setPrimaryPaymentMethod] = useState<any>(null);
 
   const stripe = useStripe();
   const elements = useElements();
@@ -83,10 +85,26 @@ const Profile: React.FC = () => {
     const locationState = appLocation.state as LocationState;
     if (locationState && locationState.fromOnboarding) {
       startTutorial();
+      locationState.fromOnboarding = false;
       // Clear the state after showing the tutorial
       window.history.replaceState({}, document.title);
     }
   }, [appLocation, startTutorial]);
+
+  useEffect(() => {
+    if (user?.id) {
+      fetchPrimaryPaymentMethod(user);
+    }
+  }, [user]);
+
+  const fetchPrimaryPaymentMethod = async (user: User) => {
+    try {
+      const paymentMethod = await checkPrimaryPaymentMethod(user?.id);
+      setPrimaryPaymentMethod(paymentMethod);
+    } catch (error) {
+      console.error("Error fetching primary payment method:", error);
+    }
+  };
 
   const fetchUserProfile = async () => {
     try {
@@ -125,23 +143,32 @@ const Profile: React.FC = () => {
       setPaymentUpdateError(null);
       setPaymentUpdateSuccess(false);
 
-      const { error, paymentMethod } = await stripe.createPaymentMethod({
-        type: "card",
-        card: cardElement,
-      });
+      try {
+        // Create a payment method
+        const { error, paymentMethod } = await stripe.createPaymentMethod({
+          type: "card",
+          card: cardElement,
+        });
 
-      if (error) {
-        // @ts-ignore
-        setPaymentUpdateError(error.message);
-      } else {
-        try {
-          await updatePaymentMethod(paymentMethod.id);
+        if (error) {
+          throw new Error(error.message);
+        }
+
+        // Send the payment method to your server
+        const response = await updatePaymentMethod(paymentMethod.id);
+
+        if (response.success) {
           setPaymentUpdateSuccess(true);
           setShowPaymentUpdate(false);
-        } catch (updateError) {
-          // @ts-ignore
-          setPaymentUpdateError(updateError.message);
+          // Refresh subscription status
+          fetchSubscriptionStatus();
+        } else {
+          throw new Error(
+            response.message || "Failed to update payment method"
+          );
         }
+      } catch (error: any) {
+        setPaymentUpdateError(error.message);
       }
     }
   };
@@ -183,7 +210,7 @@ const Profile: React.FC = () => {
       PaymentTier[user.payment_tier as unknown as keyof typeof PaymentTier];
     const { maxItems } = getMembershipLimits(userTier);
     const category = user.interests.find((int) => int.id === categoryId);
-    return category ? category.items.length < maxItems : false;
+    return category ? category?.items?.length < maxItems : false;
   };
 
   const handleAddInterestCategory = async (
@@ -367,7 +394,18 @@ const Profile: React.FC = () => {
   };
 
   if (!user) {
-    return <AnimatedTechIcon size={100} speed={10} />;
+    return (
+      <AnimatedTechIcon
+        style={{
+          position: "fixed",
+          top: "50%",
+          left: "50%",
+          transform: "translate(-50%, -50%)",
+        }}
+        size={100}
+        speed={10}
+      />
+    );
   }
 
   return (
@@ -614,6 +652,7 @@ const Profile: React.FC = () => {
                       value={newItemName}
                       onChange={(e) => setNewItemName(e.target.value)}
                       placeholder="New item"
+                      maxLength={100}
                       style={{
                         padding: "5px",
                         borderRadius: "3px",
@@ -749,8 +788,19 @@ const Profile: React.FC = () => {
             borderBottom: "1px solid rgba(0, 0, 0, 0.1)",
           }}>
           <span style={{ fontSize: "1.1em", color: "var(--text-color)" }}>
-            Update Payment Method
+            Payment Method
           </span>
+          {primaryPaymentMethod?.hasPrimaryPaymentMethod ? (
+            <div style={{ display: "flex", alignItems: "center" }}>
+              <FaCreditCard style={{ marginRight: "10px" }} />
+              <span>
+                {primaryPaymentMethod.brand} ending in{" "}
+                {primaryPaymentMethod.last4}
+              </span>
+            </div>
+          ) : (
+            <span>No payment method on file</span>
+          )}
           <button
             onClick={() => setShowPaymentUpdate(!showPaymentUpdate)}
             style={{

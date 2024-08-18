@@ -419,7 +419,18 @@ const Friends: React.FC = () => {
   );
 
   if (!user) {
-    return <AnimatedTechIcon size={100} speed={10} />;
+    return (
+      <AnimatedTechIcon
+        style={{
+          position: "fixed",
+          top: "50%",
+          left: "50%",
+          transform: "translate(-50%, -50%)",
+        }}
+        size={100}
+        speed={10}
+      />
+    );
   }
 
   return (

@@ -8,6 +8,7 @@ import {
 } from "../../utils/api";
 import { useAuth } from "../../context/AuthContext";
 import useDebounce from "../../hooks/useDebounce";
+import { emailFormatValidationHelper } from "../../helpers/emailFormatValidationHelper";
 
 const SignupForm: React.FC = () => {
   const [name, setName] = useState("");
@@ -71,6 +72,11 @@ const SignupForm: React.FC = () => {
       const emailAvailable = await checkEmailAvailability(email);
       const usernameAvailable = await checkUsernameAvailability(username);
 
+      if (!emailFormatValidationHelper(email)) {
+        setEmailError("Email address needs to be in correct format.");
+        setGeneralError("Please fix the errors before submitting.");
+        return;
+      }
       if (!emailAvailable.data.available) {
         setEmailError("This email is already taken.");
         setGeneralError("Please fix the errors before submitting.");

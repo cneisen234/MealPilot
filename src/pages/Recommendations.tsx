@@ -54,6 +54,14 @@ const Recommendations: React.FC = () => {
     }
   };
 
+  const removeStars = (text: string): string => {
+    return text.replace(/^\*\*|\*\*$/g, "").trim();
+  };
+
+  const removeRatingFromDescription = (text: string): string => {
+    return text.replace(/\s*\/10\s*$/, "").trim();
+  };
+
   const renderRecommendationsList = () => (
     <div style={{ maxWidth: "800px", margin: "0 auto", padding: "20px" }}>
       <h1 style={{ color: "var(--primary-color)", marginBottom: "20px" }}>
@@ -75,13 +83,13 @@ const Recommendations: React.FC = () => {
             boxShadow: "0 4px 6px rgba(0, 0, 0, 0.1)",
           }}>
           <h2 style={{ color: "var(--secondary-color)", marginBottom: "10px" }}>
-            {rec.category}
+            {removeStars(rec.category)}
           </h2>
           <h3 style={{ color: "var(--primary-color)", marginBottom: "10px" }}>
             {rec.item}
           </h3>
           <p style={{ color: "var(--text-color)", marginBottom: "10px" }}>
-            {rec.description}
+            {removeRatingFromDescription(rec.description)}
           </p>
           <div style={{ display: "flex", alignItems: "center" }}>
             <FaStar style={{ color: "#FFD700", marginRight: "5px" }} />
@@ -95,7 +103,18 @@ const Recommendations: React.FC = () => {
   );
 
   if (isLoading || !user) {
-    return <AnimatedTechIcon size={100} speed={10} />;
+    return (
+      <AnimatedTechIcon
+        style={{
+          position: "fixed",
+          top: "50%",
+          left: "50%",
+          transform: "translate(-50%, -50%)",
+        }}
+        size={100}
+        speed={10}
+      />
+    );
   }
 
   return (

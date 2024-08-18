@@ -56,25 +56,24 @@ const FormattedAIResponse: React.FC<FormattedAIResponseProps> = ({
         );
       }
 
-      const match = paragraph.match(/^(\d+)\.\s\*\*(.*?)\*\*:\s(.+)/);
+      const match = paragraph.match(/^(\d+)\.\s(.*?)(?:\n|$)/);
       if (match) {
-        const [, number, title, description] = match;
+        const [, number, title] = match;
+        const restOfParagraph = paragraph
+          .replace(/^(\d+)\.\s(.*?)(?:\n|$)/, "")
+          .trim();
         return (
           <div key={index} style={{ marginBottom: "10px" }}>
-            <p style={{ margin: 0 }}>
-              <span
-                style={{
-                  color: "var(--secondary-color)",
-                  marginRight: "10px",
-                }}>
-                {number}.
-              </span>
-              <span
-                style={{ color: "var(--primary-color)", fontWeight: "bold" }}>
-                {title}:
-              </span>{" "}
-              {description}
+            <p
+              style={{
+                margin: 0,
+                color: "purple",
+                fontWeight: "bold",
+                fontSize: "1.2em",
+              }}>
+              {number}. {title}
             </p>
+            {restOfParagraph && <p>{restOfParagraph}</p>}
           </div>
         );
       }

@@ -21,7 +21,7 @@ function cleanAIResponse(response) {
       let [title, content] = line.split(":");
       formattedLines.push(`**${title.trim()}:** ${content.trim()}`);
       inNumberedList = false;
-      listCounter = 1;
+      listCounter = listCounter++;
     }
     // Check for numbered items
     else if (line.match(/^\d+\./)) {
