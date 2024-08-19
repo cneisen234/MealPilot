@@ -9,9 +9,10 @@ import {
   updatePromptCount,
 } from "../utils/api";
 import { useAuth } from "../context/AuthContext";
-import FormattedAIResponse from "../components/FormattedAiResponse";
+import FormattedAIResponse from "../components/chatbot/FormattedAiResponse";
 import { Message, PaymentTier, User } from "../types";
-import AnimatedTechIcon from "../components/animatedTechIcon";
+import AnimatedTechIcon from "../components/common/AnimatedTechIcon";
+import "../styles/chatbot.css";
 
 interface FriendOption {
   value: number;
@@ -37,7 +38,6 @@ const Chatbot: React.FC = () => {
   ]);
   const [input, setInput] = useState("");
   const [isLoading, setIsLoading] = useState(false);
-  const [friends, setFriends] = useState<User[]>([]);
   const [selectedFriends, setSelectedFriends] = useState<number[]>([]);
   const [currentUser, setCurrentUser] = useState<User | null>(null);
   const messagesContainerRef = useRef<HTMLDivElement>(null);
@@ -50,7 +50,6 @@ const Chatbot: React.FC = () => {
   const [remainingPrompts, setRemainingPrompts] = useState<
     number | "Unlimited"
   >(0);
-  // @ts-ignore
 
   const promptsAreLimited =
     currentUser &&
@@ -81,7 +80,6 @@ const Chatbot: React.FC = () => {
           setCurrentUser(userResponse.data);
 
           const friendsResponse = await getFriends();
-          setFriends(friendsResponse.data);
           setFriendOptions(
             friendsResponse.data.map((friend: User) => ({
               value: friend.id,
@@ -175,31 +173,14 @@ const Chatbot: React.FC = () => {
       ]
     );
 
-  const handleInterestAdded = () => {
-    // Refresh user data or update local state as needed
-    getProfile();
-  };
-
   return (
-    <div
-      style={{
-        height: "100%",
-        display: "flex",
-        flexDirection: "column",
-        padding: "20px",
-      }}>
-      <div
-        style={{
-          display: "flex",
-          justifyContent: "space-between",
-          alignItems: "center",
-          marginBottom: "20px",
-        }}>
-        <h1 style={{ color: "var(--primary-color)", margin: 0 }}>
+    <div className="chatbot-container">
+      <div className="chatbot-header">
+        <h1 className="chatbot-title">
           <AnimatedTechIcon size={50} speed={3} /> VibeQuest AI
         </h1>
         {canUseFriendSelection && (
-          <div style={{ width: "300px" }}>
+          <div className="friend-selection">
             <Select
               isMulti
               options={friendOptions}
@@ -207,25 +188,9 @@ const Chatbot: React.FC = () => {
               onChange={handleFriendSelection}
               placeholder="Select friends..."
             />
-            <div
-              style={{
-                marginTop: "10px",
-                display: "flex",
-                flexWrap: "wrap",
-                gap: "5px",
-              }}>
+            <div className="selected-friends">
               {selectedFriendOptions.map((friend) => (
-                <span
-                  key={friend.value}
-                  style={{
-                    background: "var(--primary-color)",
-                    color: "white",
-                    padding: "2px 5px",
-                    borderRadius: "10px",
-                    fontSize: "0.8em",
-                    display: "flex",
-                    alignItems: "center",
-                  }}>
+                <span key={friend.value} className="selected-friend">
                   {friend.label}
                   <FaTimes
                     onClick={() => removeSelectedFriend(friend.value)}
@@ -237,61 +202,33 @@ const Chatbot: React.FC = () => {
           </div>
         )}
       </div>
-      <div
+      <p
         style={{
-          flex: 1,
-          display: "flex",
-          flexDirection: "column",
-          background: "var(--surface-color)",
-          borderRadius: "15px",
-          boxShadow: "0 4px 6px rgba(0, 0, 0, 0.1)",
-          overflow: "hidden",
+          marginBottom: "20px",
+          color: "var(--text-color)",
+          fontSize: "0.5em",
         }}>
-        <div
-          ref={messagesContainerRef}
-          style={{ flex: 1, overflowY: "auto", padding: "20px" }}>
+        <strong>Disclaimer:</strong> AI responses can at times provide
+        unpredictable or inaccurate results. We are continuously working on
+        updating and improving the model and inaccuracies will become less
+        apparent over time but will probably never go away entirely.
+      </p>
+      <div className="chatbot-messages">
+        <div ref={messagesContainerRef} className="messages-container">
           {messages.map((message) => (
             <div
               key={message.id}
-              style={{
-                display: "flex",
-                justifyContent:
-                  message.sender === "user" ? "flex-end" : "flex-start",
-                marginBottom: "15px",
-              }}>
-              <div
-                style={{
-                  maxWidth: "70%",
-                  padding: "10px 15px",
-                  borderRadius:
-                    message.sender === "user"
-                      ? "20px 20px 0 20px"
-                      : "20px 20px 20px 0",
-                  background:
-                    message.sender === "user"
-                      ? "var(--primary-color)"
-                      : "rgba(150, 111, 214, 0.1)",
-                  color:
-                    message.sender === "user" ? "white" : "var(--text-color)",
-                  display: "flex",
-                  alignItems: "center",
-                }}>
+              className={`message ${
+                message.sender === "user" ? "user-message" : "ai-message"
+              }`}>
+              <div className="message-content">
                 <div>
                   {message.sender === "ai" ? (
-                    <FormattedAIResponse
-                      response={message.text}
-                      currentUser={currentUser!}
-                      onInterestAdded={handleInterestAdded}
-                    />
+                    <FormattedAIResponse response={message.text} />
                   ) : (
-                    <div>{message.text}</div>
+                    <div style={{ fontSize: "0.8em" }}>{message.text}</div>
                   )}
-                  <div
-                    style={{
-                      fontSize: "0.7em",
-                      marginTop: "5px",
-                      opacity: 0.7,
-                    }}>
+                  <div className="message-timestamp">
                     {message.timestamp.toLocaleTimeString([], {
                       hour: "2-digit",
                       minute: "2-digit",
@@ -299,33 +236,15 @@ const Chatbot: React.FC = () => {
                   </div>
                 </div>
                 {message.sender === "user" &&
-                  (currentUser?.avatar ? (
+                  currentUser &&
+                  (currentUser.avatar ? (
                     <img
                       src={currentUser.avatar}
                       alt={currentUser.name}
-                      style={{
-                        width: "40px",
-                        height: "40px",
-                        borderRadius: "50%",
-                        marginLeft: "10px",
-                      }}
+                      className="user-avatar"
                     />
                   ) : (
-                    <div
-                      style={{
-                        width: "40px",
-                        height: "40px",
-                        borderRadius: "50%",
-                        backgroundColor: "white",
-                        color: "var(--primary-color)",
-                        display: "flex",
-                        alignItems: "center",
-                        justifyContent: "center",
-                        marginLeft: "10px",
-                        fontSize: "16px",
-                        fontWeight: "bold",
-                      }}>
-                      {/* @ts-ignore */}
+                    <div className="user-avatar">
                       {getInitials(currentUser.name)}
                     </div>
                   ))}
@@ -334,12 +253,7 @@ const Chatbot: React.FC = () => {
           ))}
           {isLoading && <AnimatedTechIcon size={100} speed={10} />}
         </div>
-        <div
-          style={{
-            display: "flex",
-            padding: "15px",
-            borderTop: "1px solid rgba(0, 0, 0, 0.1)",
-          }}>
+        <div className="input-container">
           <input
             type="text"
             value={input}
@@ -347,32 +261,12 @@ const Chatbot: React.FC = () => {
             onKeyPress={(e) => e.key === "Enter" && handleSend()}
             disabled={isLoading || remainingPrompts === 0}
             placeholder="Type your message..."
-            style={{
-              flex: 1,
-              border: "none",
-              padding: "10px 15px",
-              borderRadius: "25px",
-              fontSize: "16px",
-              outline: "none",
-              backgroundColor: "rgba(150, 111, 214, 0.1)",
-            }}
+            className="message-input"
           />
           <button
             onClick={handleSend}
             disabled={isLoading || remainingPrompts === 0}
-            style={{
-              background: "var(--primary-color)",
-              border: "none",
-              borderRadius: "50%",
-              width: "40px",
-              height: "40px",
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              marginLeft: "10px",
-              cursor: "pointer",
-              transition: "all 0.3s ease",
-            }}
+            className="send-button"
             onMouseEnter={(e) =>
               (e.currentTarget.style.transform = "scale(1.1)")
             }
@@ -382,7 +276,7 @@ const Chatbot: React.FC = () => {
             <FaPaperPlane color="white" />
           </button>
         </div>
-        <div style={{ textAlign: "right", margin: 10 }}>
+        <div className="remaining-prompts">
           {Number(remainingPrompts) === 0 &&
           remainingPrompts !== "Unlimited" ? (
             <p style={{ color: "red" }}>Out of prompts for today</p>

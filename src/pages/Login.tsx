@@ -41,7 +41,6 @@ const Login: React.FC = () => {
 
     try {
       const response = await login({ email: email.toLowerCase(), password });
-      console.log("Login submitted", response.data);
       localStorage.setItem("token", response.data.token);
       authLogin(response.data.token);
       checkAuthStatus();

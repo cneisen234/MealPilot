@@ -36,7 +36,7 @@ const EditProfileModal: React.FC<EditProfileModalProps> = ({
 
       const updatedUser = {
         ...response,
-        interests: user.interests, // Keep the original interests
+        interests: user.interests,
       };
 
       onSave(updatedUser);

@@ -1,23 +1,18 @@
 import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import {
-  FaArrowRight,
-  FaInfoCircle,
-  FaPlus,
-  FaMapMarkerAlt,
-} from "react-icons/fa";
-import { useAuth } from "../context/AuthContext";
+import { FaArrowRight, FaInfoCircle, FaPlus } from "react-icons/fa";
+import { useAuth } from "../../context/AuthContext";
 import {
   getProfile,
   updateProfile,
   addInterestCategory,
   addItemToCategory,
-} from "../utils/api";
-import { User, Interest, PrivacySetting } from "../types";
+} from "../../utils/api";
+import { User, Interest, PrivacySetting } from "../../types";
 import { motion, AnimatePresence } from "framer-motion";
-import "../styles/onboarding.css";
-import StarRating from "../components/StarRating";
-import AnimatedTechIcon from "./animatedTechIcon";
+import "../../styles/onboarding.css";
+import StarRating from "../profile/StarRating";
+import AnimatedTechIcon from "../common/AnimatedTechIcon";
 
 const MAX_CATEGORIES = 3;
 const MAX_ITEMS_PER_CATEGORY = 5;
@@ -127,7 +122,6 @@ const Onboarding: React.FC = () => {
         city,
         state,
       });
-      console.log("Updated user:", updatedUser);
 
       for (const category of categories) {
         const newInterest: Omit<Interest, "id"> = {

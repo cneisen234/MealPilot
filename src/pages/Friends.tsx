@@ -1,21 +1,8 @@
 import React, { useState, useEffect } from "react";
-import {
-  FaSearch,
-  FaUserPlus,
-  FaEnvelope,
-  FaComment,
-  FaCheck,
-  FaTimes,
-  FaLock,
-} from "react-icons/fa";
-import ProfileView from "../components/ProfileView";
-import AddFriendModal from "../components/AddFriendModal";
-import {
-  User,
-  FriendRequest,
-  FriendRequestStatus,
-  PaymentTier,
-} from "../types";
+import { FaSearch, FaUserPlus, FaCheck, FaTimes, FaLock } from "react-icons/fa";
+import ProfileView from "../components/friends/ProfileView";
+import AddFriendModal from "../components/friends/AddFriendModal";
+import { User, FriendRequest, PaymentTier } from "../types";
 import {
   getFriendRequests,
   getFriends,
@@ -23,7 +10,8 @@ import {
   sendFriendRequest,
   handleFriendRequest,
 } from "../utils/api";
-import AnimatedTechIcon from "../components/animatedTechIcon";
+import AnimatedTechIcon from "../components/common/AnimatedTechIcon";
+import { useNavigate } from "react-router-dom";
 
 const Friends: React.FC = () => {
   const [user, setUser] = useState<User | null>(null);
@@ -32,6 +20,7 @@ const Friends: React.FC = () => {
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedFriend, setSelectedFriend] = useState<User | null>(null);
   const [isAddFriendModalOpen, setIsAddFriendModalOpen] = useState(false);
+  const navigate = useNavigate();
 
   useEffect(() => {
     fetchCurrentUser();
@@ -86,10 +75,8 @@ const Friends: React.FC = () => {
   ) => {
     try {
       await sendFriendRequest(request);
-      // Optionally, you can show a success message here
     } catch (error) {
       console.error("Error sending friend request:", error);
-      // Optionally, you can show an error message here
     }
   };
 
@@ -337,7 +324,7 @@ const Friends: React.FC = () => {
                   justifyContent: "center",
                   width: "100%",
                 }}>
-                <button
+                {/* <button
                   style={{
                     background: "none",
                     border: "none",
@@ -352,8 +339,8 @@ const Friends: React.FC = () => {
                     // Add message functionality
                   }}>
                   <FaComment />
-                </button>
-                <button
+                </button> */}
+                {/* <button
                   style={{
                     background: "none",
                     border: "none",
@@ -367,7 +354,7 @@ const Friends: React.FC = () => {
                     // Add email functionality
                   }}>
                   <FaEnvelope />
-                </button>
+                </button> */}
               </div>
             </div>
           ))}
@@ -395,14 +382,14 @@ const Friends: React.FC = () => {
         size={50}
         style={{ color: "var(--primary-color)", marginBottom: "20px" }}
       />
-      <h2 style={{ marginBottom: "20px" }}>Upgrade to Access Friends List</h2>
+      <h3 style={{ marginBottom: "20px" }}>Upgrade to Access Friends List</h3>
       <p style={{ marginBottom: "20px", textAlign: "center", maxWidth: "80%" }}>
         Unlock the ability to connect with friends and expand your network by
         upgrading your account.
       </p>
       <button
         onClick={() => {
-          /* Navigate to upgrade page */
+          navigate("/upgrade");
         }}
         style={{
           background: "var(--primary-color)",

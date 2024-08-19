@@ -15,20 +15,19 @@ import Chatbot from "./pages/Chatbot";
 import Friends from "./pages/Friends";
 import Recommendations from "./pages/Recommendations";
 import Upgrade from "./pages/Upgrade";
-import Header from "./components/common/Header";
-import SideNavbar from "./components/common/SideNavbar";
-import Footer from "./components/common/Footer";
+import Header from "./components/layout/Header";
+import SideNavbar from "./components/layout/SideNavbar";
 import "./styles/main.css";
-import PrivateRoute from "./components/PrivateRoute";
+import PrivateRoute from "./components/auth/PrivateRoute";
 import { AuthProvider, useAuth } from "./context/AuthContext";
-import Onboarding from "./components/Onboarding";
+import Onboarding from "./components/tutorial/Onboarding";
 import ForgotPassword from "./components/auth/ForgotPassword";
 import ResetPassword from "./components/auth/ResetPassword";
 import ContactUs from "./pages/ContactUs";
 import CloseAccount from "./components/profile/CloseAccount";
 import ComingSoon from "./pages/ComingSoon";
 import { TutorialProvider } from "./context/TutorialContext";
-import NewUserTutorial from "./components/NewUserTutorial";
+import NewUserTutorial from "./components/tutorial/NewUserTutorial";
 import { Elements } from "@stripe/react-stripe-js";
 import { loadStripe } from "@stripe/stripe-js";
 
@@ -56,7 +55,7 @@ const AppContent: React.FC = () => {
           style={{
             flex: 1,
             overflow: "auto",
-            padding: isOnboardingRoute ? 0 : "20px",
+            padding: isOnboardingRoute ? 0 : "10px",
           }}>
           <Routes>
             <Route
@@ -133,7 +132,6 @@ const AppContent: React.FC = () => {
           </Routes>
         </main>
       </div>
-      {isAuthenticated && !isOnboardingRoute && <Footer />}
     </div>
   );
 };

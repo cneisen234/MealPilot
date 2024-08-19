@@ -1,14 +1,16 @@
 import React, { useState, useEffect } from "react";
-import { FaStar, FaLightbulb } from "react-icons/fa";
-import AnimatedTechIcon from "../components/animatedTechIcon";
+import { FaStar, FaLightbulb, FaThermometerHalf, FaLock } from "react-icons/fa";
+import AnimatedTechIcon from "../components/common/AnimatedTechIcon";
 import { User, PaymentTier, Recommendation } from "../types";
 import { getProfile, getDailyRecommendations } from "../utils/api";
+import { useNavigate } from "react-router-dom";
 
 const Recommendations: React.FC = () => {
   const [user, setUser] = useState<User | null>(null);
   const [recommendations, setRecommendations] = useState<Recommendation[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [lastFetchDate, setLastFetchDate] = useState<string | null>(null);
+  const navigate = useNavigate();
 
   useEffect(() => {
     fetchUserAndRecommendations();
@@ -37,6 +39,12 @@ const Recommendations: React.FC = () => {
     }
   };
 
+  const getConfidenceColor = (confidence: number) => {
+    if (confidence >= 8) return "green";
+    if (confidence >= 5) return "orange";
+    return "red";
+  };
+
   const fetchDailyRecommendations = async () => {
     const currentDate = new Date().toISOString().split("T")[0];
 
@@ -63,14 +71,30 @@ const Recommendations: React.FC = () => {
   };
 
   const renderRecommendationsList = () => (
-    <div style={{ maxWidth: "800px", margin: "0 auto", padding: "20px" }}>
-      <h1 style={{ color: "var(--primary-color)", marginBottom: "20px" }}>
+    <div style={{ maxWidth: "800px", margin: "0 auto", padding: "10px" }}>
+      <h2 style={{ color: "var(--primary-color)", marginBottom: "20px" }}>
         <FaLightbulb style={{ marginRight: "10px" }} />
         Daily Recommendations
-      </h1>
-      <p style={{ marginBottom: "20px", color: "var(--text-color)" }}>
+      </h2>
+      <p
+        style={{
+          marginBottom: "20px",
+          color: "var(--text-color)",
+          fontSize: "1em",
+        }}>
         Based on your interests, our AI suggests the following recommendations
         for you today:
+      </p>
+      <p
+        style={{
+          marginBottom: "20px",
+          color: "var(--text-color)",
+          fontSize: "0.5em",
+        }}>
+        <strong>Disclaimer:</strong> AI responses can at times provide
+        unpredictable or inaccurate results. We are continuously working on
+        updating and improving the model and inaccuracies will become less
+        apparent over time but will probably never go away entirely.
       </p>
       {recommendations.map((rec) => (
         <div
@@ -91,11 +115,40 @@ const Recommendations: React.FC = () => {
           <p style={{ color: "var(--text-color)", marginBottom: "10px" }}>
             {removeRatingFromDescription(rec.description)}
           </p>
-          <div style={{ display: "flex", alignItems: "center" }}>
-            <FaStar style={{ color: "#FFD700", marginRight: "5px" }} />
-            <span style={{ color: "var(--text-color)" }}>
-              {rec.rating.toFixed(1)}
-            </span>
+          <div
+            style={{
+              display: "flex",
+              alignItems: "center",
+              width: "100%",
+            }}>
+            <div
+              style={{
+                display: "flex",
+                alignItems: "center",
+                width: 100,
+              }}>
+              <FaStar style={{ color: "#FFD700", marginRight: "5px" }} />
+              <span style={{ color: "var(--text-color)" }}>
+                {rec.rating.toFixed(1)}
+              </span>
+            </div>
+            <div
+              style={{
+                display: "flex",
+                justifyContent: "flex-end",
+                alignItems: "center",
+                width: 200,
+              }}>
+              <FaThermometerHalf
+                style={{
+                  color: getConfidenceColor(rec.confidence),
+                  marginRight: "5px",
+                }}
+              />
+              <span style={{ color: getConfidenceColor(rec.confidence) }}>
+                Confidence: {rec.confidence}/10
+              </span>
+            </div>
           </div>
         </div>
       ))}
@@ -125,7 +178,54 @@ const Recommendations: React.FC = () => {
         PaymentTier.Owner ? (
         renderRecommendationsList()
       ) : (
-        <div>Upgrade to premium to access daily recommendations!</div>
+        <div
+          style={{
+            position: "absolute",
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            display: "flex",
+            flexDirection: "column",
+            alignItems: "center",
+            justifyContent: "center",
+            backgroundColor: "rgba(255, 255, 255, 0.9)",
+            zIndex: 10,
+          }}>
+          <FaLock
+            size={50}
+            style={{ color: "var(--primary-color)", marginBottom: "20px" }}
+          />
+          <h2 style={{ marginBottom: "0px" }}>Upgrade to Premium</h2>
+          <h3 style={{ marginBottom: "20px" }}>
+            To Access Daily Recommendations
+          </h3>
+          <p
+            style={{
+              marginBottom: "20px",
+              textAlign: "center",
+              maxWidth: "80%",
+              fontSize: "1em",
+            }}>
+            Unlock access to daily personalized recommendations based on your
+            interests and location.
+          </p>
+          <button
+            onClick={() => {
+              navigate("/upgrade");
+            }}
+            style={{
+              background: "var(--primary-color)",
+              color: "white",
+              border: "none",
+              borderRadius: "25px",
+              padding: "10px 20px",
+              fontSize: "16px",
+              cursor: "pointer",
+            }}>
+            Upgrade Now
+          </button>
+        </div>
       )}
     </div>
   );

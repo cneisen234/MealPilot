@@ -1,8 +1,8 @@
 import React, { useEffect, useState } from "react";
 import { FaCheck, FaTimes, FaCrown, FaInfoCircle } from "react-icons/fa";
-import ConfirmationModal from "../components/payments/ConfirmationModal";
+import ConfirmationModal from "../components/common/ConfirmationModal";
 import UpgradeModal from "../components/payments/UpgradeModal";
-import InfoModal from "../components/InfoModal";
+import InfoModal from "../components/common/InfoModal";
 import { PaymentTier, User } from "../types";
 import {
   downgradeUser,
@@ -10,7 +10,7 @@ import {
   getSubscriptionStatus,
   cancelDowngrade,
 } from "../utils/api";
-import AnimatedTechIcon from "../components/animatedTechIcon";
+import AnimatedTechIcon from "../components/common/AnimatedTechIcon";
 
 const Upgrade: React.FC = () => {
   const [currentUser, setCurrentUser] = useState<User | null>(null);
@@ -166,7 +166,6 @@ const Upgrade: React.FC = () => {
     currentTier,
     subscriptionStatus,
   }) => {
-    console.log(subscriptionStatus, tier);
     const isCurrentPlan = tier === currentTier;
     let isScheduledTier =
       Number(subscriptionStatus?.scheduledDowngrade?.newPlan) === tier;
@@ -233,9 +232,13 @@ const Upgrade: React.FC = () => {
           style={{
             fontSize: "32px",
             fontWeight: "bold",
-            marginBottom: "20px",
           }}>
           {price}
+          {PaymentTier[tier] !== "Free" && (
+            <p style={{ marginTop: "-10px", fontSize: "0.5em" }}>
+              + Tax where applicable
+            </p>
+          )}
         </div>
         <ul style={{ listStyle: "none", padding: 0, margin: 0, width: "100%" }}>
           {features.map((feature, index) => (
@@ -352,7 +355,7 @@ const Upgrade: React.FC = () => {
         height: "100%",
         display: "flex",
         flexDirection: "column",
-        padding: "20px",
+        padding: "0px",
         boxSizing: "border-box",
       }}>
       <h1

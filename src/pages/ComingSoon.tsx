@@ -1,26 +1,22 @@
 import React from "react";
-import {
-  FaUsers,
-  FaChartLine,
-  FaMobileAlt,
-  FaLock,
-  FaCalendarAlt,
-} from "react-icons/fa";
+import { FaUsers, FaMobileAlt, FaGift } from "react-icons/fa";
+import { FaHeartCirclePlus } from "react-icons/fa6";
+import { VscLightbulbSparkle } from "react-icons/vsc";
 import "../styles/comingsoon.css";
 
 const ComingSoon: React.FC = () => {
   const features = [
     {
       icon: <FaUsers />,
-      title: "Advanced Friend Matching",
+      title: "Geolocation search for likeminded people",
       description:
-        "AI-powered algorithm to connect you with like-minded individuals based on shared interests and compatibility scores.",
+        "We are adding a feature that uses geolocation to find people near you that have similar interests. This will allow you to ask the AI if there's anyone near you that might enjoy a specific activity or event [or really anything]. The AI will use geolocation to search for people and then allow you to prompt them in the app",
     },
     {
-      icon: <FaChartLine />,
-      title: "Interest Trends and Analytics",
+      icon: <FaHeartCirclePlus />,
+      title: "Add interests from chat",
       description:
-        "Visualize how your interests evolve over time and compare them with global or local trends.",
+        "We are working on creating a feature where you can add the AI's suggestions as interest items on your profile with the click of a button",
     },
     {
       icon: <FaMobileAlt />,
@@ -29,16 +25,15 @@ const ComingSoon: React.FC = () => {
         "Take VibeQuest on the go with our upcoming mobile application for iOS and Android.",
     },
     {
-      icon: <FaLock />,
-      title: "Enhanced Privacy Controls",
+      icon: <VscLightbulbSparkle />,
+      title: "Suggested Prompts",
       description:
-        "Granular settings to control who sees what aspects of your profile and interests.",
+        "Allow our AI to suggest questions and prompts for you for the moments where you're not quite sure what to say.",
     },
     {
-      icon: <FaCalendarAlt />,
-      title: "Interest-Based Events",
-      description:
-        "Automatically curated and suggested events in your area based on your unique interest profile.",
+      icon: <FaGift />,
+      title: "Gift a Plan to a Friend",
+      description: "Create the ability to buy a free month for a friend",
     },
   ];
 
@@ -46,8 +41,8 @@ const ComingSoon: React.FC = () => {
     <div className="enhanced-coming-soon-container">
       <h1 className="enhanced-coming-soon-title">Coming Soon to VibeQuest</h1>
       <p className="enhanced-coming-soon-description">
-        We're constantly working to improve your experience. Check out these
-        exciting features on the horizon!
+        We're constantly working to enhance your quest. Check out these exciting
+        features on the horizon!
       </p>
       <div className="enhanced-feature-grid">
         {features.map((feature, index) => (
@@ -59,12 +54,6 @@ const ComingSoon: React.FC = () => {
             </p>
           </div>
         ))}
-      </div>
-      <div className="enhanced-notification-section">
-        <p className="enhanced-notification-text">
-          Excited about these upcoming features? Stay tuned for updates!
-        </p>
-        <button className="enhanced-notify-button">Get Notified</button>
       </div>
     </div>
   );

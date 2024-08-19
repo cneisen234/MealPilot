@@ -14,7 +14,6 @@ const Notifications: React.FC = () => {
   const fetchNotifications = async () => {
     try {
       const response = await getNotifications();
-      console.log(response);
       setNotifications(response.data);
     } catch (error) {
       console.error("Error fetching notifications:", error);

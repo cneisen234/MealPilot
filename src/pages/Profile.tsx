@@ -15,9 +15,9 @@ import {
 } from "../utils/api";
 import EditProfileModal from "../components/profile/EditProfileModal";
 import AddInterestCategoryModal from "../components/interests/AddInterestCategoryModal";
-import ConfirmDeleteModal from "../components/ConfirmDeleteModal";
-import InfoModal from "../components/InfoModal";
-import StarRating from "../components/StarRating";
+import ConfirmDeleteModal from "../components/common/ConfirmDeleteModal";
+import InfoModal from "../components/common/InfoModal";
+import StarRating from "../components/profile/StarRating";
 import { useLocation } from "react-router-dom";
 import { useTutorial } from "../context/TutorialContext";
 import {
@@ -25,25 +25,21 @@ import {
   FaChevronUp,
   FaPlus,
   FaMinus,
-  FaStar,
   FaLock,
   FaTimes,
-  FaUserPlus,
   FaInfoCircle,
   FaCreditCard,
 } from "react-icons/fa";
 import { Link } from "react-router-dom";
-import AnimatedTechIcon from "../components/animatedTechIcon";
+import AnimatedTechIcon from "../components/common/AnimatedTechIcon";
 import { CardElement, useElements, useStripe } from "@stripe/react-stripe-js";
+import "../styles/profile.css";
 
 const Profile: React.FC = () => {
   const { startTutorial } = useTutorial();
   const [user, setUser] = useState<User | null>(null);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [isAddInterestModalOpen, setIsAddInterestModalOpen] = useState(false);
-  const [selectedCategory, setSelectedCategory] = useState<Interest | null>(
-    null
-  );
   const [newItemName, setNewItemName] = useState("");
   const [newItemRating, setNewItemRating] = useState(5);
   const [isHovering, setIsHovering] = useState(false);
@@ -356,9 +352,6 @@ const Profile: React.FC = () => {
 
   const toggleCategory = (interestId: number) => {
     setExpandedCategory(expandedCategory === interestId ? null : interestId);
-    setSelectedCategory(
-      user?.interests.find((i) => i.id === interestId) || null
-    );
   };
 
   const handleProfilePictureClick = () => {
@@ -409,28 +402,11 @@ const Profile: React.FC = () => {
   }
 
   return (
-    <div style={{ maxWidth: "800px", margin: "0 auto", padding: "20px" }}>
-      <div
-        style={{
-          background: "var(--surface-color)",
-          borderRadius: "15px",
-          padding: "30px",
-          boxShadow: "0 4px 6px rgba(0, 0, 0, 0.1)",
-        }}>
-        <div
-          style={{
-            display: "flex",
-            alignItems: "flex-start",
-            marginBottom: "20px",
-          }}>
+    <div>
+      <div className="profile-container">
+        <div className="profile-card">
           <div
-            style={{
-              position: "relative",
-              width: "150px",
-              height: "150px",
-              cursor: "pointer",
-              marginRight: "30px",
-            }}
+            className="profile-picture"
             onMouseEnter={() => setIsHovering(true)}
             onMouseLeave={() => setIsHovering(false)}
             onClick={handleProfilePictureClick}>
@@ -439,11 +415,6 @@ const Profile: React.FC = () => {
                 src={user.avatar}
                 alt={user.name}
                 style={{
-                  width: "100%",
-                  height: "100%",
-                  borderRadius: "50%",
-                  border: "3px solid var(--primary-color)",
-                  transition: "filter 0.3s ease",
                   filter: isHovering ? "brightness(70%)" : "none",
                 }}
               />
@@ -459,7 +430,6 @@ const Profile: React.FC = () => {
                   alignItems: "center",
                   fontSize: "48px",
                   color: "white",
-                  transition: "filter 0.3s ease",
                   filter: isHovering ? "brightness(70%)" : "none",
                 }}>
                 {getInitials(user.name)}
@@ -480,53 +450,33 @@ const Profile: React.FC = () => {
               </div>
             )}
           </div>
-          <div style={{ flex: 1 }}>
-            <h1
-              style={{
-                fontSize: "2.5em",
-                marginBottom: "5px",
-                color: "var(--primary-color)",
-              }}>
-              {user.name}
-            </h1>
-            <p
-              style={{
-                fontSize: "1.2em",
-                color: "var(--text-color)",
-                marginBottom: "15px",
-              }}>
-              @{user.username}
-            </p>
-            <p style={{ color: "var(--text-color)", marginBottom: "10px" }}>
-              <strong>Bio:</strong> {user.bio || "No bio added yet"}
-            </p>
-            <p style={{ color: "var(--text-color)", marginBottom: "10px" }}>
-              <strong>Location:</strong>{" "}
-              {userLocation ? (
-                `${userLocation.city}, ${userLocation.state}`
-              ) : user ? (
-                `${user.city || "Unknown"}, ${user.state || "Unknown"}`
-              ) : (
-                <AnimatedTechIcon size={10} speed={10} />
-              )}
-            </p>
-            <p style={{ color: "var(--text-color)", marginBottom: "10px" }}>
-              <strong>Membership:</strong>{" "}
-              {user.payment_tier !== undefined
-                ? user.payment_tier
-                : "Membership status not set"}
-            </p>
+          <div className="profile-info">
+            <h2 className="profile-name">{user.name}</h2>
+            <p className="profile-username">@{user.username}</p>
+            <div className="profile-details">
+              <p>
+                <strong>Bio:</strong> {user.bio || "No bio added yet"}
+              </p>
+              <p>
+                <strong>Location:</strong>{" "}
+                {userLocation ? (
+                  `${userLocation.city}, ${userLocation.state}`
+                ) : user ? (
+                  `${user.city || "Unknown"}, ${user.state || "Unknown"}`
+                ) : (
+                  <AnimatedTechIcon size={10} speed={10} />
+                )}
+              </p>
+              <p>
+                <strong>Membership:</strong>{" "}
+                {user.payment_tier !== undefined
+                  ? user.payment_tier
+                  : "Membership status not set"}
+              </p>
+            </div>
             <button
               onClick={() => setIsEditModalOpen(true)}
-              style={{
-                background: "var(--primary-color)",
-                color: "white",
-                border: "none",
-                padding: "10px 20px",
-                borderRadius: "5px",
-                cursor: "pointer",
-                marginTop: "10px",
-              }}>
+              className="edit-profile-button">
               Edit Profile
             </button>
           </div>
@@ -618,6 +568,7 @@ const Profile: React.FC = () => {
                         justifyContent: "space-between",
                         alignItems: "center",
                         marginBottom: "5px",
+                        fontSize: 12,
                       }}>
                       <span>{item.name}</span>
                       <div style={{ display: "flex", alignItems: "center" }}>
@@ -719,34 +670,10 @@ const Profile: React.FC = () => {
       </div>
       <br />
       {/* Account Management section */}
-      <div
-        style={{
-          background: "var(--surface-color)",
-          borderRadius: "15px",
-          padding: "20px",
-          boxShadow: "0 4px 6px rgba(0, 0, 0, 0.1)",
-        }}>
-        <h2
-          style={{
-            fontSize: "1.6em",
-            color: "var(--primary-color)",
-            marginBottom: "20px",
-          }}>
-          Account Management
-        </h2>
-        <div
-          style={{
-            padding: "15px 0",
-            borderBottom: "1px solid rgba(0, 0, 0, 0.1)",
-          }}>
-          <h3
-            style={{
-              fontSize: "1.2em",
-              color: "var(--text-color)",
-              marginBottom: "10px",
-            }}>
-            Subscription Status
-          </h3>
+      <div className="account-management">
+        <h2>Account Management</h2>
+        <div className="subscription-status">
+          <h3>Subscription Status</h3>
           {subscriptionStatus ? (
             <div>
               <p>
@@ -764,7 +691,7 @@ const Profile: React.FC = () => {
                 </p>
               )}
               {subscriptionStatus.scheduledDowngrade && (
-                <p style={{ color: "var(--secondary-color)" }}>
+                <p className="scheduled-downgrade">
                   <FaInfoCircle style={{ marginRight: "5px" }} />
                   Scheduled downgrade to{" "}
                   {subscriptionStatus.scheduledDowngrade.newPlan} on{" "}
@@ -779,17 +706,8 @@ const Profile: React.FC = () => {
           )}
         </div>
 
-        <div
-          style={{
-            display: "flex",
-            justifyContent: "space-between",
-            alignItems: "center",
-            padding: "15px 0",
-            borderBottom: "1px solid rgba(0, 0, 0, 0.1)",
-          }}>
-          <span style={{ fontSize: "1.1em", color: "var(--text-color)" }}>
-            Payment Method
-          </span>
+        <div className="payment-method">
+          <span className="payment-method-text">Payment Method</span>
           {primaryPaymentMethod?.hasPrimaryPaymentMethod ? (
             <div style={{ display: "flex", alignItems: "center" }}>
               <FaCreditCard style={{ marginRight: "10px" }} />
@@ -803,20 +721,7 @@ const Profile: React.FC = () => {
           )}
           <button
             onClick={() => setShowPaymentUpdate(!showPaymentUpdate)}
-            style={{
-              backgroundColor: "var(--primary-color)",
-              color: "white",
-              border: "none",
-              padding: "10px 20px",
-              borderRadius: "25px",
-              cursor: "pointer",
-              fontSize: "16px",
-              fontWeight: "bold",
-              width: "180px",
-              display: "flex",
-              justifyContent: "center",
-              alignItems: "center",
-            }}>
+            className="update-payment-button">
             {showPaymentUpdate ? (
               <FaTimes style={{ paddingRight: 5 }} />
             ) : (
@@ -829,7 +734,7 @@ const Profile: React.FC = () => {
         {showPaymentUpdate && (
           <form
             onSubmit={handleUpdatePaymentMethod}
-            style={{ marginTop: "20px" }}>
+            className="update-payment-form">
             <CardElement
               options={{
                 style: {
@@ -844,15 +749,7 @@ const Profile: React.FC = () => {
             <button
               type="submit"
               disabled={!stripe}
-              style={{
-                marginTop: "20px",
-                backgroundColor: "var(--primary-color)",
-                color: "white",
-                border: "none",
-                padding: "10px 15px",
-                borderRadius: "25px",
-                cursor: "pointer",
-              }}>
+              className="update-payment-submit">
               Update Payment Method
             </button>
           </form>
@@ -869,30 +766,10 @@ const Profile: React.FC = () => {
             Payment method updated successfully!
           </div>
         )}
-        <div
-          style={{
-            display: "flex",
-            justifyContent: "space-between",
-            alignItems: "center",
-            padding: "15px 0",
-            borderBottom: "1px solid rgba(0, 0, 0, 0.1)",
-          }}>
-          <span style={{ fontSize: "1.1em", color: "var(--text-color)" }}>
-            Close Account
-          </span>
-          <Link
-            to="/close-account"
-            className="btn"
-            style={{
-              backgroundColor: "#ff6b6b", // A softer red color
-              color: "white",
-              border: "none",
-              padding: "10px 15px",
-              borderRadius: "25px",
-              textDecoration: "none",
-              display: "flex",
-              alignItems: "center",
-            }}>
+
+        <div className="close-account">
+          <span className="payment-method-text">Close Account</span>
+          <Link to="/close-account" className="close-account-button">
             <FaTimes style={{ marginRight: "5px" }} /> Close Account
           </Link>
         </div>

@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { getSubscriptionStatus } from "../../utils/api";
+import AnimatedTechIcon from "../common/AnimatedTechIcon";
 
 const SubscriptionStatus: React.FC = () => {
   const [status, setStatus] = useState<any>(null);
@@ -17,7 +18,7 @@ const SubscriptionStatus: React.FC = () => {
     fetchStatus();
   }, []);
 
-  if (!status) return <div>Loading...</div>;
+  if (!status) return <AnimatedTechIcon speed={10} />;
 
   return (
     <div>

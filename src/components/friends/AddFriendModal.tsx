@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from "react";
 import { FaTimes, FaSearch, FaUserPlus } from "react-icons/fa";
-import { User, FriendRequest, FriendRequestStatus } from "../types";
-import api from "../utils/api";
+import { User, FriendRequest, FriendRequestStatus } from "../../types";
+import api from "../../utils/api";
+import InfoModal from "../common/InfoModal";
 
 interface AddFriendModalProps {
   onClose: () => void;
@@ -23,6 +24,8 @@ const AddFriendModal: React.FC<AddFriendModalProps> = ({
   const [searchTerm, setSearchTerm] = useState("");
   const [users, setUsers] = useState<User[]>([]);
   const [filteredUsers, setFilteredUsers] = useState<User[]>([]);
+  const [infoModalMessage, setInfoModalMessage] = useState("");
+  const [isInfoModalOpen, setIsInfoModalOpen] = useState(false);
 
   useEffect(() => {
     const fetchUsers = async () => {
@@ -54,7 +57,8 @@ const AddFriendModal: React.FC<AddFriendModalProps> = ({
 
   const handleSendFriendRequest = async (receiverId: number) => {
     if (currentFriendsCount >= maxFriends) {
-      alert(
+      setIsInfoModalOpen(true);
+      setInfoModalMessage(
         "You've reached the maximum number of friends for your current plan."
       );
       return;
@@ -66,7 +70,7 @@ const AddFriendModal: React.FC<AddFriendModalProps> = ({
         receiverId,
         status: FriendRequestStatus.Pending,
       };
-      await onSendFriendRequest(request);
+      onSendFriendRequest(request);
 
       // Close the modal or update UI as needed
       onClose();
@@ -232,6 +236,11 @@ const AddFriendModal: React.FC<AddFriendModalProps> = ({
           ))}
         </div>
       </div>
+      <InfoModal
+        isOpen={isInfoModalOpen}
+        onClose={() => setIsInfoModalOpen(false)}
+        message={infoModalMessage}
+      />
     </div>
   );
 };

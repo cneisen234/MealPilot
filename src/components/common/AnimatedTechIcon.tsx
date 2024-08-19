@@ -1,5 +1,5 @@
 import React from "react";
-import "../styles/animatedtechicon.css";
+import "../../styles/animatedtechicon.css";
 
 interface AnimatedTechIconProps {
   size?: number;

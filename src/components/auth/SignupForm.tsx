@@ -96,17 +96,15 @@ const SignupForm: React.FC = () => {
         email: email.toLowerCase(),
         password,
       });
-      console.log("Signup successful", signupResponse.data);
 
       // Login
       const loginResponse = await login({ email, password });
-      console.log("Login successful", loginResponse.data);
 
       // Store the token
       localStorage.setItem("token", loginResponse.data.token);
 
       // Update auth status
-      await checkAuthStatus();
+      checkAuthStatus();
 
       // Redirect to onboarding page
       navigate("/onboarding");

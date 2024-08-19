@@ -1,0 +1,45 @@
+.header {
+    background-color: var(--surface-color);
+    padding: 1rem;
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.header-title {
+    font-size: 24px;
+    font-weight: bold;
+    background: linear-gradient(45deg, var(--primary-color), var(--secondary-color));
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+    color: transparent;
+}
+
+.header-nav {
+    display: flex;
+    align-items: center;
+}
+
+.logout-button {
+    color: var(--text-color);
+    text-decoration: none;
+    font-weight: 600;
+    background: none;
+    border: none;
+    cursor: pointer;
+    margin-left: 20px;
+}
+
+@media (max-width: 768px) {
+    .header {
+        padding: 0.8rem 1rem;
+
+    }
+
+    .header-title {
+        font-size: 20px;
+        margin-left: 35%;
+    }
+}

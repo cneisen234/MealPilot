@@ -33,7 +33,7 @@ const StarRating: React.FC<StarRatingProps> = ({
             />
             <FaStar
               color={(hover || rating) >= ratingValue ? "#ffc107" : "#e4e5e9"}
-              size={editable ? 20 : 16}
+              size={10}
               onMouseEnter={() => editable && setHover(ratingValue)}
               onMouseLeave={() => editable && setHover(null)}
             />

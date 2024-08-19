@@ -1,5 +1,5 @@
 import React from "react";
-import "../styles/tutorialmodal.css"; // We'll create this CSS file
+import "../../styles/tutorialmodal.css"; // We'll create this CSS file
 
 interface TutorialModalProps {
   isOpen: boolean;

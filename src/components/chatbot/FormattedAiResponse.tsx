@@ -1,16 +1,12 @@
 import React, { useState, useEffect, useRef } from "react";
-import { User } from "../types";
+import { User } from "../../types";
 
 interface FormattedAIResponseProps {
   response: string;
-  currentUser: User;
-  onInterestAdded: () => void;
 }
 
 const FormattedAIResponse: React.FC<FormattedAIResponseProps> = ({
   response,
-  currentUser,
-  onInterestAdded,
 }) => {
   const [displayedText, setDisplayedText] = useState("");
   const typingSpeed = 5; // milliseconds per character
@@ -69,17 +65,20 @@ const FormattedAIResponse: React.FC<FormattedAIResponseProps> = ({
                 margin: 0,
                 color: "purple",
                 fontWeight: "bold",
-                fontSize: "1.2em",
+                fontSize: "0.8em",
               }}>
               {number}. {title}
             </p>
-            {restOfParagraph && <p>{restOfParagraph}</p>}
+            {restOfParagraph && (
+              <p style={{ fontSize: "0.8em" }}>{restOfParagraph}</p>
+            )}
           </div>
         );
       }
 
       return (
         <p
+          style={{ fontSize: "0.8em" }}
           key={index}
           dangerouslySetInnerHTML={{
             __html: paragraph.replace(/\*\*(.*?)\*\*/g, "<strong>$1</strong>"),
@@ -97,7 +96,7 @@ const FormattedAIResponse: React.FC<FormattedAIResponseProps> = ({
         position: "relative",
         maxHeight: "400px",
         overflowY: "auto",
-        padding: "10px",
+        padding: "5px",
         backgroundColor: "var(--surface-color)",
         borderRadius: "10px",
         boxShadow: "0 2px 5px rgba(0,0,0,0.1)",

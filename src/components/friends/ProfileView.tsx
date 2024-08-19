@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { FaTimes, FaChevronDown, FaChevronUp } from "react-icons/fa";
-import { getFriendProfile } from "../utils/api";
-import AnimatedTechIcon from "./animatedTechIcon";
+import { getFriendProfile } from "../../utils/api";
+import AnimatedTechIcon from "../common/AnimatedTechIcon";
 
 interface FriendProfile {
   id: number;

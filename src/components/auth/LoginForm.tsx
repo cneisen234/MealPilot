@@ -15,7 +15,6 @@ const LoginForm: React.FC = () => {
     e.preventDefault();
     try {
       const response = await login({ email, password });
-      console.log("Login submitted", response.data);
       localStorage.setItem("token", response.data.token);
       authLogin(response.data.token);
       setTimeout(() => {

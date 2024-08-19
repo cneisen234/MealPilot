@@ -82,6 +82,7 @@ export interface Recommendation {
   category: string;
   item: string;
   description: string;
+  confidence: number;
   rating: number;
 }
 

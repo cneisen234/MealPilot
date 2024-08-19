@@ -1,8 +1,8 @@
 // src/pages/Interests.tsx
 import React, { useState, useEffect } from "react";
 import InterestList from "../components/interests/InterestList";
-import { Interest, Item } from "../types";
-import { getUserInterests, addInterest } from "../utils/api";
+import { Interest } from "../types";
+import { getUserInterests } from "../utils/api";
 
 const Interests: React.FC = () => {
   const [interests, setInterests] = useState<Interest[]>([]);
@@ -19,15 +19,6 @@ const Interests: React.FC = () => {
 
     fetchInterests();
   }, []);
-
-  const handleAddInterest = async (newInterest: Omit<Interest, "id">) => {
-    try {
-      const response = await addInterest(newInterest);
-      setInterests([...interests, response.data]);
-    } catch (error) {
-      console.error("Error adding interest:", error);
-    }
-  };
 
   return (
     <div>

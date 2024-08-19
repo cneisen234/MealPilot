@@ -1,7 +1,7 @@
 import React, { useEffect, useRef, useState } from "react";
 import { PaymentTier, User } from "../../types";
 import { CardElement, useStripe, useElements } from "@stripe/react-stripe-js";
-import { FaCreditCard, FaCrown, FaInfoCircle, FaSpinner } from "react-icons/fa";
+import { FaCrown, FaInfoCircle, FaSpinner } from "react-icons/fa";
 import {
   upgradeUser,
   confirmUpgrade,
@@ -26,7 +26,6 @@ const UpgradeModal: React.FC<UpgradeModalProps> = ({
   const stripe = useStripe();
   const elements = useElements();
   const [isProcessing, setIsProcessing] = useState(false);
-  const [error, setError] = useState<string | null>(null);
   const [agreedToTerms, setAgreedToTerms] = useState(false);
   const [highlightCheckbox, setHighlightCheckbox] = useState(false);
   const [isCardComplete, setIsCardComplete] = useState(false);
@@ -43,7 +42,6 @@ const UpgradeModal: React.FC<UpgradeModalProps> = ({
     const checkPaymentMethod = async () => {
       try {
         const response = await checkPrimaryPaymentMethod(currentUser.id);
-        console.log(response);
         // @ts-ignore
         setHasPrimaryPaymentMethod(response?.hasPrimaryPaymentMethod);
         setPrimaryPaymentMethod({
@@ -74,12 +72,10 @@ const UpgradeModal: React.FC<UpgradeModalProps> = ({
     }
 
     if (!stripe || (!elements && !usePrimaryPaymentMethod)) {
-      setError("Stripe has not been initialized.");
       return;
     }
 
     setIsProcessing(true);
-    setError(null);
 
     try {
       let paymentMethodId: string | undefined;
@@ -123,7 +119,7 @@ const UpgradeModal: React.FC<UpgradeModalProps> = ({
         throw new Error("Payment was not successful. Please try again.");
       }
     } catch (err: any) {
-      setError(err.message || "An error occurred during the upgrade process.");
+      console.error("An error occurred during the upgrade process.", err);
     } finally {
       setIsProcessing(false);
       confirm();

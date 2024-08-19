@@ -28,8 +28,6 @@ export const TutorialProvider: React.FC<{ children: ReactNode }> = ({
     setCurrentStep(0);
   };
 
-  console.log(currentStep);
-
   const nextStep = () => setCurrentStep((prev) => prev + 1);
   const prevStep = () => setCurrentStep((prev) => Math.max(0, prev - 1));
 

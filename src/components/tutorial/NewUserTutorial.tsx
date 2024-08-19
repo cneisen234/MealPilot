@@ -1,9 +1,9 @@
 import React from "react";
 import { useNavigate } from "react-router-dom";
 import Modal from "./TutorialModal";
-import { FaArrowRight, FaInfoCircle } from "react-icons/fa";
-import { useTutorial } from "../context/TutorialContext";
-import "../styles/newusertutorial.css";
+import { FaArrowRight } from "react-icons/fa";
+import { useTutorial } from "../../context/TutorialContext";
+import "../../styles/newusertutorial.css";
 
 const NewUserTutorial: React.FC = () => {
   const { isTutorialActive, currentStep, endTutorial, nextStep } =

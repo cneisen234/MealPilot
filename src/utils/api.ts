@@ -1,5 +1,5 @@
 // src/utils/api.ts
-import axios, { AxiosInstance, AxiosError, AxiosResponse } from 'axios';
+import axios, { AxiosError, AxiosResponse } from 'axios';
 import { FriendRequest, Interest, Item, PaymentTier, User } from '../types';
 
 const url = process.env.NODE_ENV === 'production' 
@@ -97,7 +97,7 @@ export const sendContactForm = (formData: {
 };
 
 export const closeAccount = (password: string) => {
-  return api.post('/close-account', { password });
+  return api.post('/users/close-account', { password });
 };
 
 export const updateProfile = async (userId: number, profileData: Partial<User>) => {
@@ -137,15 +137,15 @@ export const getFriends = () => {
 };
 
 export const getFriendRequests = () => {
-  return api.get('/friend-requests');
+  return api.get('/friends/friend-requests');
 };
 
 export const handleFriendRequest = (requestId: number, status: 'accepted' | 'rejected') => {
-  return api.put(`/friend-requests/${requestId}`, { status });
+  return api.put(`/friends/friend-requests/${requestId}`, { status });
 };
 
 export const sendFriendRequest = (request: Omit<FriendRequest, "id" | "createdAt">) => {
-  return api.post('/friend-requests', request);
+  return api.post('/friends/friend-requests', request);
 };
 
 export const getFriendProfile = (friendId: number) => {
@@ -158,10 +158,6 @@ export const getNotifications = () => {
 
 export const markNotificationAsRead = (notificationId: number) => {
   return api.put(`/notifications/${notificationId}`);
-};
-
-export const getInterests = () => {
-  return api.get('/interests');
 };
 
 export const getUserInterests = (userId: number) => {
@@ -185,7 +181,7 @@ export const checkEmailExists = (email: string) => {
 };
 
 export const getRecommendation = (query: string, friendIds: number[] = []) => {
-  return api.post('/get-recommendation', { query, friendIds });
+  return api.post('/recommendations/get-recommendation', { query, friendIds });
 };
 
 export const getDailyRecommendations = () => {
@@ -198,10 +194,6 @@ export const getRemainingPrompts = () => {
 
 export const updatePromptCount = () => {
   return api.post('/update-prompt-count');
-};
-
-export const addInterestItemFromChat = (userId: number, category: string, item: string) => {
-  return api.post('/interests/add-item-from-chat', { userId, category, item });
 };
 
 interface GeolocationResult {
@@ -233,7 +225,7 @@ export const getUserLocation = (): Promise<GeolocationResult> => {
 };
 
 export const upgradeUser = async (userId: number, newTier: PaymentTier, paymentMethodId: string, isConfirmation: boolean = false) => {
-  const response = await api.post(`/users/${userId}/upgrade`, { 
+  const response = await api.post(`/payments/${userId}/upgrade`, { 
     newTier, 
     paymentMethodId,
     isConfirmation 
@@ -242,17 +234,17 @@ export const upgradeUser = async (userId: number, newTier: PaymentTier, paymentM
 };
 
 export const confirmUpgrade = async (userId: number, paymentIntentId: string, newTier: PaymentTier) => {
-  const response = await api.post(`/users/${userId}/confirm-upgrade`, { paymentIntentId, newTier });
+  const response = await api.post(`/payments/${userId}/confirm-upgrade`, { paymentIntentId, newTier });
   return response.data;
 };
 
 export const downgradeUser = (userId: number, newTier: PaymentTier) => {
-  return api.post(`/users/${userId}/downgrade`, { newTier });
+  return api.post(`/payments/${userId}/downgrade`, { newTier });
 };
 
 export const updatePaymentMethod = async (paymentMethodId: string) => {
   try {
-    const response = await api.post('/update-payment-method', { paymentMethodId });
+    const response = await api.post('/payments/update-payment-method', { paymentMethodId });
     return response.data;
   } catch (error) {
     // @ts-ignore
@@ -262,7 +254,7 @@ export const updatePaymentMethod = async (paymentMethodId: string) => {
 
 export const getSubscriptionStatus = async () => {
   try {
-    const response = await api.get('/subscription-status');
+    const response = await api.get('/payments/subscription-status');
     return response.data;
   } catch (error) {
     // @ts-ignore
@@ -271,12 +263,12 @@ export const getSubscriptionStatus = async () => {
 };
 
 export const cancelDowngrade = (userId: number) => {
-  return api.post(`/users/${userId}/cancel-downgrade`);
+  return api.post(`/payments/${userId}/cancel-downgrade`);
 };
 
 export const checkPrimaryPaymentMethod = async (userId: number): Promise<boolean> => {
   try {
-    const response = await api.get(`/check-primary-payment-method/${userId}`);
+    const response = await api.get(`/payments/check-primary-payment-method/${userId}`);
     return response.data;
   } catch (error) {
     console.error('Error checking primary payment method:', error);
