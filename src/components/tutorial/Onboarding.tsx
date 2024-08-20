@@ -177,7 +177,9 @@ const Onboarding: React.FC = () => {
               placeholder="I'm a coffee enthusiast who loves to travel..."
               rows={4}
               className="bio-input"
+              maxLength={255}
             />
+            <p className="char-count">{bio.length}/255 characters</p>
           </motion.div>
         );
       case 1:

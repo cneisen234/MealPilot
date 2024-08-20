@@ -188,7 +188,7 @@ const Profile: React.FC = () => {
     const userTier =
       PaymentTier[user.payment_tier as unknown as keyof typeof PaymentTier];
     const { maxCategories } = getMembershipLimits(userTier);
-    return user.interests.length < maxCategories;
+    return user.interests?.length < maxCategories;
   };
 
   const fetchSubscriptionStatus = async () => {
@@ -368,9 +368,12 @@ const Profile: React.FC = () => {
             .then((updatedUser) => {
               setUser(updatedUser);
             })
-            .catch((error) =>
-              console.error("Error updating profile picture:", error)
-            );
+            .catch((error) => {
+              setIsInfoModalOpen(true);
+              setInfoModalMessage(
+                `There was a problem with your upload: ${error}`
+              );
+            });
         };
         reader.readAsDataURL(file);
       }
@@ -705,7 +708,7 @@ const Profile: React.FC = () => {
             <p>Loading subscription status...</p>
           )}
         </div>
-
+        {/* 
         <div className="payment-method">
           <span className="payment-method-text">Payment Method</span>
           {primaryPaymentMethod?.hasPrimaryPaymentMethod ? (
@@ -729,7 +732,7 @@ const Profile: React.FC = () => {
             )}
             {showPaymentUpdate ? "Cancel" : "Update"}
           </button>
-        </div>
+        </div> */}
 
         {showPaymentUpdate && (
           <form

@@ -1,5 +1,5 @@
 import React from "react";
-import { FaUsers, FaMobileAlt, FaGift } from "react-icons/fa";
+import { FaUsers, FaMobileAlt, FaGift, FaThumbsDown } from "react-icons/fa";
 import { FaHeartCirclePlus } from "react-icons/fa6";
 import { VscLightbulbSparkle } from "react-icons/vsc";
 import "../styles/comingsoon.css";
@@ -10,13 +10,13 @@ const ComingSoon: React.FC = () => {
       icon: <FaUsers />,
       title: "Geolocation search for likeminded people",
       description:
-        "We are adding a feature that uses geolocation to find people near you that have similar interests. This will allow you to ask the AI if there's anyone near you that might enjoy a specific activity or event [or really anything]. The AI will use geolocation to search for people and then allow you to prompt them in the app",
+        "We are adding a feature that uses geolocation to find people near you that have similar interests. This will allow you to ask Lena if there's anyone near you that might enjoy a specific activity or event [or really anything]. Lena will use geolocation to search for people and then allow you to prompt them in the app",
     },
     {
       icon: <FaHeartCirclePlus />,
       title: "Add interests from chat",
       description:
-        "We are working on creating a feature where you can add the AI's suggestions as interest items on your profile with the click of a button",
+        "We are working on creating a feature where you can add Lena's suggestions as interest items on your profile with the click of a button",
     },
     {
       icon: <FaMobileAlt />,
@@ -28,12 +28,18 @@ const ComingSoon: React.FC = () => {
       icon: <VscLightbulbSparkle />,
       title: "Suggested Prompts",
       description:
-        "Allow our AI to suggest questions and prompts for you for the moments where you're not quite sure what to say.",
+        "Allow Lena to suggest questions and prompts for you for the moments where you're not quite sure what to say.",
     },
     {
       icon: <FaGift />,
       title: "Gift a Plan to a Friend",
       description: "Create the ability to buy a free month for a friend",
+    },
+    {
+      icon: <FaThumbsDown />,
+      title: "Dislikes List",
+      description:
+        "Add Dislikes as well as Likes so Lena knows what not to send your way!",
     },
   ];
 

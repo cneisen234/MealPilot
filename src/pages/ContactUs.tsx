@@ -1,5 +1,5 @@
-import React, { useState } from "react";
-import { sendContactForm } from "../utils/api";
+import React, { useEffect, useState } from "react";
+import { getProfile, sendContactForm } from "../utils/api";
 
 const ContactUs: React.FC = () => {
   const [name, setName] = useState("");
@@ -7,6 +7,20 @@ const ContactUs: React.FC = () => {
   const [subject, setSubject] = useState("");
   const [message, setMessage] = useState("");
   const [status, setStatus] = useState("");
+
+  useEffect(() => {
+    fetchCurrentUser();
+  }, []);
+
+  const fetchCurrentUser = async () => {
+    try {
+      const response = await getProfile();
+      setName(response.data.name);
+      setEmail(response.data.email);
+    } catch (error) {
+      console.error("Error fetching current user:", error);
+    }
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -24,7 +38,7 @@ const ContactUs: React.FC = () => {
   };
 
   return (
-    <div className="center-container">
+    <div className="content-container">
       <div className="content-wrapper">
         <div className="auth-form">
           <h2>Contact Us</h2>
@@ -33,26 +47,6 @@ const ContactUs: React.FC = () => {
             ask questions.
           </p>
           <form onSubmit={handleSubmit}>
-            <div className="form-group">
-              <input
-                type="text"
-                className="form-control"
-                value={name}
-                onChange={(e) => setName(e.target.value)}
-                placeholder="Your Name"
-                required
-              />
-            </div>
-            <div className="form-group">
-              <input
-                type="email"
-                className="form-control"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                placeholder="Your Email"
-                required
-              />
-            </div>
             <div className="form-group">
               <input
                 type="text"

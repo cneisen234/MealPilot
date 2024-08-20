@@ -16,6 +16,36 @@ router.get("/", authMiddleware, async (req, res) => {
   }
 });
 
+router.put("/mark-all-read", authMiddleware, async (req, res) => {
+  const client = await pool.connect();
+  try {
+    const userId = req.user.id;
+
+    await client.query("BEGIN");
+
+    const updateQuery = `
+      UPDATE notifications
+      SET read = true
+      WHERE user_id = $1 AND read = false
+    `;
+
+    const result = await client.query(updateQuery, [userId]);
+
+    await client.query("COMMIT");
+
+    res.json({
+      message: "All notifications marked as read",
+      updatedCount: result.rowCount,
+    });
+  } catch (error) {
+    await client.query("ROLLBACK");
+    console.error("Error marking all notifications as read:", error);
+    res.status(500).json({ message: "Server error" });
+  } finally {
+    client.release();
+  }
+});
+
 router.put("/:id", authMiddleware, async (req, res) => {
   try {
     const { id } = req.params;

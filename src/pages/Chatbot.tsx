@@ -31,7 +31,7 @@ const Chatbot: React.FC = () => {
   const [messages, setMessages] = useState<Message[]>([
     {
       id: 1,
-      text: "Hey there! Lets discover some new interests together! Ask me about some places you'd like to travel, resturants you'd enjoy, or even some new things to check out on your streaming service of choice. Ask me anything at all and I will look at your profile and give you personalized recommendations that I am confident you will enjoy. Use me as a stepping stone for new discoveries!",
+      text: "Hey there! I'm Lena! Nice to meet you! I'm here to help you discover some new interests together! Ask me about some places you'd like to travel, restaurants you'd enjoy, or even some new things to check out on your streaming service of choice. Ask me anything at all and I will look at your profile and give you personalized recommendations that I am confident you will enjoy. Use me as a stepping stone for new discoveries!",
       sender: "ai",
       timestamp: new Date(),
     },
@@ -177,7 +177,7 @@ const Chatbot: React.FC = () => {
     <div className="chatbot-container">
       <div className="chatbot-header">
         <h1 className="chatbot-title">
-          <AnimatedTechIcon size={50} speed={3} /> VibeQuest AI
+          <AnimatedTechIcon size={50} speed={3} /> Lena AI
         </h1>
         {canUseFriendSelection && (
           <div className="friend-selection">
@@ -244,7 +244,9 @@ const Chatbot: React.FC = () => {
                       className="user-avatar"
                     />
                   ) : (
-                    <div className="user-avatar">
+                    <div
+                      style={{ backgroundColor: "white" }}
+                      className="user-avatar">
                       {getInitials(currentUser.name)}
                     </div>
                   ))}

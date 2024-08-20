@@ -24,14 +24,14 @@ router.post("/get-recommendation", authMiddleware, async (req, res) => {
 
     // Fetch user data
     const userQuery = await pool.query(
-      "SELECT bio, city, state FROM users WHERE id = $1",
+      "SELECT id, name, bio, city, state FROM users WHERE id = $1",
       [userId]
     );
     const user = userQuery.rows[0];
 
     // Fetch user interests
     const userInterestsQuery = await pool.query(
-      "SELECT category, array_agg(items.name) as items FROM interests JOIN items ON interests.id = items.interest_id WHERE user_id = $1 GROUP BY category",
+      "SELECT i.category, json_agg(json_build_object('name', it.name, 'rating', it.rating)) as items FROM interests i JOIN items it ON i.id = it.interest_id WHERE i.user_id = $1 GROUP BY i.category",
       [userId]
     );
     const userInterests = userInterestsQuery.rows;
@@ -49,7 +49,7 @@ router.post("/get-recommendation", authMiddleware, async (req, res) => {
 
       // Fetch friends' data
       const friendsQuery = await pool.query(
-        "SELECT id, bio, city, state FROM users WHERE id = ANY($1)",
+        "SELECT id, name, bio, city, state FROM users WHERE id = ANY($1)",
         [friendIds]
       );
       friendsData = friendsQuery.rows;
@@ -57,89 +57,119 @@ router.post("/get-recommendation", authMiddleware, async (req, res) => {
       // Fetch friends' interests
       for (let friend of friendsData) {
         const friendInterestsQuery = await pool.query(
-          "SELECT category, array_agg(items.name) as items FROM interests JOIN items ON interests.id = items.interest_id WHERE user_id = $1 GROUP BY category",
+          "SELECT i.category, json_agg(json_build_object('name', it.name, 'rating', it.rating)) as items FROM interests i JOIN items it ON i.id = it.interest_id WHERE i.user_id = $1 GROUP BY i.category",
           [friend.id]
         );
         friend.interests = friendInterestsQuery.rows;
       }
     }
-    // Get current date and time
+
     const currentDateTime = DateTime.now().setZone(
       user.timezone || "America/New_York"
     );
+
     // Prepare the prompt for OpenAI
-    let prompt = `Current date and time: ${currentDateTime.toFormat(
-      "yyyy-MM-dd HH:mm:ss"
-    )}
+    let prompt = `Hey there, Lena! It's ${currentDateTime.toFormat(
+      "MMMM d, yyyy"
+    )} at ${currentDateTime.toFormat(
+      "h:mm a"
+    )}, and we've got an interesting question from ${
+      friendsData.length > 0 ? "a group of friends" : "someone"
+    }. Here's what they're asking:
 
-The user has asked the following question: "${query}"
+"${query}"
 
-Please provide a direct and specific answer to the user's question, taking into account their interests and location. If the question is about recommendations, ensure your recommendations are new and not already listed in their interests.
+I'll fill you in on ${friendsData.length > 0 ? "these folks" : "this person"}:
 
-User Information:
+Primary User (${user.name}):
 Location: ${user.city}, ${user.state}
 Current Interests: ${userInterests
-      .map((i) => `${i.category}: ${i.items.join(", ")}`)
+      .map(
+        (i) =>
+          `${i.category}: ${i.items
+            .map((item) => `${item.name} (Rating: ${item.rating}/10)`)
+            .join(", ")}`
+      )
       .join("; ")}
+${
+  friendsData.length > 0
+    ? `
+Additional Group Members:
+${friendsData
+  .map(
+    (friend, index) => `
+${friend.name}:
+Location: ${friend.city}, ${friend.state}
+Interests: ${friend.interests
+      .map(
+        (i) =>
+          `${i.category}: ${i.items
+            .map((item) => `${item.name} (Rating: ${item.rating}/10)`)
+            .join(", ")}`
+      )
+      .join("; ")}
+`
+  )
+  .join("\n")}
+`
+    : ""
+}
 
-IMPORTANT GUIDELINES:
-1. Focus primarily on answering the user's specific question.
-2. Ensure all information is accurate, up-to-date, and verifiable as of ${currentDateTime.toFormat(
+Alright, here's what I need from you. Keep it friendly and casual, like you're chatting with a buddy, but make sure to follow these guidelines and make sure to follow this exact format for each one:
+
+[Number]. [Recommendation Title]
+
+What's the idea: [Brief description of the recommendation]
+
+Why would they dig it: [Explanation referencing their interests and ratings]
+
+Fresh experience: [Explain how it provides a new perspective]
+
+Confidence: [Just say High, Medium, or Low]
+
+CRITICAL GUIDELINES:
+1. Accuracy is key, my friend. Only share stuff you're absolutely sure about.
+2. When you look at those interest ratings, here's what they mean:
+   - 10: They're obsessed with this!
+   - 7-9: They really love it
+   - 4-6: They like it well enough
+   - 1-3: It's okay, but not their favorite
+3. Try to focus on the higher-rated interests, but don't completely ignore the lower ones. They might be up for trying something new!
+4. It's cool to give fewer recommendations if it means they're spot-on.
+5. Stick to answering their specific question.
+6. Make sure everything you say is up-to-date as of ${currentDateTime.toFormat(
       "MMMM d, yyyy"
     )}.
-3. If recommending anything, make sure it's relevant to ${user.city}, ${
-      user.state
+7. If you're suggesting anything, make sure it fits with ${
+      user.name
+    }'s location (${user.city}, ${user.state})${
+      friendsData.length > 0 ? " and works for where their friends are too" : ""
     }.
-4. Do not include any information you're unsure about.
+8. If you're not sure about something, just say so. It's totally fine!
 
-Your response should be directly related to the user's question. If recommending books, activities, or anything else, provide 3-5 specific suggestions that:
-1. Directly answer the user's query
-2. Are new to the user (not in their current interests)
-3. Relate to their location and current interests where relevant
+Now, when you're giving your answer, try to suggest 1-3 cool ideas that:
+1. Actually answer what they're asking
+2. Are new to ${user.name}${
+      friendsData.length > 0 ? ` and their friends` : ""
+    } (not stuff they already mentioned)
+3. Match up with where they are and what they're into, keeping those ratings in mind
+${friendsData.length > 0 ? `4. Would be fun for everyone in the group` : ""}
 
-For each suggestion, briefly explain:
-1. What it is
-2. Why it's relevant to the user's question and interests
-3. How it provides a fresh perspective or new experience
+For each suggestion, break it down like this:
+1. What's the idea?
+2. Why would ${user.name}${
+      friendsData.length > 0 ? ` and their friends` : ""
+    } dig it? (Think about those ratings!)
+3. How's it going to give them a fresh experience?
+4. How sure are you about this recommendation? (Just say High, Medium, or Low)
 
-Remember: Accuracy and relevance to the user's question are the most important factors.`;
-
-    if (friendsData.length > 0) {
-      prompt += `\n\nAdditionally, consider the following friends' information:
-
-      ${friendsData
-        .map(
-          (friend, index) => `
-      Friend ${index + 1}:
-      Bio: ${friend.bio}
-      Location: ${friend.city}, ${friend.state}
-      Interests: ${friend.interests
-        .map((i) => `${i.category}: ${i.items.join(", ")}`)
-        .join("; ")}
-      `
-        )
-        .join("\n")}
-
-      Please provide 3-5 detailed recommendations for NEW group activities or interests that:
-      1. Are not already listed in any of the users' current interests
-      2. Are specifically relevant to the users' locations, focusing on ${
-        user.city
-      }, ${user.state}
-      3. Align with the collective interests and bios of the group
-      4. Are appropriate for the current season and time of year
-      5. Provide a fresh and engaging experience for the entire group
-
-      For each group recommendation, provide:
-      1. The name of the group activity or interest
-      2. A brief explanation of what it involves
-      3. Why it's a good fit for the group based on their collective profiles
-      4. How it combines or expands upon their diverse interests
-      5. Any specific local resources or venues in ${user.city}, ${
-        user.state
-      } related to this recommendation (only if you're certain they exist)
-
-      Ensure all group recommendations adhere to the same accuracy and verification guidelines mentioned earlier.`;
+Remember, if you've only got one awesome idea, that's totally fine! ${
+      friendsData.length > 0
+        ? `And since we're dealing with a group, try to find that sweet spot that'll make everyone happy, based on what they're all into.`
+        : ""
     }
+
+Keep it real and friendly, like you're just chatting with a buddy. Ready? Let's hear what you've got!`;
 
     // Call OpenAI API
     const completion = await openai.chat.completions.create({

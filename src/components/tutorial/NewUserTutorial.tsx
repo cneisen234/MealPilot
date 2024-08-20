@@ -22,7 +22,7 @@ const NewUserTutorial: React.FC = () => {
     {
       title: "Your Bio",
       content:
-        "Your bio helps the AI understand you better. The more information you provide (up to 255 characters), the more personalized your recommendations will be.",
+        "Your bio helps Lena understand you better. The more information you provide (up to 255 characters), the more personalized your recommendations will be.",
       onClick: nextStep,
     },
     {
@@ -34,16 +34,16 @@ const NewUserTutorial: React.FC = () => {
     {
       title: "Interest Categories",
       content:
-        "Free users can create 3 categories with 5 items each. Upgrade for more! These are crucial for AI recommendations, so be thorough.",
+        "Free users can create 3 categories with 5 items each. Upgrade for more! These are crucial for Lena to provide you with solid recommendations, so be thorough.",
       onClick: () => {
         navigate("/chatbot");
         nextStep();
       },
     },
     {
-      title: "VibeQuest AI",
+      title: "Introducing Lena!",
       content:
-        "This is where the magic happens! Ask anything, and our AI will use your bio, interests, and location to give personalized recommendations. Free users get 6 prompts daily. Upgraded users get more daily prompts and the ability to add friends to discover mutual interests!",
+        "This is where the magic happens! Ask anything, and Lena will use your bio, interests, and location to give personalized recommendations. Free users get 6 prompts daily. Upgraded users get more daily prompts and the ability to add friends to discover mutual interests!",
       onClick: () => {
         navigate("/upgrade");
         nextStep();
@@ -52,7 +52,7 @@ const NewUserTutorial: React.FC = () => {
     {
       title: "Upgrade Your Experience",
       content:
-        "Upgrade to add friends, get daily recommendations, more prompts, and expand your interest list for even better AI results!",
+        "Upgrade to add friends, get daily recommendations, more prompts, and expand your interest list for even better results from Lena!",
       onClick: () => {
         navigate("/contact-us");
         nextStep();

@@ -82,8 +82,8 @@ const Recommendations: React.FC = () => {
           color: "var(--text-color)",
           fontSize: "1em",
         }}>
-        Based on your interests, our AI suggests the following recommendations
-        for you today:
+        Based on your interests, Lena suggests the following recommendations for
+        you today:
       </p>
       <p
         style={{

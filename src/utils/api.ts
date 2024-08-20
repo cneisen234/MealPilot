@@ -144,6 +144,10 @@ export const handleFriendRequest = (requestId: number, status: 'accepted' | 'rej
   return api.put(`/friends/friend-requests/${requestId}`, { status });
 };
 
+export const markAllNotificationsAsRead = async () => {
+  return api.put('/notifications/mark-all-read');
+};
+
 export const sendFriendRequest = (request: Omit<FriendRequest, "id" | "createdAt">) => {
   return api.post('/friends/friend-requests', request);
 };

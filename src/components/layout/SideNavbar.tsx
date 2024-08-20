@@ -62,7 +62,7 @@ const SideNavbar: React.FC = () => {
             to="/chatbot"
             icon={<AnimatedTechIcon speed={2} />}
             onClick={closeMenu}>
-            VibeQuest AI
+            Lena AI
           </NavItem>
           <NavItem to="/friends" icon={<FaUserFriends />} onClick={closeMenu}>
             Friends List

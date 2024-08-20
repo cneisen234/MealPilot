@@ -4,6 +4,7 @@ const authMiddleware = require("../middleware/auth");
 const pool = require("../db");
 const stripe = require("stripe")(process.env.STRIPE_SECRET_KEY);
 const { checkPromptLimit } = require("../utils/miscUtils.js");
+const bcrypt = require("bcrypt");
 
 const PaymentTier = {
   Owner: 1,
@@ -174,20 +175,34 @@ router.get("/not-friends", authMiddleware, async (req, res) => {
     const userId = req.user.id;
 
     const query = `
-SELECT id, name, username, email, avatar
-FROM users
-WHERE id != $1
-AND payment_tier != 'Free'::payment_tier_enum
-AND id NOT IN (
-  SELECT friend_id
-  FROM friends
-  WHERE user_id = $1
-)
+    SELECT u.id, u.name, u.username, u.email, u.avatar,
+           CASE
+             WHEN fr.status IS NOT NULL THEN json_build_object('status', fr.status, 'requestId', fr.id)
+             ELSE NULL
+           END AS friend_request_status
+    FROM users u
+    LEFT JOIN friend_requests fr ON (fr.sender_id = $1 AND fr.receiver_id = u.id) OR (fr.receiver_id = $1 AND fr.sender_id = u.id)
+    WHERE u.id != $1
+    AND u.payment_tier != 'Free'::payment_tier_enum
+    AND u.id NOT IN (
+      SELECT friend_id
+      FROM friends
+      WHERE user_id = $1
+    )
     `;
 
     const result = await pool.query(query, [userId]);
 
-    res.json(result.rows);
+    const usersWithRequestStatus = result.rows.map((user) => ({
+      id: user.id,
+      name: user.name,
+      username: user.username,
+      email: user.email,
+      avatar: user.avatar,
+      friendRequestStatus: user.friend_request_status,
+    }));
+
+    res.json(usersWithRequestStatus);
   } catch (error) {
     console.error("Error fetching non-friend users:", error);
     res.status(500).json({ message: "Server error" });

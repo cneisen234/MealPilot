@@ -11,40 +11,71 @@ async function generateRecommendations(client, userId, currentDate) {
   ]);
   const user = userResult.rows[0];
 
-  // Fetch user's interests
+  // Fetch user's interests with ratings
   const interestsResult = await client.query(
-    "SELECT * FROM interests WHERE user_id = $1",
+    "SELECT i.category, json_agg(json_build_object('name', it.name, 'rating', it.rating)) as items FROM interests i JOIN items it ON i.id = it.interest_id WHERE i.user_id = $1 GROUP BY i.category",
     [userId]
   );
   const interests = interestsResult.rows;
 
   // Generate prompt for OpenAI
-  const prompt = `Generate personalized daily recommendations for a user with the following details:
-    Today's Date: ${currentDate.toISOString().split("T")[0]}
-    Location: ${user.city}, ${user.state}
-    Interests: ${interests.map((i) => i.category).join(", ")}
+  const prompt = `Hey there, AI buddy! It's ${
+    currentDate.toISOString().split("T")[0]
+  }, and we've got a fun task today. We're gonna cook up some personalized daily recommendations for our friend ${
+    user.name
+  }. Let me give you the lowdown on them:
 
-    Please provide 5 specific recommendations in the following format:
-    %%% [Category]
-    ** [Item Name] **
-    [Detailed description including why it's recommended, any local events related to it, or if it's a new release]
-    Confidence: [1-10]
-    Rating: [1-10]
+Name: ${user.name}
+Hangout Spot: ${user.city}, ${user.state}
+Things They're Into: ${interests
+    .map(
+      (i) =>
+        `${i.category}: ${i.items
+          .map((item) => `${item.name} (Rating: ${item.rating}/10)`)
+          .join(", ")}`
+    )
+    .join("; ")}
 
-    IMPORTANT GUIDELINES:
-    - Ensure all recommendations are accurate and up-to-date as of ${
-      currentDate.toISOString().split("T")[0]
-    }. But DO NOT give any information to the user on what these dates or when certain events are happening
-    - DO NOT mention any specific dates, times, or suggest something is upcoming or happening soon.
-    - Focus on describing what the recommendation is, not when it happens.
-    - Only include events, releases, or news from the past week or upcoming week.
-    - Double-check all dates, locations, and facts before including them.
-    - If you're unsure about any information, provide a lower confidence score.
-    - For local recommendations, only suggest verified, currently operating businesses or events.
-    - Do not make assumptions about local events or businesses without verification.
-    - The confidence score should reflect how certain you are about the accuracy and relevance of the recommendation.
+Now, here's what I need from you. I want you to come up with 1-5 awesome recommendations for ${
+    user.name
+  }. But here's the kicker - we need to format these in a specific way. For each recommendation, do it like this:
 
-    Remember: Accuracy is more important than quantity. If you can only confidently provide 3 recommendations, that's fine.`;
+%%% [Category]
+** [Item Name] **
+[Give me a cool description here. Why would ${
+    user.name
+  } love this? Is there anything local that ties into it? Maybe it's a hot new release? Spill the beans!]
+Confidence: [1-10]
+Rating: [1-10]
+
+Alright, now listen up, 'cause this part's important:
+
+CRITICAL GUIDELINES:
+- Accuracy is key, my friend. Only suggest stuff you're absolutely sure about.
+- When you look at those interest ratings, here's what they mean:
+  - 10: They're obsessed with this!
+  - 7-9: They really love it
+  - 4-6: They like it well enough
+  - 1-3: It's okay, but not their favorite
+- Try to focus on the higher-rated interests, but don't completely ignore the lower ones. They might be up for trying something new!
+- It's cool to give fewer recommendations if it means they're spot-on.
+- Make sure everything you suggest is current as of ${
+    currentDate.toISOString().split("T")[0]
+  }.
+- Don't mention specific dates or times, and don't say something's "coming up soon".
+- Focus on what the recommendation is, not when it's happening.
+- Only include events, releases, or news from the last week or next week if you're 100% sure about them.
+- Double-check all the locations and facts before you include them.
+- For local recommendations, only suggest businesses or events you know for sure are operating.
+- Don't make guesses about local stuff without being certain.
+- When you give that confidence score, make it reflect how sure you are about the accuracy and relevance of your recommendation. Only use high scores (8-10) for stuff you're really, really certain about.
+- If you're not super confident about a recommendation, it's better to leave it out.
+
+Remember, if you've only got one fantastic idea, that's totally fine! We're all about quality over quantity here.
+
+Oh, and one last thing - keep it real and friendly, like you're just chatting with a buddy. Ready? Let's hear what you've got for ${
+    user.name
+  }!`;
 
   // Call OpenAI API
   const completion = await openai.chat.completions.create({

@@ -1,8 +1,12 @@
 import React, { useState, useEffect } from "react";
-import { FaTimes, FaSearch, FaUserPlus } from "react-icons/fa";
-import { User, FriendRequest, FriendRequestStatus } from "../../types";
+import { FaTimes, FaSearch, FaUserPlus, FaClock } from "react-icons/fa";
+import { User, FriendRequest } from "../../types";
 import api from "../../utils/api";
 import InfoModal from "../common/InfoModal";
+
+interface UserWithRequestStatus extends User {
+  friendRequestStatus: { status: string; requestId: number };
+}
 
 interface AddFriendModalProps {
   onClose: () => void;
@@ -22,24 +26,27 @@ const AddFriendModal: React.FC<AddFriendModalProps> = ({
   currentFriendsCount,
 }) => {
   const [searchTerm, setSearchTerm] = useState("");
-  const [users, setUsers] = useState<User[]>([]);
-  const [filteredUsers, setFilteredUsers] = useState<User[]>([]);
+  const [users, setUsers] = useState<UserWithRequestStatus[]>([]);
+  const [filteredUsers, setFilteredUsers] = useState<UserWithRequestStatus[]>(
+    []
+  );
   const [infoModalMessage, setInfoModalMessage] = useState("");
   const [isInfoModalOpen, setIsInfoModalOpen] = useState(false);
+  const [pendingRequests, setPendingRequests] = useState<User[]>([]);
 
   useEffect(() => {
     const fetchUsers = async () => {
       try {
-        const response = await api.get("/users/not-friends");
-        setUsers(response.data);
-        setFilteredUsers(response.data);
+        const usersResponse = await api.get("/users/not-friends");
+        setUsers(usersResponse.data);
+        setFilteredUsers(usersResponse.data);
       } catch (error) {
-        console.error("Error fetching users:", error);
+        console.error("Error fetching data:", error);
       }
     };
 
     fetchUsers();
-  }, []);
+  }, [isInfoModalOpen]);
 
   useEffect(() => {
     if (searchTerm.trim() === "") {
@@ -68,15 +75,24 @@ const AddFriendModal: React.FC<AddFriendModalProps> = ({
       const request = {
         senderId: currentUserId,
         receiverId,
-        status: FriendRequestStatus.Pending,
+        status: "pending",
       };
+      // @ts-ignore
       onSendFriendRequest(request);
-
-      // Close the modal or update UI as needed
-      onClose();
+      // @ts-ignore
+      setPendingRequests([...pendingRequests, request]);
+      setIsInfoModalOpen(true);
+      setInfoModalMessage(
+        "Friend request sent! We'll let them know and they will be added as soon as they accept."
+      );
     } catch (error) {
       console.error("Error sending friend request:", error);
     }
+  };
+
+  const isRequestPending = (user: UserWithRequestStatus) => {
+    console.log(user);
+    return user.friendRequestStatus?.status === "pending";
   };
 
   const getInitials = (name: string) => {
@@ -210,28 +226,46 @@ const AddFriendModal: React.FC<AddFriendModalProps> = ({
                   </div>
                 </div>
               </div>
-              <button
-                onClick={() => handleSendFriendRequest(user.id)}
-                style={{
-                  background:
-                    currentFriendsCount < maxFriends
-                      ? "var(--primary-color)"
-                      : "gray",
-                  color: "white",
-                  border: "none",
-                  borderRadius: "5px",
-                  padding: "5px 10px",
-                  cursor:
-                    currentFriendsCount < maxFriends
-                      ? "pointer"
-                      : "not-allowed",
-                  display: "flex",
-                  alignItems: "center",
-                }}
-                disabled={currentFriendsCount >= maxFriends}>
-                <FaUserPlus style={{ marginRight: "5px" }} />
-                Add
-              </button>
+              {isRequestPending(user) ? (
+                <button
+                  style={{
+                    background: "gray",
+                    color: "white",
+                    border: "none",
+                    borderRadius: "5px",
+                    padding: "5px 10px",
+                    cursor: "not-allowed",
+                    display: "flex",
+                    alignItems: "center",
+                  }}
+                  disabled>
+                  <FaClock style={{ marginRight: "5px" }} />
+                  Pending
+                </button>
+              ) : (
+                <button
+                  onClick={() => handleSendFriendRequest(user.id)}
+                  style={{
+                    background:
+                      currentFriendsCount < maxFriends
+                        ? "var(--primary-color)"
+                        : "gray",
+                    color: "white",
+                    border: "none",
+                    borderRadius: "5px",
+                    padding: "5px 10px",
+                    cursor:
+                      currentFriendsCount < maxFriends
+                        ? "pointer"
+                        : "not-allowed",
+                    display: "flex",
+                    alignItems: "center",
+                  }}
+                  disabled={currentFriendsCount >= maxFriends}>
+                  <FaUserPlus style={{ marginRight: "5px" }} />
+                  Add
+                </button>
+              )}
             </div>
           ))}
         </div>

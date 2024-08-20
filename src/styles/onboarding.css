@@ -66,11 +66,25 @@
     font-size: 1rem;
 }
 
+.item-name {
+    flex-grow: 1;
+    text-align: left;
+    margin-right: 10px;
+}
+
 .category-items {
-    margin-bottom: 30px;
-    padding: 20px;
-    background-color: rgba(255, 255, 255, 0.1);
-    border-radius: 10px;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.star-rating {
+    display: flex;
+    gap: 2px;
+}
+
+.star-rating .star {
+    font-size: 16px;
 }
 
 .category-header {
@@ -89,6 +103,15 @@
 .item-count {
     font-size: 14px;
     color: rgba(255, 255, 255, 0.7);
+}
+
+.item-rating {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 5px 10px;
+    background-color: rgba(255, 255, 255, 0.1);
+    border-radius: 5px;
 }
 
 .category-tag {

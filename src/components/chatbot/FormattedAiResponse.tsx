@@ -1,5 +1,4 @@
 import React, { useState, useEffect, useRef } from "react";
-import { User } from "../../types";
 
 interface FormattedAIResponseProps {
   response: string;
