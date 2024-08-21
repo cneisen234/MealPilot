@@ -20,9 +20,17 @@ const port = process.env.PORT || 5000;
 
 // HTTPS redirect middleware
 app.use((req, res, next) => {
-  if (process.env.NODE_ENV === "production" && !req.secure) {
-    const secureUrl = "https://" + req.headers.host + req.url;
-    return res.redirect(301, secureUrl);
+  console.log("Protocol:", req.protocol);
+  console.log("X-Forwarded-Proto:", req.headers["x-forwarded-proto"]);
+  console.log("Host:", req.headers.host);
+  console.log("URL:", req.url);
+
+  if (
+    process.env.NODE_ENV === "production" &&
+    req.headers["x-forwarded-proto"] !== "https"
+  ) {
+    console.log("Redirecting to HTTPS");
+    return res.redirect(301, `https://${req.headers.host}${req.url}`);
   }
   next();
 });
