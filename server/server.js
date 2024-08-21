@@ -24,12 +24,6 @@ app.use(express.json({ limit: "10mb" }));
 app.use(express.urlencoded({ limit: "10mb", extended: true }));
 app.use(express.static(path.join(__dirname, "../build")));
 
-if (process.env.NODE_ENV === "production") {
-  app.get("*", (req, res) => {
-    res.sendFile(path.join(__dirname, "../build/index.html"));
-  });
-}
-
 // Set up SendGrid
 sgMail.setApiKey(process.env.SENDGRID_API_KEY);
 
@@ -50,6 +44,11 @@ const startScheduledTask = () => {
   // Then schedule it to run daily
   setInterval(applyScheduledDowngrades, 24 * 60 * 60 * 1000);
 };
+
+app.use((err, req, res, next) => {
+  console.error(err.stack);
+  res.status(500).send("Something broke!");
+});
 
 // Start server
 app.listen(port, () => {
