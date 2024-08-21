@@ -1,7 +1,6 @@
 const express = require("express");
 const cors = require("cors");
 require("dotenv").config();
-require("dotenv").config();
 const sgMail = require("@sendgrid/mail");
 const stripe = require("stripe")(process.env.STRIPE_SECRET_KEY);
 
