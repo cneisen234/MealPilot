@@ -4,19 +4,37 @@
 -- CREATE TYPE friend_request_status AS ENUM ('pending', 'accepted', 'rejected');
 
 -- Users table
+
+-- DO $
+-- $ 
+-- BEGIN
+--     CREATE TYPE payment_tier_enum AS ENUM
+--     ('Owner', 'Premium', 'Basic', 'Free');
+-- EXCEPTION
+--     WHEN duplicate_object THEN null;
+-- END $$;
+
 CREATE TABLE users
 (
     id SERIAL PRIMARY KEY,
     name VARCHAR(255) NOT NULL,
-    email VARCHAR(255) NOT NULL,
+    email VARCHAR(255) NOT NULL UNIQUE,
     username VARCHAR(50) UNIQUE NOT NULL,
     password VARCHAR(255) NOT NULL,
     avatar TEXT,
     bio TEXT,
+    city VARCHAR(100),
+    state VARCHAR(100),
     bio_visibility privacy_setting DEFAULT 'public',
     interests_visibility privacy_setting DEFAULT 'public',
+    payment_tier payment_tier_enum DEFAULT 'Free' NOT NULL,
     subscription_updated_at TIMESTAMP DEFAULT NOW(),
-    stripe_subscription_id VARCHAR(255)
+    stripe_customer_id VARCHAR(255),
+    stripe_subscription_id VARCHAR(255),
+    reset_password_token VARCHAR(255),
+    reset_password_expires TIMESTAMP,
+    daily_prompt_count INTEGER DEFAULT 0,
+    last_prompt_reset DATE DEFAULT CURRENT_DATE
 );
 
 CREATE TABLE friend_requests
