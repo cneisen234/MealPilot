@@ -2,9 +2,9 @@
   "name": "my-social-ai-app",
   "version": "0.1.0",
   "engines": {
-       "node": ">=20.x <22",
-       "yarn": "1.x"
-     },
+    "node": ">=20.x <22",
+    "yarn": "1.x"
+  },
   "private": true,
   "proxy": "http://localhost:5000",
   "dependencies": {
@@ -32,7 +32,7 @@
     "web-vitals": "^2.1.4"
   },
   "scripts": {
-     "start": "node -e \"try { require('react-scripts/scripts/start'); } catch(e) { console.error(e); process.exit(1); }\"",
+    "start": "node -e \"try { require('react-scripts/scripts/start'); } catch(e) { console.error(e); process.exit(1); }\"",
     "client": "react-scripts start",
     "server": "nodemon --watch server server/server.js",
     "build": "react-scripts build",
@@ -59,7 +59,11 @@
     ]
   },
   "devDependencies": {
-    "typescript": "^5.5.4",
-    "@babel/plugin-proposal-private-property-in-object": "^7.21.0-placeholder-for-preset-env.2"
+    "@babel/core": "^7.25.2",
+    "@babel/plugin-proposal-private-property-in-object": "^7.21.0-placeholder-for-preset-env.2",
+    "@babel/preset-env": "^7.25.3",
+    "@babel/preset-react": "^7.24.7",
+    "babel-loader": "^9.1.3",
+    "typescript": "^5.5.4"
   }
 }
