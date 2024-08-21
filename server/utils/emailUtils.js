@@ -66,7 +66,7 @@ async function sendDowngradeConfirmation(
 
 async function sendAdminNotification(subject, message) {
   const msg = {
-    to: "chris@integritytechsoftware.com",
+    to: "christopherjay71186@gmail.com",
     from: process.env.SENDGRID_FROM_EMAIL,
     subject: `VibeQuest Admin Alert: ${subject}`,
     html: `

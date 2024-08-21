@@ -33,7 +33,7 @@ router.post("/contact-us", async (req, res) => {
     `;
 
     const msg = {
-      to: "chris@integritytechsoftware.com",
+      to: "christopherjay71186@gmail.com",
       from: process.env.SENDGRID_FROM_EMAIL,
       subject: `VibeQuest Contact: ${subject}`,
       html: htmlContent,

@@ -23,8 +23,8 @@ const UpgradeModal: React.FC<UpgradeModalProps> = ({
   confirm,
   message,
 }) => {
-  const stripe = useStripe();
-  const elements = useElements();
+  // const stripe = useStripe();
+  // const elements = useElements();
   const [isProcessing, setIsProcessing] = useState(false);
   const [agreedToTerms, setAgreedToTerms] = useState(false);
   const [highlightCheckbox, setHighlightCheckbox] = useState(false);
@@ -71,9 +71,9 @@ const UpgradeModal: React.FC<UpgradeModalProps> = ({
       return;
     }
 
-    if (!stripe || (!elements && !usePrimaryPaymentMethod)) {
-      return;
-    }
+    // if (!stripe || (!elements && !usePrimaryPaymentMethod)) {
+    //   return;
+    // }
 
     setIsProcessing(true);
 
@@ -81,43 +81,40 @@ const UpgradeModal: React.FC<UpgradeModalProps> = ({
       let paymentMethodId: string | undefined;
 
       if (!usePrimaryPaymentMethod) {
-        const cardElement = elements!.getElement(CardElement);
-        if (!cardElement) {
-          throw new Error("Unable to find card element.");
-        }
-
-        const { error, paymentMethod } = await stripe.createPaymentMethod({
-          type: "card",
-          card: cardElement,
-        });
-
-        if (error) {
-          throw new Error(error.message);
-        }
-
-        paymentMethodId = paymentMethod.id;
+        // const cardElement = elements!.getElement(CardElement);
+        // if (!cardElement) {
+        //   throw new Error("Unable to find card element.");
+        // }
+        // const { error, paymentMethod } = await stripe.createPaymentMethod({
+        //   type: "card",
+        //   card: cardElement,
+        // });
+        // if (error) {
+        //   throw new Error(error.message);
+        // }
+        // paymentMethodId = paymentMethod.id;
       }
 
-      const { clientSecret, newTier } = await upgradeUser(
-        currentUser.id,
-        tier,
-        // @ts-ignore
-        paymentMethodId
-      );
+      // const { clientSecret, newTier } = await upgradeUser(
+      //   currentUser.id,
+      //   tier,
+      //   // @ts-ignore
+      //   paymentMethodId
+      // );
 
-      const { error: confirmError, paymentIntent } =
-        await stripe.confirmCardPayment(clientSecret);
+      // const { error: confirmError, paymentIntent } =
+      //   await stripe.confirmCardPayment(clientSecret);
 
-      if (confirmError) {
-        throw new Error(confirmError.message);
-      }
+      // if (confirmError) {
+      //   throw new Error(confirmError.message);
+      // }
 
-      if (paymentIntent.status === "succeeded") {
-        await confirmUpgrade(currentUser.id, paymentIntent.id, newTier);
-        setAddPaymentMessage(false);
-      } else {
-        throw new Error("Payment was not successful. Please try again.");
-      }
+      // if (paymentIntent.status === "succeeded") {
+      //   await confirmUpgrade(currentUser.id, paymentIntent.id, newTier);
+      //   setAddPaymentMessage(false);
+      // } else {
+      //   throw new Error("Payment was not successful. Please try again.");
+      // }
     } catch (err: any) {
       console.error("An error occurred during the upgrade process.", err);
     } finally {
@@ -309,7 +306,7 @@ const UpgradeModal: React.FC<UpgradeModalProps> = ({
             </button>
             <button
               type="submit"
-              disabled={!stripe || isProcessing}
+              // disabled={!stripe || isProcessing}
               style={{
                 padding: "10px 20px",
                 borderRadius: "5px",

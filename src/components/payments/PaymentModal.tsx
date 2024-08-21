@@ -14,30 +14,30 @@ const PaymentModal: React.FC<PaymentModalProps> = ({
   onConfirm,
 }) => {
   const [autoRenew, setAutoRenew] = useState(false);
-  const stripe = useStripe();
-  const elements = useElements();
+  // const stripe = useStripe();
+  // const elements = useElements();
 
   const handleSubmit = async (event: React.FormEvent) => {
     event.preventDefault();
 
-    if (!stripe || !elements) {
-      return;
-    }
+    // if (!stripe || !elements) {
+    //   return;
+    // }
 
-    const cardElement = elements.getElement(CardElement);
+    // const cardElement = elements.getElement(CardElement);
 
-    if (cardElement) {
-      const { error, paymentMethod } = await stripe.createPaymentMethod({
-        type: "card",
-        card: cardElement,
-      });
+    // if (cardElement) {
+    //   const { error, paymentMethod } = await stripe.createPaymentMethod({
+    //     type: "card",
+    //     card: cardElement,
+    //   });
 
-      if (error) {
-        console.log("[error]", error);
-      } else {
-        onConfirm({ paymentMethodId: paymentMethod.id, autoRenew });
-      }
-    }
+    //   if (error) {
+    //     console.log("[error]", error);
+    //   } else {
+    //     onConfirm({ paymentMethodId: paymentMethod.id, autoRenew });
+    //   }
+    // }
   };
 
   const price = tier === PaymentTier.Basic ? "9.99" : "19.99";

@@ -61,8 +61,8 @@ const Profile: React.FC = () => {
   const [subscriptionStatus, setSubscriptionStatus] = useState<any>(null);
   const [primaryPaymentMethod, setPrimaryPaymentMethod] = useState<any>(null);
 
-  const stripe = useStripe();
-  const elements = useElements();
+  // const stripe = useStripe();
+  // const elements = useElements();
 
   interface LocationState {
     fromOnboarding?: boolean;
@@ -87,20 +87,20 @@ const Profile: React.FC = () => {
     }
   }, [appLocation, startTutorial]);
 
-  useEffect(() => {
-    if (user?.id) {
-      fetchPrimaryPaymentMethod(user);
-    }
-  }, [user]);
+  // useEffect(() => {
+  //   if (user?.id) {
+  //     fetchPrimaryPaymentMethod(user);
+  //   }
+  // }, [user]);
 
-  const fetchPrimaryPaymentMethod = async (user: User) => {
-    try {
-      const paymentMethod = await checkPrimaryPaymentMethod(user?.id);
-      setPrimaryPaymentMethod(paymentMethod);
-    } catch (error) {
-      console.error("Error fetching primary payment method:", error);
-    }
-  };
+  // const fetchPrimaryPaymentMethod = async (user: User) => {
+  //   try {
+  //     const paymentMethod = await checkPrimaryPaymentMethod(user?.id);
+  //     setPrimaryPaymentMethod(paymentMethod);
+  //   } catch (error) {
+  //     console.error("Error fetching primary payment method:", error);
+  //   }
+  // };
 
   const fetchUserProfile = async () => {
     try {
@@ -129,44 +129,44 @@ const Profile: React.FC = () => {
 
   const handleUpdatePaymentMethod = async (event: React.FormEvent) => {
     event.preventDefault();
-    if (!stripe || !elements) {
-      return;
-    }
+    // if (!stripe || !elements) {
+    //   return;
+    // }
 
-    const cardElement = elements.getElement(CardElement);
+    // const cardElement = elements.getElement(CardElement);
 
-    if (cardElement) {
-      setPaymentUpdateError(null);
-      setPaymentUpdateSuccess(false);
+    // if (cardElement) {
+    //   setPaymentUpdateError(null);
+    //   setPaymentUpdateSuccess(false);
 
-      try {
-        // Create a payment method
-        const { error, paymentMethod } = await stripe.createPaymentMethod({
-          type: "card",
-          card: cardElement,
-        });
+    //   try {
+    //     // Create a payment method
+    //     // const { error, paymentMethod } = await stripe.createPaymentMethod({
+    //     //   type: "card",
+    //     //   card: cardElement,
+    //     // });
 
-        if (error) {
-          throw new Error(error.message);
-        }
+    //     // if (error) {
+    //     //   throw new Error(error.message);
+    //     // }
 
-        // Send the payment method to your server
-        const response = await updatePaymentMethod(paymentMethod.id);
+    //     // Send the payment method to your server
+    //     // const response = await updatePaymentMethod(paymentMethod.id);
 
-        if (response.success) {
-          setPaymentUpdateSuccess(true);
-          setShowPaymentUpdate(false);
-          // Refresh subscription status
-          fetchSubscriptionStatus();
-        } else {
-          throw new Error(
-            response.message || "Failed to update payment method"
-          );
-        }
-      } catch (error: any) {
-        setPaymentUpdateError(error.message);
-      }
-    }
+    //     if (response.success) {
+    //       setPaymentUpdateSuccess(true);
+    //       setShowPaymentUpdate(false);
+    //       // Refresh subscription status
+    //       fetchSubscriptionStatus();
+    //     } else {
+    //       throw new Error(
+    //         response.message || "Failed to update payment method"
+    //       );
+    //     }
+    //   } catch (error: any) {
+    //     setPaymentUpdateError(error.message);
+    //   }
+    // }
   };
 
   const getMembershipLimits = (paymentTier: PaymentTier) => {
@@ -359,6 +359,7 @@ const Profile: React.FC = () => {
     input.type = "file";
     input.accept = "image/*";
     input.onchange = (e) => {
+      setIsHovering(false);
       const file = (e.target as HTMLInputElement).files?.[0];
       if (file && user) {
         const reader = new FileReader();
@@ -366,7 +367,14 @@ const Profile: React.FC = () => {
           const base64String = reader.result as string;
           updateProfilePicture(user.id, base64String)
             .then((updatedUser) => {
-              setUser(updatedUser);
+              setUser((prevUser) => {
+                if (!prevUser) return null;
+                return {
+                  ...prevUser,
+                  ...updatedUser,
+                  interests: prevUser.interests,
+                };
+              });
             })
             .catch((error) => {
               setIsInfoModalOpen(true);
@@ -749,12 +757,12 @@ const Profile: React.FC = () => {
                 },
               }}
             />
-            <button
+            {/* <button
               type="submit"
               disabled={!stripe}
               className="update-payment-submit">
               Update Payment Method
-            </button>
+            </button> */}
           </form>
         )}
 

@@ -40,9 +40,9 @@ const AppContent: React.FC = () => {
   }, [checkAuthStatus]);
 
   const isOnboardingRoute = location.pathname === "/onboarding";
-  const stripePromise = loadStripe(
-    process.env.REACT_APP_STRIPE_PUBLISHABLE_KEY!
-  );
+  // const stripePromise = loadStripe(
+  //   process.env.REACT_APP_STRIPE_PUBLISHABLE_KEY!
+  // );
 
   return (
     <div
@@ -92,11 +92,12 @@ const AppContent: React.FC = () => {
               path="/profile"
               element={
                 <PrivateRoute
-                  element={
-                    <Elements stripe={stripePromise}>
-                      <Profile />
-                    </Elements>
-                  }
+                  element={<Profile />}
+                  // element={
+                  //   <Elements stripe={stripePromise}>
+                  //     <Profile />
+                  //   </Elements>
+                  // }
                 />
               }
             />
@@ -120,11 +121,12 @@ const AppContent: React.FC = () => {
               path="/upgrade"
               element={
                 <PrivateRoute
-                  element={
-                    <Elements stripe={stripePromise}>
-                      <Upgrade />
-                    </Elements>
-                  }
+                  element={<Upgrade />}
+                  // element={
+                  //   <Elements stripe={stripePromise}>
+                  //     <Upgrade />
+                  //   </Elements>
+                  // }
                 />
               }
             />

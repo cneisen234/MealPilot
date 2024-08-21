@@ -38,7 +38,7 @@ const ContactUs: React.FC = () => {
   };
 
   return (
-    <div className="content-container">
+    <div className="center-container">
       <div className="content-wrapper">
         <div className="auth-form">
           <h2>Contact Us</h2>
