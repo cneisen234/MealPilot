@@ -33,8 +33,7 @@
     "server": "nodemon --watch server server/server.js",
     "build": "react-scripts build",
     "test": "jest",
-    "eject": "react-scripts eject",
-    "postinstall": "npm install --legacy-peer-deps"
+    "eject": "react-scripts eject"
   },
   "eslintConfig": {
     "extends": [
