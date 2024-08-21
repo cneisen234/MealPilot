@@ -48,6 +48,8 @@ const SideNavbar: React.FC = () => {
     setIsOpen(false);
   };
 
+  const currentYear = new Date().getFullYear();
+
   return (
     <>
       <button className="hamburger-menu" onClick={toggleMenu}>
@@ -88,6 +90,9 @@ const SideNavbar: React.FC = () => {
             Contact Us
           </NavItem>
         </ul>
+        <div className="copyright">
+          &copy; {currentYear} VibeQuest. All rights reserved.
+        </div>
       </nav>
     </>
   );
