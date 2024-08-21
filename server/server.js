@@ -18,6 +18,15 @@ const path = require("path");
 const app = express();
 const port = process.env.PORT || 5000;
 
+// HTTPS redirect middleware
+app.use((req, res, next) => {
+  if (process.env.NODE_ENV === "production" && !req.secure) {
+    const secureUrl = "https://" + req.headers.host + req.url;
+    return res.redirect(301, secureUrl);
+  }
+  next();
+});
+
 // Middleware
 app.use(cors());
 app.use(express.json({ limit: "10mb" }));
@@ -44,18 +53,9 @@ app.use("/api", miscRoutes);
 //   // Then schedule it to run daily
 //   setInterval(applyScheduledDowngrades, 24 * 60 * 60 * 1000);
 // };
-if (process.env.NODE_ENV === "production") {
-  app.use((req, res, next) => {
-    if (req.header("x-forwarded-proto") !== "https") {
-      res.redirect(`https://${req.header("host")}${req.url}`);
-    } else {
-      next();
-    }
-  });
-  app.get("*", (req, res) => {
-    res.sendFile(path.join(__dirname, "../build", "index.html"));
-  });
-}
+app.get("*", (req, res) => {
+  res.sendFile(path.join(__dirname, "../build", "index.html"));
+});
 
 // Start server
 app.listen(port, () => {
