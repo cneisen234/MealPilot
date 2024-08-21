@@ -32,7 +32,7 @@
     "web-vitals": "^2.1.4"
   },
   "scripts": {
-    "start": "node -e \"try { require('react-scripts/scripts/start'); } catch(e) { console.error(e); process.exit(1); }\"",
+    "start": "node server/server.js",
     "client": "react-scripts start",
     "server": "nodemon --watch server server/server.js",
     "build": "react-scripts build",

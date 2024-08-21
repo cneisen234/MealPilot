@@ -3,7 +3,7 @@ const cors = require("cors");
 require("dotenv").config();
 const sgMail = require("@sendgrid/mail");
 
-const { applyScheduledDowngrades } = require("./utils/subscriptionUtils");
+// const { applyScheduledDowngrades } = require("./utils/subscriptionUtils");
 
 const authRoutes = require("./routes/authRoutes");
 const userRoutes = require("./routes/userRoutes");
@@ -37,13 +37,13 @@ app.use("/api/recommendations", recommendationRoutes);
 app.use("/api/payments", paymentRoutes);
 app.use("/api", miscRoutes);
 
-const startScheduledTask = () => {
-  // Run the task immediately when the server starts
-  applyScheduledDowngrades();
+// const startScheduledTask = () => {
+//   // Run the task immediately when the server starts
+//   applyScheduledDowngrades();
 
-  // Then schedule it to run daily
-  setInterval(applyScheduledDowngrades, 24 * 60 * 60 * 1000);
-};
+//   // Then schedule it to run daily
+//   setInterval(applyScheduledDowngrades, 24 * 60 * 60 * 1000);
+// };
 
 app.use((err, req, res, next) => {
   console.error(err.stack);
@@ -54,5 +54,5 @@ app.use((err, req, res, next) => {
 app.listen(port, () => {
   console.log(`Server is running on port ${port}`);
   // Start the scheduled task after the server has started
-  startScheduledTask();
+  // startScheduledTask();
 });
