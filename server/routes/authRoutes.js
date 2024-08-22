@@ -53,7 +53,7 @@ router.post("/signup", async (req, res) => {
   try {
     // Check if the email is already in use
     const emailCheck = await pool.query(
-      "SELECT * FROM users WHERE email = $1",
+      "SELECT * FROM users WHERE LOWER(username) = LOWER($1)",
       [email]
     );
     if (emailCheck.rows.length > 0) {
@@ -198,9 +198,10 @@ router.get("/check-email", async (req, res) => {
 router.get("/check-username", async (req, res) => {
   const { username } = req.query;
   try {
-    const result = await pool.query("SELECT * FROM users WHERE username = $1", [
-      username,
-    ]);
+    const result = await pool.query(
+      "SELECT * FROM users WHERE LOWER(username) = LOWER($1)",
+      [username]
+    );
     res.json({ available: result.rows.length === 0 });
   } catch (error) {
     console.error("Error checking username availability:", error);

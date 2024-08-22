@@ -115,11 +115,30 @@
 }
 
 .category-tag {
+    margin: 5px;
+    display: inline-block;
+        white-space: nowrap;
+        max-width: 100%;
+        overflow-wrap: break-word;
     background-color: var(--secondary-color);
     color: white;
     padding: 5px 10px;
     border-radius: 20px;
     font-size: 0.9rem;
+}
+
+.remove-button {
+    background: none;
+    border: none;
+    color: rgba(255, 255, 255, 0.7);
+    cursor: pointer;
+    padding: 0 5px;
+    font-size: 0.8em;
+    vertical-align: middle;
+}
+
+.remove-button:hover {
+    color: white;
 }
 
 .location-input {

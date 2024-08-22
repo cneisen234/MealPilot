@@ -93,7 +93,6 @@ const FormattedAIResponse: React.FC<FormattedAIResponseProps> = ({
       style={{
         display: "inline-block",
         position: "relative",
-        maxHeight: "400px",
         overflowY: "auto",
         padding: "5px",
         backgroundColor: "var(--surface-color)",

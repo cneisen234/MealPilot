@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { FaArrowRight, FaInfoCircle, FaPlus } from "react-icons/fa";
+import { FaArrowRight, FaInfoCircle, FaPlus, FaTimes } from "react-icons/fa";
 import { useAuth } from "../../context/AuthContext";
 import {
   getProfile,
@@ -56,8 +56,9 @@ const Onboarding: React.FC = () => {
   const introSteps = [
     "Hi there!",
     "Welcome to VibeQuest",
-    "Let's get to know you",
-    "This will only take a few minutes",
+    "Introducing Lena AI",
+    "She's your guide to discovering new interests!",
+    "Let's get started!",
   ];
 
   useEffect(() => {
@@ -69,7 +70,17 @@ const Onboarding: React.FC = () => {
     }
   }, [step, introSteps.length]);
 
-  const handleNext = () => {
+  const handleNext = async () => {
+    const currentStep = step - introSteps.length;
+
+    if (currentStep === 0) {
+      // Save bio
+      await updateProfile(user!.id, { ...user!, bio });
+    } else if (currentStep === 1) {
+      // Save city and state
+      await updateProfile(user!.id, { ...user!, city, state });
+    }
+
     setStep((prevStep) => prevStep + 1);
   };
 
@@ -81,6 +92,17 @@ const Onboarding: React.FC = () => {
     } else if (categories.length >= MAX_CATEGORIES) {
       setShowLimitMessage(true);
     }
+  };
+
+  const removeCategory = (categoryToRemove: string) => {
+    setCategories(
+      categories.filter((category) => category !== categoryToRemove)
+    );
+    setItems((prevItems) => {
+      const newItems = { ...prevItems };
+      delete newItems[categoryToRemove];
+      return newItems;
+    });
   };
 
   const addItem = (category: string) => {
@@ -101,6 +123,15 @@ const Onboarding: React.FC = () => {
     }
   };
 
+  const removeItem = (category: string, itemToRemove: string) => {
+    setItems((prevItems) => ({
+      ...prevItems,
+      [category]: prevItems[category].filter(
+        (item) => item.name !== itemToRemove
+      ),
+    }));
+  };
+
   const areAllItemsRanked = () => {
     return Object.values(items).every((categoryItems) =>
       categoryItems.every((item) => item.rating > 0)
@@ -111,18 +142,6 @@ const Onboarding: React.FC = () => {
     if (!user) return;
 
     try {
-      console.log("Updating profile with bio, city, and state:", {
-        bio,
-        city,
-        state,
-      });
-      const updatedUser = await updateProfile(user.id, {
-        ...user,
-        bio,
-        city,
-        state,
-      });
-
       for (const category of categories) {
         const newInterest: Omit<Interest, "id"> = {
           userId: user.id,
@@ -170,7 +189,11 @@ const Onboarding: React.FC = () => {
             exit={{ opacity: 0 }}
             className="onboarding-step">
             <h2>Tell us about yourself</h2>
-            <p>What makes you unique? Don't be shy!</p>
+            <p>
+              Tell Lena about yourself! The more she knows about you, the better
+              she can suggest cool stuff you'll love. What makes you, well...
+              you?
+            </p>
             <textarea
               value={bio}
               onChange={(e) => setBio(e.target.value)}
@@ -191,7 +214,8 @@ const Onboarding: React.FC = () => {
             className="onboarding-step">
             <h2>Where are you based?</h2>
             <p>
-              Let us know your city and state to connect you with local vibes!
+              Your location helps Lena recommend local activities, events, and
+              interests tailored to your area.
             </p>
             <div className="input-group">
               <input
@@ -221,7 +245,10 @@ const Onboarding: React.FC = () => {
             exit={{ opacity: 0 }}
             className="onboarding-step">
             <h2>What are you passionate about?</h2>
-            <p>Add some categories that represent your interests.</p>
+            <p>
+              Share your interests with Lena! She'll use these as a starting
+              point to suggest new, exciting activities based on your answers.
+            </p>
             <div className="input-group">
               <input
                 type="text"
@@ -242,6 +269,11 @@ const Onboarding: React.FC = () => {
               {categories.map((cat, index) => (
                 <span key={index} className="category-tag">
                   {cat}
+                  <button
+                    onClick={() => removeCategory(cat)}
+                    className="remove-button">
+                    <FaTimes />
+                  </button>
                 </span>
               ))}
             </div>
@@ -264,7 +296,10 @@ const Onboarding: React.FC = () => {
             exit={{ opacity: 0 }}
             className="onboarding-step">
             <h2>Let's dive deeper!</h2>
-            <p>Add some items to your categories and rate them.</p>
+            <p>
+              What kind of things do you enjoy about these? The more details you
+              give, the more Lena will understand you.
+            </p>
             {categories.map((cat, index) => (
               <div key={index} className="category-items">
                 <div className="category-header">
@@ -287,6 +322,7 @@ const Onboarding: React.FC = () => {
                     placeholder={`Add an item to ${cat}`}
                     className="item-input"
                   />
+
                   <button
                     onClick={() => addItem(cat)}
                     className="add-button"
@@ -296,6 +332,7 @@ const Onboarding: React.FC = () => {
                     <FaPlus /> Add
                   </button>
                 </div>
+
                 {items[cat] &&
                   items[cat].map((item, itemIndex) => (
                     <div key={itemIndex} className="item-rating">
@@ -308,6 +345,11 @@ const Onboarding: React.FC = () => {
                           setItems(newItems);
                         }}
                       />
+                      <button
+                        onClick={() => removeItem(cat, item.name)}
+                        className="remove-button">
+                        <FaTimes />
+                      </button>
                     </div>
                   ))}
               </div>
@@ -349,6 +391,11 @@ const Onboarding: React.FC = () => {
       <div className="onboarding-content">
         <AnimatePresence mode="wait">{renderStep()}</AnimatePresence>
       </div>
+      {step === introSteps.length + 3 && (
+        <p style={{ margin: 0, fontSize: 12 }}>
+          Each item must be rated to proceed
+        </p>
+      )}
       <div className="onboarding-actions">
         {step >= introSteps.length && (
           <button

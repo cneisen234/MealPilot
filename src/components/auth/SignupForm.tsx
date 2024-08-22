@@ -6,18 +6,25 @@ import {
   checkEmailAvailability,
   checkUsernameAvailability,
 } from "../../utils/api";
+import { FaEye, FaEyeSlash } from "react-icons/fa";
 import { useAuth } from "../../context/AuthContext";
 import useDebounce from "../../hooks/useDebounce";
 import { emailFormatValidationHelper } from "../../helpers/emailFormatValidationHelper";
+import {
+  getPasswordValidationErrors,
+  passwordValidationHelper,
+} from "../../helpers/passwordValidationHelper";
 
 const SignupForm: React.FC = () => {
   const [name, setName] = useState("");
   const [username, setUsername] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [passwordError, setPasswordError] = useState<string[]>([]);
   const [emailError, setEmailError] = useState("");
   const [usernameError, setUsernameError] = useState("");
   const [generalError, setGeneralError] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
   const navigate = useNavigate();
   const { checkAuthStatus } = useAuth();
 
@@ -58,11 +65,15 @@ const SignupForm: React.FC = () => {
     checkUsername(debouncedUsername);
   }, [debouncedUsername, checkUsername]);
 
+  const togglePasswordVisibility = () => {
+    setShowPassword(!showPassword);
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setGeneralError("");
 
-    if (emailError || usernameError) {
+    if (emailError || usernameError || passwordError.length > 0) {
       setGeneralError("Please fix the errors before submitting.");
       return;
     }
@@ -89,8 +100,14 @@ const SignupForm: React.FC = () => {
         return;
       }
 
+      if (!passwordValidationHelper(password)) {
+        setPasswordError(getPasswordValidationErrors(password));
+        setGeneralError("Please fix the errors before submitting.");
+        return;
+      }
+
       // Proceed with signup
-      const signupResponse = await signup({
+      await signup({
         name,
         username,
         email: email.toLowerCase(),
@@ -119,8 +136,8 @@ const SignupForm: React.FC = () => {
       <div className="form-group">
         <input
           type="text"
-          className="form-control"
           placeholder="Name"
+          className="form-control"
           value={name}
           onChange={(e) => setName(e.target.value)}
           required
@@ -130,6 +147,7 @@ const SignupForm: React.FC = () => {
         <input
           type="text"
           className={`form-control ${usernameError ? "is-invalid" : ""}`}
+          onFocus={() => setUsernameError("")}
           placeholder="Username"
           value={username}
           onChange={(e) => setUsername(e.target.value)}
@@ -143,6 +161,7 @@ const SignupForm: React.FC = () => {
         <input
           type="email"
           className={`form-control ${emailError ? "is-invalid" : ""}`}
+          onFocus={() => setEmailError("")}
           placeholder="Email"
           value={email}
           onChange={(e) => setEmail(e.target.value)}
@@ -152,14 +171,38 @@ const SignupForm: React.FC = () => {
       </div>
       <div className="form-group">
         <input
-          type="password"
-          className="form-control"
+          type={showPassword ? "text" : "password"}
+          className={`form-control ${
+            passwordError.length > 0 ? "is-invalid" : ""
+          }`}
+          onFocus={() => setPasswordError([])}
           placeholder="Password"
           value={password}
           onChange={(e) => setPassword(e.target.value)}
           required
         />
+        <button
+          type="button"
+          onClick={togglePasswordVisibility}
+          style={{
+            float: "right",
+            paddingBottom: 45,
+            paddingRight: 15,
+            transform: "translateY(-50%)",
+            background: "none",
+            border: "none",
+            cursor: "pointer",
+          }}>
+          {showPassword ? <FaEye size={20} /> : <FaEyeSlash size={20} />}
+        </button>
       </div>
+      {passwordError.length > 0 && (
+        <div className="invalid-feedback">
+          {passwordError.map((error, index) => (
+            <div key={index}>{error}</div>
+          ))}
+        </div>
+      )}
       {generalError && <div className="alert alert-danger">{generalError}</div>}
       <button
         type="submit"

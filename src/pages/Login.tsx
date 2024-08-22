@@ -2,13 +2,14 @@ import React, { useState, useCallback } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { login, checkEmailExists } from "../utils/api";
 import { useAuth } from "../context/AuthContext";
-import { FaExclamationCircle } from "react-icons/fa";
+import { FaExclamationCircle, FaEye, FaEyeSlash } from "react-icons/fa";
 
 const Login: React.FC = () => {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [emailError, setEmailError] = useState("");
   const [loginError, setLoginError] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
   const navigate = useNavigate();
   const { login: authLogin, checkAuthStatus } = useAuth();
 
@@ -29,6 +30,10 @@ const Login: React.FC = () => {
 
   const handleEmailBlur = () => {
     checkEmail(email);
+  };
+
+  const togglePasswordVisibility = () => {
+    setShowPassword(!showPassword);
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -92,13 +97,27 @@ const Login: React.FC = () => {
             </div>
             <div className="form-group">
               <input
-                type="password"
+                type={showPassword ? "text" : "password"}
                 className="form-control"
                 placeholder="Password"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 required
               />
+              <button
+                type="button"
+                onClick={togglePasswordVisibility}
+                style={{
+                  float: "right",
+                  paddingBottom: 45,
+                  paddingRight: 15,
+                  transform: "translateY(-50%)",
+                  background: "none",
+                  border: "none",
+                  cursor: "pointer",
+                }}>
+                {showPassword ? <FaEye size={20} /> : <FaEyeSlash size={20} />}
+              </button>
             </div>
             {loginError && (
               <div

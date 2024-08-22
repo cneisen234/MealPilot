@@ -71,7 +71,7 @@ const Home: React.FC = () => {
                 marginBottom: "1rem",
                 color: "var(--primary-color)",
               }}>
-              Find Your Vibe
+              Take a quest into your vibe
             </h1>
             <p
               style={{
@@ -79,7 +79,8 @@ const Home: React.FC = () => {
                 marginBottom: "2rem",
                 color: "var(--text-color)",
               }}>
-              Connect with your tribe. Chase adventures. Level up your life.
+              Let Lena AI spark new interests. Explore the unexpected. Grow your
+              world.
             </p>
             <Link
               to="/signup"

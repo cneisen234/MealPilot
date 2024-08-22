@@ -37,6 +37,9 @@ CREATE TABLE users
     last_prompt_reset DATE DEFAULT CURRENT_DATE
 );
 
+CREATE UNIQUE INDEX idx_users_username_lower ON users (LOWER
+(username));
+
 CREATE TABLE friend_requests
 (
     id SERIAL PRIMARY KEY,
