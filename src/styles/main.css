@@ -297,6 +297,10 @@ h6 {
     font-family: var(--font-primary);
 }
 
+input, textarea, select {
+    font-size: 16px !important;
+}
+
 .btn, .nav-item, p {
     font-family: var(--font-primary);
 }

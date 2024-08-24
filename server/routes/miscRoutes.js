@@ -78,6 +78,10 @@ router.get("/remaining-prompts", authMiddleware, async (req, res) => {
 
     // Calculate effective count
     let effectiveCount = user.daily_prompt_count;
+    console.log(
+      user.last_prompt_reset.toISOString().split("T")[0],
+      currentDate
+    );
     if (user.last_prompt_reset.toISOString().split("T")[0] !== currentDate) {
       effectiveCount = 0;
     }

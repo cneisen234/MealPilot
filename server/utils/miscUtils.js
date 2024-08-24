@@ -12,10 +12,13 @@ const checkPromptLimit = async (req, res, next) => {
     );
     const user = userResult.rows[0];
 
-    // Reset count if it's a new day (but don't update the database)
+    // Reset count if it's a new day
     let effectiveCount = user.daily_prompt_count;
     if (user.last_prompt_reset.toISOString().split("T")[0] !== currentDate) {
-      effectiveCount = 0;
+      await pool.query(
+        "UPDATE users SET daily_prompt_count = 0, last_prompt_reset = $1 WHERE id = $2",
+        [currentDate, userId]
+      );
     }
 
     // Check limits based on payment tier

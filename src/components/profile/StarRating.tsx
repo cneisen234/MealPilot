@@ -7,12 +7,14 @@ interface StarRatingProps {
   rating: number;
   onRatingChange: (newRating: number) => void;
   editable?: boolean;
+  size?: number;
 }
 
 const StarRating: React.FC<StarRatingProps> = ({
   rating,
   onRatingChange,
   editable = true,
+  size = 16,
 }) => {
   const [hover, setHover] = useState<number | null>(null);
 
@@ -33,7 +35,7 @@ const StarRating: React.FC<StarRatingProps> = ({
             />
             <FaStar
               color={(hover || rating) >= ratingValue ? "#ffc107" : "#e4e5e9"}
-              size={10}
+              size={size}
               onMouseEnter={() => editable && setHover(ratingValue)}
               onMouseLeave={() => editable && setHover(null)}
             />

@@ -156,6 +156,16 @@ export const getFriendProfile = (friendId: number) => {
   return api.get(`/friends/${friendId}/profile`);
 };
 
+export const createNotification = async (userId: number, content: string, type: string): Promise<Notification> => {
+  try {
+    const response = await api.post<Notification>('/notifications', { userId, content, type });
+    return response.data;
+  } catch (error) {
+    console.error('Error creating notification:', error);
+    throw error;
+  }
+};
+
 export const getNotifications = () => {
   return api.get('/notifications');
 };

@@ -121,7 +121,7 @@ Alright, here's what I need from you. Keep it friendly and casual, like you're c
 
 What's the idea: [Brief description of the recommendation]
 
-Why would they dig it: [Explanation referencing their interests and ratings]
+Why would you dig it: [Explanation referencing their interests and ratings]
 
 Fresh experience: [Explain how it provides a new perspective]
 
@@ -130,10 +130,10 @@ Confidence: [Just say High, Medium, or Low]
 CRITICAL GUIDELINES:
 1. Accuracy is key, my friend. Only share stuff you're absolutely sure about.
 2. When you look at those interest ratings, here's what they mean:
-   - 10: They're obsessed with this!
-   - 7-9: They really love it
-   - 4-6: They like it well enough
-   - 1-3: It's okay, but not their favorite
+   - 10: You're obsessed with this!
+   - 7-9: You really love it
+   - 4-6: You like it well enough
+   - 1-3: It's okay, but not you're favorite
 3. Try to focus on the higher-rated interests, but don't completely ignore the lower ones. They might be up for trying something new!
 4. It's cool to give fewer recommendations if it means they're spot-on.
 5. Stick to answering their specific question.

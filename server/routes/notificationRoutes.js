@@ -16,6 +16,30 @@ router.get("/", authMiddleware, async (req, res) => {
   }
 });
 
+router.post("/", authMiddleware, async (req, res) => {
+  const { content, type } = req.body;
+  const userId = req.user.id; // Get the user ID from the authenticated user
+
+  try {
+    const query = `
+      INSERT INTO notifications (user_id, content, type)
+      VALUES ($1, $2, $3)
+      RETURNING *
+    `;
+    const values = [userId, content, type];
+
+    const result = await pool.query(query, values);
+    const newNotification = result.rows[0];
+
+    res.status(201).json(newNotification);
+  } catch (error) {
+    console.error("Error creating notification:", error);
+    res
+      .status(500)
+      .json({ message: "Server error while creating notification" });
+  }
+});
+
 router.put("/mark-all-read", authMiddleware, async (req, res) => {
   const client = await pool.connect();
   try {

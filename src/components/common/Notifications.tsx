@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from "react";
+import { useLocation } from "react-router-dom";
 import { FaBell, FaUser, FaTimes } from "react-icons/fa";
 import {
   getNotifications,
@@ -9,6 +10,7 @@ import { Notification } from "../../types";
 import "../../styles/notifications.css";
 
 const Notifications: React.FC = () => {
+  const appLocation = useLocation();
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [isOpen, setIsOpen] = useState(false);
   const [unreadCount, setUnreadCount] = useState(0);
@@ -21,7 +23,7 @@ const Notifications: React.FC = () => {
     return () => {
       document.removeEventListener("mousedown", handleClickOutside);
     };
-  }, []);
+  }, [appLocation?.state?.fromLogin]);
 
   useEffect(() => {
     setUnreadCount(notifications.filter((n) => !n.read).length);

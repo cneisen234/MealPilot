@@ -12,6 +12,7 @@ import {
   updatePaymentMethod,
   getSubscriptionStatus,
   checkPrimaryPaymentMethod,
+  createNotification,
 } from "../utils/api";
 import EditProfileModal from "../components/profile/EditProfileModal";
 import AddInterestCategoryModal from "../components/interests/AddInterestCategoryModal";
@@ -66,6 +67,7 @@ const Profile: React.FC = () => {
 
   interface LocationState {
     fromOnboarding?: boolean;
+    fromLogin?: boolean;
   }
 
   const appLocation = useLocation();
@@ -102,10 +104,52 @@ const Profile: React.FC = () => {
   //   }
   // };
 
+  const checkProfileCompletion = async (user: User) => {
+    const incompleteItems: string[] = [];
+
+    if (!user.bio || user.bio.trim() === "") {
+      incompleteItems.push("bio");
+    }
+
+    if (!user.city || user.city.trim() === "") {
+      incompleteItems.push("city");
+    }
+
+    if (!user.state || user.state.trim() === "") {
+      incompleteItems.push("state");
+    }
+
+    if (!user.interests || user.interests.length === 0) {
+      incompleteItems.push("interests");
+    } else {
+      const hasItemInInterest = user.interests.some(
+        (interest) => interest.items && interest.items.length > 0
+      );
+      if (!hasItemInInterest) {
+        incompleteItems.push("items in your interests");
+      }
+    }
+
+    if (incompleteItems.length > 0) {
+      const message = `You're profile is missing the following information: ${incompleteItems.join(
+        ", "
+      )}. For Lena to be fully equiped to assist, a complete profile is strongly adviced.`;
+      await createNotification(user.id, message, "profile_incomplete");
+      return message;
+    }
+
+    return null;
+  };
+
   const fetchUserProfile = async () => {
     try {
       const response = await getProfile();
       setUser(response.data);
+      const locationState = appLocation.state as LocationState;
+      if (locationState && locationState.fromLogin) {
+        await checkProfileCompletion(response.data);
+        locationState.fromLogin = false;
+      }
     } catch (error) {
       console.error("Error fetching user profile:", error);
     }
@@ -206,7 +250,10 @@ const Profile: React.FC = () => {
       PaymentTier[user.payment_tier as unknown as keyof typeof PaymentTier];
     const { maxItems } = getMembershipLimits(userTier);
     const category = user.interests.find((int) => int.id === categoryId);
-    return category ? category?.items?.length < maxItems : false;
+    if (!category?.items) {
+      return true;
+    }
+    return category ? category?.items?.length < Number(maxItems) : false;
   };
 
   const handleAddInterestCategory = async (
@@ -250,9 +297,9 @@ const Profile: React.FC = () => {
         });
         setUser((prevUser) => {
           if (prevUser) {
-            const updatedInterests = prevUser.interests.map((interest) =>
+            const updatedInterests = prevUser?.interests?.map((interest) =>
               interest.id === categoryId
-                ? { ...interest, items: [...interest.items, newItem] }
+                ? { ...interest, items: [...interest?.items, newItem] }
                 : interest
             );
             return { ...prevUser, interests: updatedInterests };
@@ -351,6 +398,8 @@ const Profile: React.FC = () => {
   };
 
   const toggleCategory = (interestId: number) => {
+    setNewItemName("");
+    setNewItemRating(5);
     setExpandedCategory(expandedCategory === interestId ? null : interestId);
   };
 
@@ -579,11 +628,12 @@ const Profile: React.FC = () => {
                         justifyContent: "space-between",
                         alignItems: "center",
                         marginBottom: "5px",
-                        fontSize: 12,
+                        fontSize: 10,
                       }}>
                       <span>{item.name}</span>
                       <div style={{ display: "flex", alignItems: "center" }}>
                         <StarRating
+                          size={14}
                           rating={item.rating}
                           onRatingChange={(newRating) =>
                             handleUpdateItemRating(
