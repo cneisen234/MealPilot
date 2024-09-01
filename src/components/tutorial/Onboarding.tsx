@@ -130,7 +130,7 @@ const Onboarding: React.FC = () => {
     if (!user) return;
     setCategory("");
     setItem("");
-    navigate("/profile", { state: { fromOnboarding: true } });
+    navigate("/chatbot", { state: { fromOnboarding: true } });
   };
 
   const renderStep = () => {

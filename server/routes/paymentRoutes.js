@@ -19,6 +19,7 @@ const {
   createNewSubscription,
   createNewSubscriptionWithTrial,
   calculateProratedAmount,
+  // calculateTax,
 } = require("../utils/paymentUtils");
 const { scheduleDowngrade } = require("../utils/subscriptionUtils");
 const {
@@ -35,7 +36,7 @@ const PaymentTier = {
 
 router.post("/:userId/upgrade", authMiddleware, async (req, res) => {
   const { userId } = req.params;
-  const { newTier, paymentMethodId } = req.body;
+  const { newTier, paymentMethodId, address } = req.body;
 
   try {
     const user = await getUserById(userId);
@@ -47,7 +48,9 @@ router.post("/:userId/upgrade", authMiddleware, async (req, res) => {
       ? await stripe.customers.retrieve(user.stripe_customer_id)
       : await stripe.customers.create({
           email: user.email,
+          name: user.name,
           metadata: { userId: user.id },
+          address: address,
         });
 
     if (stripeCustomer.deleted) {
@@ -87,7 +90,6 @@ router.post("/:userId/upgrade", authMiddleware, async (req, res) => {
       status: "active",
       limit: 1,
     });
-
     if (subscriptions.data.length > 0) {
       const currentSubscription = subscriptions.data[0];
       const currentPeriodEnd = new Date(
@@ -124,18 +126,35 @@ router.post("/:userId/upgrade", authMiddleware, async (req, res) => {
       } else if (newTier === PaymentTier.Premium) {
         amount = 1999;
       }
+
       console.log("amount", amount);
       // Cancel existing subscription
       await cancelExistingSubscription(stripeCustomer.id);
+    } else {
+      if (newTier === PaymentTier.Basic) {
+        amount = 999;
+      } else if (newTier === PaymentTier.Premium) {
+        amount = 1999;
+      }
     }
 
     await cancelScheduledDowngrade(userId);
 
+    // const { taxAmount, totalAmount } = await calculateTax(
+    //   amount,
+    //   stripeCustomer.id
+    // );
+
     // Create new subscription
     const newSubscription =
       currentTier === PaymentTier.Basic && newTier === PaymentTier.Premium
-        ? await createNewSubscriptionWithTrial(stripeCustomer.id, newPriceId)
-        : await createNewSubscription(stripeCustomer.id, newPriceId);
+        ? await createNewSubscriptionWithTrial(
+            stripeCustomer.id,
+            newPriceId
+            // taxAmount
+          )
+        : // : await createNewSubscription(stripeCustomer.id, newPriceId, taxAmount);
+          await createNewSubscription(stripeCustomer.id, newPriceId);
     amount = Number(amount);
 
     // Update user's subscription in the database
@@ -146,6 +165,7 @@ router.post("/:userId/upgrade", authMiddleware, async (req, res) => {
     await sendSubscriptionConfirmation(
       user.email,
       totalCharged,
+      new Date().toLocaleDateString(),
       new Date(newSubscription.current_period_end * 1000).toLocaleDateString()
     );
 
@@ -157,6 +177,8 @@ router.post("/:userId/upgrade", authMiddleware, async (req, res) => {
       nextBillingDate: new Date(
         newSubscription.current_period_end * 1000
       ).toLocaleDateString(),
+      // taxAmount: taxAmount,
+      // totalAmount: totalAmount,
     });
   } catch (error) {
     console.error("Error processing upgrade:", error);
@@ -191,7 +213,7 @@ router.post("/:userId/confirm-upgrade", authMiddleware, async (req, res) => {
   }
 });
 
-router.post("/users/:userId/downgrade", authMiddleware, async (req, res) => {
+router.post("/:userId/downgrade", authMiddleware, async (req, res) => {
   const { userId } = req.params;
   const { newTier } = req.body;
 
@@ -285,7 +307,7 @@ router.post("/users/:userId/downgrade", authMiddleware, async (req, res) => {
 });
 
 router.post("/update-payment-method", authMiddleware, async (req, res) => {
-  const { paymentMethodId } = req.body;
+  const { paymentMethodId, address } = req.body;
   const userId = req.user.id;
 
   try {
@@ -296,6 +318,7 @@ router.post("/update-payment-method", authMiddleware, async (req, res) => {
       const customer = await stripe.customers.create({
         email: user.email,
         name: user.name,
+        address: address,
       });
       user.stripe_customer_id = customer.id;
       await updateUserStripeCustomerId(userId, customer.id);
@@ -462,6 +485,8 @@ router.get("/check-primary-payment-method/:userId", async (req, res) => {
         hasPrimaryPaymentMethod: true,
         last4: paymentMethod.card.last4,
         brand: paymentMethod.card.brand,
+        address: customer.address,
+        paymentMethodId: defaultPaymentMethodId,
       });
     } else {
       res.json({ hasPrimaryPaymentMethod: false });

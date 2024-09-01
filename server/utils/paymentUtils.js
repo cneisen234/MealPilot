@@ -252,6 +252,29 @@ async function handleFailedPayment(invoice) {
   }
 }
 
+// const calculateTax = async (amount, customerId) => {
+//   try {
+//     const taxCalculation = await stripe.tax.calculations.create({
+//       currency: "usd",
+//       line_items: [
+//         {
+//           amount: amount,
+//           reference: "Subscription",
+//         },
+//       ],
+//       customer: customerId,
+//     });
+
+//     return {
+//       taxAmount: taxCalculation.tax_amount_exclusive,
+//       totalAmount: taxCalculation.total_amount,
+//     };
+//   } catch (error) {
+//     console.error("Error calculating tax:", error);
+//     throw new Error("Failed to calculate tax");
+//   }
+// };
+
 module.exports = {
   attachPaymentMethodToCustomer,
   cancelExistingSubscription,
@@ -263,4 +286,5 @@ module.exports = {
   updateUserSubscription,
   handleSuccessfulPayment,
   handleFailedPayment,
+  // calculateTax,
 };

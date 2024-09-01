@@ -1,0 +1,33 @@
+.static-tech-icon {
+    display: inline-block;
+    vertical-align: middle;
+}
+
+.static-tech-icon-svg {
+    width: 100%;
+    height: 100%;
+}
+
+.static-tech-icon-ring {
+    fill: none;
+    stroke: var(--primary-color);
+    stroke-width: 2;
+}
+
+.static-tech-icon-hexagon {
+    fill: none;
+    stroke: var(--secondary-color);
+    stroke-width: 2;
+}
+
+.static-tech-icon-center {
+    fill: var(--accent-color);
+}
+
+.static-tech-icon-orbit {
+    fill: var(--primary-color);
+}
+
+.static-tech-icon-orbit-2 {
+    fill: var(--secondary-color);
+}

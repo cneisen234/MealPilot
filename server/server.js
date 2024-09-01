@@ -3,8 +3,6 @@ const cors = require("cors");
 require("dotenv").config();
 const sgMail = require("@sendgrid/mail");
 
-// const { applyScheduledDowngrades } = require("./utils/subscriptionUtils");
-
 const authRoutes = require("./routes/authRoutes");
 const userRoutes = require("./routes/userRoutes");
 const interestRoutes = require("./routes/interestRoutes");
@@ -13,6 +11,7 @@ const notificationRoutes = require("./routes/notificationRoutes");
 const recommendationRoutes = require("./routes/recommendationRoutes");
 const paymentRoutes = require("./routes/paymentRoutes");
 const miscRoutes = require("./routes/miscRoutes");
+const chatHistoryRoutes = require("./routes/chatHistoryRoutes");
 const path = require("path");
 
 const app = express();
@@ -20,11 +19,6 @@ const port = process.env.PORT || 5000;
 
 // HTTPS redirect middleware
 app.use((req, res, next) => {
-  console.log("Protocol:", req.protocol);
-  console.log("X-Forwarded-Proto:", req.headers["x-forwarded-proto"]);
-  console.log("Host:", req.headers.host);
-  console.log("URL:", req.url);
-
   if (
     process.env.NODE_ENV === "production" &&
     req.headers["x-forwarded-proto"] !== "https"
@@ -53,14 +47,8 @@ app.use("/api/notifications", notificationRoutes);
 app.use("/api/recommendations", recommendationRoutes);
 app.use("/api/payments", paymentRoutes);
 app.use("/api", miscRoutes);
+app.use("/api/chat-history", chatHistoryRoutes);
 
-// const startScheduledTask = () => {
-//   // Run the task immediately when the server starts
-//   applyScheduledDowngrades();
-
-//   // Then schedule it to run daily
-//   setInterval(applyScheduledDowngrades, 24 * 60 * 60 * 1000);
-// };
 app.get("*", (req, res) => {
   res.sendFile(path.join(__dirname, "../build", "index.html"));
 });
@@ -68,6 +56,4 @@ app.get("*", (req, res) => {
 // Start server
 app.listen(port, () => {
   console.log(`Server is running on port ${port}`);
-  // Start the scheduled task after the server has started
-  // startScheduledTask();
 });

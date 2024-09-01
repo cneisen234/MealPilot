@@ -91,10 +91,8 @@ const Recommendations: React.FC = () => {
           color: "var(--text-color)",
           fontSize: "0.5em",
         }}>
-        <strong>Disclaimer:</strong> AI responses can at times provide
-        unpredictable or inaccurate results. We are continuously working on
-        updating and improving the model and inaccuracies will become less
-        apparent over time but will probably never go away entirely.
+        <strong>Disclaimer:</strong> AI responses may be inaccurate. We're
+        continually improving, but some inaccuracies may persist.
       </p>
       {recommendations.map((rec) => (
         <div

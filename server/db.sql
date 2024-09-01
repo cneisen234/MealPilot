@@ -128,3 +128,62 @@ CREATE TABLE upgrade_attempts
 );
 
 CREATE INDEX idx_scheduled_downgrades_date ON scheduled_downgrades(downgrade_date);
+
+CREATE TABLE recent_recommendations
+(
+    id SERIAL PRIMARY KEY,
+    user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
+    recommendation_name VARCHAR(255) NOT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE INDEX idx_recent_recommendations_user_id ON recent_recommendations(user_id);
+
+CREATE OR REPLACE FUNCTION delete_old_recommendations
+()
+RETURNS trigger AS $$
+BEGIN
+    DELETE FROM recent_recommendations
+  WHERE created_at < NOW() - INTERVAL
+    '2 weeks';
+RETURN NEW;
+end;
+$$ LANGUAGE plpgsql;
+
+CREATE TRIGGER trigger_delete_old_recommendations
+AFTER
+INSERT ON
+recent_recommendations
+EXECUTE FUNCTION delete_old_recommendations
+();
+
+CREATE TABLE chat_history
+(
+    id SERIAL PRIMARY KEY,
+    user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
+    message TEXT NOT NULL,
+    sender VARCHAR(10) NOT NULL CHECK (sender IN ('user', 'ai')),
+    timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE INDEX idx_chat_history_user_id ON chat_history(user_id);
+
+CREATE OR REPLACE FUNCTION delete_old_chat_history
+()
+RETURNS trigger AS $$
+BEGIN
+    DELETE FROM chat_history
+  WHERE timestamp < CURRENT_DATE;
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE TRIGGER trigger_delete_old_chat_history
+AFTER
+INSERT ON
+chat_history
+FOR
+EACH
+STATEMENT
+EXECUTE FUNCTION delete_old_chat_history
+();

@@ -216,4 +216,37 @@ router.put("/friend-requests/:id", authMiddleware, async (req, res) => {
   }
 });
 
+router.post("/:friendId/unfriend", authMiddleware, async (req, res) => {
+  const { friendId } = req.params;
+  const userId = req.user.id;
+
+  const client = await pool.connect();
+
+  try {
+    await client.query("BEGIN");
+
+    // Remove the friendship in both directions
+    await client.query(
+      "DELETE FROM friends WHERE (user_id = $1 AND friend_id = $2) OR (user_id = $2 AND friend_id = $1)",
+      [userId, friendId]
+    );
+
+    // Remove any pending friend requests between the two users
+    await client.query(
+      "DELETE FROM friend_requests WHERE (sender_id = $1 AND receiver_id = $2) OR (sender_id = $2 AND receiver_id = $1)",
+      [userId, friendId]
+    );
+
+    await client.query("COMMIT");
+
+    res.json({ message: "Successfully unfriended user" });
+  } catch (error) {
+    await client.query("ROLLBACK");
+    console.error("Error unfriending user:", error);
+    res.status(500).json({ message: "Server error while unfriending user" });
+  } finally {
+    client.release();
+  }
+});
+
 module.exports = router;

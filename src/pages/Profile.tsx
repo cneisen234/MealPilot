@@ -20,7 +20,6 @@ import ConfirmDeleteModal from "../components/common/ConfirmDeleteModal";
 import InfoModal from "../components/common/InfoModal";
 import StarRating from "../components/profile/StarRating";
 import { useLocation } from "react-router-dom";
-import { useTutorial } from "../context/TutorialContext";
 import {
   FaChevronDown,
   FaChevronUp,
@@ -30,14 +29,24 @@ import {
   FaTimes,
   FaInfoCircle,
   FaCreditCard,
+  FaUserFriends,
+  FaGlobeAmericas,
 } from "react-icons/fa";
 import { Link } from "react-router-dom";
 import AnimatedTechIcon from "../components/common/AnimatedTechIcon";
 import { CardElement, useElements, useStripe } from "@stripe/react-stripe-js";
 import "../styles/profile.css";
 
+interface AddressInfo {
+  line1: string;
+  line2?: string;
+  city: string;
+  state: string;
+  postal_code: string;
+  country: string;
+}
+
 const Profile: React.FC = () => {
-  const { startTutorial } = useTutorial();
   const [user, setUser] = useState<User | null>(null);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [isAddInterestModalOpen, setIsAddInterestModalOpen] = useState(false);
@@ -62,8 +71,17 @@ const Profile: React.FC = () => {
   const [subscriptionStatus, setSubscriptionStatus] = useState<any>(null);
   const [primaryPaymentMethod, setPrimaryPaymentMethod] = useState<any>(null);
 
-  // const stripe = useStripe();
-  // const elements = useElements();
+  const [address, setAddress] = useState<AddressInfo>({
+    line1: "",
+    line2: "",
+    city: "",
+    state: "",
+    postal_code: "",
+    country: "US",
+  });
+
+  const stripe = useStripe();
+  const elements = useElements();
 
   interface LocationState {
     fromOnboarding?: boolean;
@@ -79,30 +97,34 @@ const Profile: React.FC = () => {
   }, []);
 
   useEffect(() => {
-    // Check if user just completed onboarding
-    const locationState = appLocation.state as LocationState;
-    if (locationState && locationState.fromOnboarding) {
-      startTutorial();
-      locationState.fromOnboarding = false;
-      // Clear the state after showing the tutorial
-      window.history.replaceState({}, document.title);
+    if (user?.id) {
+      fetchPrimaryPaymentMethod(user);
     }
-  }, [appLocation, startTutorial]);
+  }, [user]);
 
-  // useEffect(() => {
-  //   if (user?.id) {
-  //     fetchPrimaryPaymentMethod(user);
-  //   }
-  // }, [user]);
+  const fetchPrimaryPaymentMethod = async (user: User) => {
+    try {
+      const paymentMethod = await checkPrimaryPaymentMethod(user?.id);
+      //@ts-ignore
+      setAddress(paymentMethod.address);
+      setPrimaryPaymentMethod(paymentMethod);
+    } catch (error) {
+      console.error("Error fetching primary payment method:", error);
+    }
+  };
 
-  // const fetchPrimaryPaymentMethod = async (user: User) => {
-  //   try {
-  //     const paymentMethod = await checkPrimaryPaymentMethod(user?.id);
-  //     setPrimaryPaymentMethod(paymentMethod);
-  //   } catch (error) {
-  //     console.error("Error fetching primary payment method:", error);
-  //   }
-  // };
+  const getPrivacyIcon = (visibility: string) => {
+    switch (visibility) {
+      case "public":
+        return <FaGlobeAmericas />;
+      case "friends_only":
+        return <FaUserFriends />;
+      case "private":
+        return <FaLock />;
+      default:
+        return null;
+    }
+  };
 
   const checkProfileCompletion = async (user: User) => {
     const incompleteItems: string[] = [];
@@ -171,46 +193,49 @@ const Profile: React.FC = () => {
     }
   };
 
+  console.log("address", address);
+
   const handleUpdatePaymentMethod = async (event: React.FormEvent) => {
     event.preventDefault();
-    // if (!stripe || !elements) {
-    //   return;
-    // }
+    if (!stripe || !elements) {
+      return;
+    }
 
-    // const cardElement = elements.getElement(CardElement);
+    const cardElement = elements.getElement(CardElement);
 
-    // if (cardElement) {
-    //   setPaymentUpdateError(null);
-    //   setPaymentUpdateSuccess(false);
+    if (cardElement) {
+      setPaymentUpdateError(null);
+      setPaymentUpdateSuccess(false);
 
-    //   try {
-    //     // Create a payment method
-    //     // const { error, paymentMethod } = await stripe.createPaymentMethod({
-    //     //   type: "card",
-    //     //   card: cardElement,
-    //     // });
+      try {
+        // Create a payment method
+        const { error, paymentMethod } = await stripe.createPaymentMethod({
+          type: "card",
+          card: cardElement,
+          billing_details: { address: address },
+        });
 
-    //     // if (error) {
-    //     //   throw new Error(error.message);
-    //     // }
+        if (error) {
+          throw new Error(error.message);
+        }
 
-    //     // Send the payment method to your server
-    //     // const response = await updatePaymentMethod(paymentMethod.id);
+        // Send the payment method to your server
+        const response = await updatePaymentMethod(paymentMethod.id, address);
 
-    //     if (response.success) {
-    //       setPaymentUpdateSuccess(true);
-    //       setShowPaymentUpdate(false);
-    //       // Refresh subscription status
-    //       fetchSubscriptionStatus();
-    //     } else {
-    //       throw new Error(
-    //         response.message || "Failed to update payment method"
-    //       );
-    //     }
-    //   } catch (error: any) {
-    //     setPaymentUpdateError(error.message);
-    //   }
-    // }
+        if (response.success) {
+          setPaymentUpdateSuccess(true);
+          setShowPaymentUpdate(false);
+          // Refresh subscription status
+          fetchSubscriptionStatus();
+        } else {
+          throw new Error(
+            response.message || "Failed to update payment method"
+          );
+        }
+      } catch (error: any) {
+        setPaymentUpdateError(error.message);
+      }
+    }
   };
 
   const getMembershipLimits = (paymentTier: PaymentTier) => {
@@ -446,6 +471,10 @@ const Profile: React.FC = () => {
       .toUpperCase();
   };
 
+  const handleAddressChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setAddress({ ...address, [e.target.name]: e.target.value });
+  };
+
   if (!user) {
     return (
       <AnimatedTechIcon
@@ -605,13 +634,37 @@ const Profile: React.FC = () => {
                   justifyContent: "space-between",
                   alignItems: "center",
                 }}>
-                <span
+                <div
                   style={{
-                    fontSize: "1.1em",
-                    color: "var(--secondary-color)",
+                    display: "flex",
+                    alignItems: "center",
+                    gap: "10px",
+                    flex: 1,
                   }}>
-                  {interest.category}
-                </span>
+                  <span
+                    style={{
+                      fontSize: "1.1em",
+                      color: "var(--secondary-color)",
+                    }}>
+                    {interest.category}
+                  </span>
+                  <div
+                    style={{
+                      display: "flex",
+                      alignItems: "center",
+                      gap: "5px",
+                      fontSize: "0.9em",
+                      color: "var(--text-color)",
+                      opacity: 0.7,
+                    }}>
+                    {getPrivacyIcon(interest.visibility)}
+                    <span>
+                      {interest.visibility === "friends_only"
+                        ? "friends"
+                        : interest.visibility}
+                    </span>
+                  </div>
+                </div>
                 {expandedCategory === interest.id ? (
                   <FaChevronUp />
                 ) : (
@@ -659,6 +712,26 @@ const Profile: React.FC = () => {
                     </div>
                   ))}
                   <div style={{ marginTop: "10px" }}>
+                    <button
+                      onClick={() => handleAddItem(interest.id)}
+                      style={{
+                        background: canAddItem(interest.id)
+                          ? "var(--primary-color)"
+                          : "gray",
+                        color: "white",
+                        border: "none",
+                        padding: "5px 10px",
+                        borderRadius: "3px 0px 0px 3px",
+                        cursor: canAddItem(interest.id)
+                          ? "pointer"
+                          : "not-allowed",
+                        fontSize: "0.9em",
+                        paddingTop: 7,
+                        paddingBottom: 7,
+                      }}
+                      disabled={!canAddItem(interest.id)}>
+                      {canAddItem(interest.id) ? <FaPlus /> : <FaLock />}
+                    </button>
                     <input
                       type="text"
                       value={newItemName}
@@ -667,42 +740,13 @@ const Profile: React.FC = () => {
                       maxLength={100}
                       style={{
                         padding: "5px",
-                        borderRadius: "3px",
+                        borderRadius: "0px 3px 3px 0px",
                         border: "1px solid var(--primary-color)",
                         fontSize: "0.9em",
-                        width: "100%",
+                        width: "80%",
                         marginBottom: "5px",
                       }}
                     />
-                    <div
-                      style={{
-                        display: "flex",
-                        justifyContent: "space-between",
-                        alignItems: "center",
-                      }}>
-                      <StarRating
-                        rating={newItemRating}
-                        onRatingChange={setNewItemRating}
-                      />
-                      <button
-                        onClick={() => handleAddItem(interest.id)}
-                        style={{
-                          background: canAddItem(interest.id)
-                            ? "var(--primary-color)"
-                            : "gray",
-                          color: "white",
-                          border: "none",
-                          padding: "5px 10px",
-                          borderRadius: "3px",
-                          cursor: canAddItem(interest.id)
-                            ? "pointer"
-                            : "not-allowed",
-                          fontSize: "0.9em",
-                        }}
-                        disabled={!canAddItem(interest.id)}>
-                        {canAddItem(interest.id) ? <FaPlus /> : <FaLock />}
-                      </button>
-                    </div>
                   </div>
                   <button
                     onClick={() => handleDeleteCategory(interest)}
@@ -715,6 +759,7 @@ const Profile: React.FC = () => {
                       cursor: "pointer",
                       fontSize: "0.9em",
                       marginTop: "10px",
+                      float: "right",
                     }}>
                     Delete Category
                   </button>
@@ -740,9 +785,6 @@ const Profile: React.FC = () => {
               <p>
                 <strong>Plan:</strong> {subscriptionStatus.plan}
               </p>
-              <p>
-                <strong>Status:</strong> {subscriptionStatus.status}
-              </p>
               {subscriptionStatus.nextBillingDate && (
                 <p>
                   <strong>Next Billing Date:</strong>{" "}
@@ -755,7 +797,10 @@ const Profile: React.FC = () => {
                 <p className="scheduled-downgrade">
                   <FaInfoCircle style={{ marginRight: "5px" }} />
                   Scheduled downgrade to{" "}
-                  {subscriptionStatus.scheduledDowngrade.newPlan} on{" "}
+                  {
+                    PaymentTier[subscriptionStatus.scheduledDowngrade.newPlan]
+                  }{" "}
+                  on{" "}
                   {new Date(
                     subscriptionStatus.scheduledDowngrade.date
                   ).toLocaleDateString()}
@@ -766,7 +811,7 @@ const Profile: React.FC = () => {
             <p>Loading subscription status...</p>
           )}
         </div>
-        {/* 
+
         <div className="payment-method">
           <span className="payment-method-text">Payment Method</span>
           {primaryPaymentMethod?.hasPrimaryPaymentMethod ? (
@@ -790,7 +835,7 @@ const Profile: React.FC = () => {
             )}
             {showPaymentUpdate ? "Cancel" : "Update"}
           </button>
-        </div> */}
+        </div>
 
         {showPaymentUpdate && (
           <form
@@ -807,12 +852,57 @@ const Profile: React.FC = () => {
                 },
               }}
             />
-            {/* <button
+            <div className="form-group" style={{ marginTop: "20px" }}>
+              <h4>Billing Address</h4>
+              <input
+                name="line1"
+                className="form-control"
+                value={address.line1}
+                onChange={handleAddressChange}
+                placeholder="Address Line 1"
+                required
+              />
+              <input
+                name="line2"
+                className="form-control"
+                value={address.line2}
+                onChange={handleAddressChange}
+                placeholder="Address Line 2"
+              />
+              <input
+                name="city"
+                className="form-control"
+                value={address.city}
+                onChange={handleAddressChange}
+                placeholder="City"
+                required
+                style={{ width: "44%" }}
+              />
+              <input
+                name="state"
+                className="form-control"
+                value={address.state}
+                onChange={handleAddressChange}
+                placeholder="State"
+                required
+                style={{ width: "15%" }}
+              />
+              <input
+                name="postal_code"
+                className="form-control"
+                value={address.postal_code}
+                onChange={handleAddressChange}
+                placeholder="Zip Code"
+                required
+                style={{ width: "15%" }}
+              />
+            </div>
+            <button
               type="submit"
               disabled={!stripe}
               className="update-payment-submit">
               Update Payment Method
-            </button> */}
+            </button>
           </form>
         )}
 

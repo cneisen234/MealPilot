@@ -87,8 +87,7 @@ export interface Recommendation {
 }
 
 export interface Message {
-  id: number;
   text: string;
-  sender: "user" | "ai";
+  sender: string;
   timestamp: Date;
 }

@@ -50,7 +50,7 @@ const Login: React.FC = () => {
       authLogin(response.data.token);
       checkAuthStatus();
       setLoginError("");
-      navigate("/profile", { state: { fromLogin: true } });
+      navigate("/chatbot", { state: { fromLogin: true } });
     } catch (error) {
       console.error("Login error", error);
       setLoginError("Invalid email or password. Please try again.");

@@ -2,16 +2,24 @@ import React, { useState, useEffect, useRef } from "react";
 
 interface FormattedAIResponseProps {
   response: string;
+  isLastMessage: boolean;
 }
 
 const FormattedAIResponse: React.FC<FormattedAIResponseProps> = ({
   response,
+  isLastMessage,
 }) => {
-  const [displayedText, setDisplayedText] = useState("");
+  const [displayedText, setDisplayedText] = useState(
+    isLastMessage ? "" : response
+  );
   const typingSpeed = 5; // milliseconds per character
   const containerRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
+    if (!isLastMessage) {
+      setDisplayedText(response);
+      return;
+    }
     let isMounted = true;
     let charIndex = 0;
 

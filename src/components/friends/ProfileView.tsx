@@ -1,6 +1,12 @@
-import React, { useState, useEffect } from "react";
-import { FaTimes, FaChevronDown, FaChevronUp } from "react-icons/fa";
-import { getFriendProfile } from "../../utils/api";
+import React, { useState, useEffect, useRef } from "react";
+import {
+  FaTimes,
+  FaChevronDown,
+  FaChevronUp,
+  FaUserCog,
+  FaUserMinus,
+} from "react-icons/fa";
+import { getFriendProfile, unfriendUser } from "../../utils/api";
 import AnimatedTechIcon from "../common/AnimatedTechIcon";
 
 interface FriendProfile {
@@ -18,13 +24,20 @@ interface FriendProfile {
 interface ProfileViewProps {
   friendId: number;
   onClose: () => void;
+  onUnfriend: () => void;
 }
 
-const ProfileView: React.FC<ProfileViewProps> = ({ friendId, onClose }) => {
+const ProfileView: React.FC<ProfileViewProps> = ({
+  friendId,
+  onClose,
+  onUnfriend,
+}) => {
   const [friend, setFriend] = useState<FriendProfile | null>(null);
   const [expandedInterest, setExpandedInterest] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [isManageOpen, setIsManageOpen] = useState(false);
+  const dropdownRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     const loadFriendProfile = async () => {
@@ -42,6 +55,37 @@ const ProfileView: React.FC<ProfileViewProps> = ({ friendId, onClose }) => {
 
     loadFriendProfile();
   }, [friendId]);
+
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (
+        dropdownRef.current &&
+        !dropdownRef.current.contains(event.target as Node)
+      ) {
+        setIsManageOpen(false);
+      }
+    };
+
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+    };
+  }, []);
+
+  const handleUnfriend = async () => {
+    try {
+      await unfriendUser(friendId);
+      onUnfriend();
+      onClose();
+    } catch (error) {
+      console.error("Error unfriending user:", error);
+      setError("Failed to unfriend user. Please try again later.");
+    }
+  };
+
+  const toggleManageDropdown = () => {
+    setIsManageOpen(!isManageOpen);
+  };
 
   const toggleInterest = (category: string) => {
     setExpandedInterest((prev) => (prev === category ? null : category));
@@ -106,6 +150,7 @@ const ProfileView: React.FC<ProfileViewProps> = ({ friendId, onClose }) => {
           }}>
           <FaTimes />
         </button>
+
         <div
           style={{
             display: "flex",
@@ -155,6 +200,7 @@ const ProfileView: React.FC<ProfileViewProps> = ({ friendId, onClose }) => {
             </p>
           </div>
         </div>
+
         {friend.bio && (
           <div style={{ marginBottom: "20px" }}>
             <h3 style={{ color: "var(--primary-color)", marginBottom: "10px" }}>
@@ -163,6 +209,7 @@ const ProfileView: React.FC<ProfileViewProps> = ({ friendId, onClose }) => {
             <p style={{ color: "var(--text-color)" }}>{friend.bio}</p>
           </div>
         )}
+
         <div>
           <h3 style={{ color: "var(--primary-color)", marginBottom: "10px" }}>
             Interests
@@ -225,6 +272,68 @@ const ProfileView: React.FC<ProfileViewProps> = ({ friendId, onClose }) => {
             ))
           ) : (
             <p>No interests to display.</p>
+          )}
+        </div>
+
+        {/* Manage Friend Dropdown */}
+        <div
+          ref={dropdownRef}
+          style={{
+            position: "absolute",
+            top: "10px",
+            right: "50px",
+          }}>
+          <button
+            onClick={toggleManageDropdown}
+            style={{
+              background: "var(--primary-color)",
+              color: "white",
+              border: "none",
+              borderRadius: "5px",
+              padding: "8px 12px",
+              fontSize: "14px",
+              cursor: "pointer",
+              display: "flex",
+              alignItems: "center",
+            }}>
+            <FaUserCog style={{ marginRight: "5px" }} />
+            Manage Friend
+            {isManageOpen ? (
+              <FaChevronUp style={{ marginLeft: "5px" }} />
+            ) : (
+              <FaChevronDown style={{ marginLeft: "5px" }} />
+            )}
+          </button>
+          {isManageOpen && (
+            <div
+              style={{
+                position: "absolute",
+                top: "100%",
+                right: "0",
+                backgroundColor: "var(--surface-color)",
+                boxShadow: "0px 8px 16px 0px rgba(0,0,0,0.2)",
+                borderRadius: "5px",
+                padding: "8px 0",
+                zIndex: 1,
+              }}>
+              <button
+                onClick={handleUnfriend}
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  padding: "8px 16px",
+                  border: "none",
+                  background: "none",
+                  width: "100%",
+                  textAlign: "left",
+                  cursor: "pointer",
+                  color: "var(--text-color)",
+                }}>
+                <FaUserMinus style={{ marginRight: "8px" }} />
+                Unfriend
+              </button>
+              {/* Add more options here in the future */}
+            </div>
           )}
         </div>
       </div>

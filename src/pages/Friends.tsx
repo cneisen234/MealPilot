@@ -94,6 +94,10 @@ const Friends: React.FC = () => {
       .toUpperCase();
   };
 
+  const handleUnfriend = () => {
+    fetchFriends(); // Refresh the friends list
+  };
+
   const renderFriendsList = () => (
     <>
       <div
@@ -454,6 +458,7 @@ const Friends: React.FC = () => {
               : selectedFriend
           }
           onClose={() => setSelectedFriend(null)}
+          onUnfriend={handleUnfriend}
         />
       )}
 

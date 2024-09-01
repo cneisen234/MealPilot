@@ -19,8 +19,10 @@ const applyDowngrade = async (userId, newTier) => {
   try {
     await client.query("BEGIN");
 
+    const newTierEnum = Number(newTier) === 3 ? "Basic" : "Free";
+
     // Update user's tier in the database
-    await updateUserTier(userId, newTier);
+    await updateUserTier(userId, newTierEnum);
 
     // Apply data deletions based on the new tier
     if (newTier === PaymentTier.Basic) {

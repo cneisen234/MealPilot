@@ -20,6 +20,21 @@ const NewUserTutorial: React.FC = () => {
       ],
     },
     {
+      title: "Chat with Lena",
+      content:
+        "Ask Lena anything about your interests or for recommendations. She'll use your bio, location, and interests from your profile page to give personalized suggestions.",
+      onClick: nextStep,
+    },
+    {
+      title: "Explore Your Interests",
+      content:
+        "Use the sidebar to navigate to your profile and add more interests. The more Lena knows about you, the better her recommendations will be!",
+      onClick: () => {
+        navigate("/profile");
+        nextStep();
+      },
+    },
+    {
       title: "Your Bio",
       content:
         "Your bio helps Lena understand you better. The more information you provide (up to 255 characters), the more personalized your recommendations will be.",
@@ -35,15 +50,6 @@ const NewUserTutorial: React.FC = () => {
       title: "Interest Categories",
       content:
         "Free users can create 3 categories with 5 items each. Upgrade for more! These are crucial for Lena to provide you with solid recommendations, so be thorough.",
-      onClick: () => {
-        navigate("/chatbot");
-        nextStep();
-      },
-    },
-    {
-      title: "Introducing Lena!",
-      content:
-        "This is where the magic happens! Ask anything, and Lena will use your bio, interests, and location to give personalized recommendations. Free users get 6 prompts daily. Upgraded users get more daily prompts and the ability to add friends to discover mutual interests!",
       onClick: () => {
         navigate("/upgrade");
         nextStep();
@@ -63,7 +69,7 @@ const NewUserTutorial: React.FC = () => {
       content:
         "Use this form to contact us directly with any questions, feedback, or feature requests. We're always improving!",
       onClick: () => {
-        navigate("/profile");
+        navigate("/chatbot");
         nextStep();
       },
     },

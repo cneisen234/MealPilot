@@ -6,6 +6,8 @@ import {
   getFriends,
   getProfile,
   getRemainingPrompts,
+  getChatHistory,
+  saveChatMessage,
   updatePromptCount,
 } from "../utils/api";
 import { useAuth } from "../context/AuthContext";
@@ -13,6 +15,8 @@ import FormattedAIResponse from "../components/chatbot/FormattedAiResponse";
 import { Message, PaymentTier, User } from "../types";
 import AnimatedTechIcon from "../components/common/AnimatedTechIcon";
 import "../styles/chatbot.css";
+import { useTutorial } from "../context/TutorialContext";
+import { useLocation } from "react-router-dom";
 
 interface FriendOption {
   value: number;
@@ -28,20 +32,16 @@ const getInitials = (name: string) => {
 };
 
 const Chatbot: React.FC = () => {
-  const [messages, setMessages] = useState<Message[]>([
-    {
-      id: 1,
-      text: "Hey there! I'm Lena! Nice to meet you! I'm here to help you discover some new interests together! Ask me about some places you'd like to travel, restaurants you'd enjoy, or even some new things to check out on your streaming service of choice. Ask me anything at all and I will look at your profile and give you personalized recommendations that I am confident you will enjoy. Use me as a stepping stone for new discoveries!",
-      sender: "ai",
-      timestamp: new Date(),
-    },
-  ]);
+  const { startTutorial } = useTutorial();
+  const applocation = useLocation();
   const [input, setInput] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [selectedFriends, setSelectedFriends] = useState<number[]>([]);
   const [currentUser, setCurrentUser] = useState<User | null>(null);
   const messagesContainerRef = useRef<HTMLDivElement>(null);
   const { isAuthenticated } = useAuth();
+
+  const [messages, setMessages] = useState<Message[]>([]);
 
   const [friendOptions, setFriendOptions] = useState<FriendOption[]>([]);
   const [selectedFriendOptions, setSelectedFriendOptions] = useState<
@@ -50,6 +50,7 @@ const Chatbot: React.FC = () => {
   const [remainingPrompts, setRemainingPrompts] = useState<
     number | "Unlimited"
   >(0);
+  const welcomeMessageRef = useRef(false);
 
   const promptsAreLimited =
     currentUser &&
@@ -68,9 +69,72 @@ const Chatbot: React.FC = () => {
     }
   };
 
+  const processMessages = (messages: Message[]): Message[] => {
+    return messages.map((message) => ({
+      ...message,
+      timestamp:
+        typeof message.timestamp === "string"
+          ? new Date(message.timestamp)
+          : message.timestamp,
+    }));
+  };
+
   useEffect(() => {
     fetchRemainingPrompts();
+    if (!welcomeMessageRef.current) {
+      welcomeMessageRef.current = true;
+      initializeChat();
+    }
   }, []);
+
+  const initializeChat = async () => {
+    try {
+      const history = await getChatHistory();
+      const processedHistory = processMessages(history.data);
+
+      const isFirstTime = applocation.state?.fromOnboarding;
+      const welcomeMessage = createWelcomeMessage(isFirstTime);
+
+      setMessages([...processedHistory, welcomeMessage]);
+
+      if (isFirstTime) {
+        startTutorial();
+        window.history.replaceState({}, document.title);
+      }
+    } catch (error) {
+      console.error("Error initializing chat:", error);
+    }
+  };
+
+  const createWelcomeMessage = (isFirstTime: boolean): Message => {
+    if (isFirstTime) {
+      return {
+        text: "Hey there! I'm Lena! Nice to meet you! I'm here to help you discover some new interests together! Ask me about some places you'd like to travel, restaurants you'd enjoy, or even some new things to check out on your streaming service of choice. Ask me anything at all and I will look at your profile and give you personalized recommendations that I am confident you will enjoy. Use me as a stepping stone for new discoveries!",
+        sender: "ai",
+        timestamp: new Date(),
+      };
+    } else {
+      const suggestions = [
+        "a new restaurant to try",
+        "a new hobby to explore",
+        "an upcoming movie you might enjoy",
+        "a book that could captivate you",
+        "a hidden gem in your city",
+        "a fitness activity that suits your style",
+        "a podcast that could pique your interest",
+        "a travel destination that matches your vibe",
+        "a tech gadget that could simplify your life",
+        "a creative project you might want to start",
+      ];
+      const randomSuggestion =
+        suggestions[Math.floor(Math.random() * suggestions.length)];
+      return {
+        text: `Welcome back! Great to see you again. How about we explore something new today? Ask me about ${randomSuggestion}!`,
+        sender: "ai",
+        timestamp: new Date(),
+      };
+    }
+  };
 
   useEffect(() => {
     const fetchUserAndFriends = async () => {
@@ -109,16 +173,16 @@ const Chatbot: React.FC = () => {
   const handleSend = async () => {
     if (input.trim()) {
       const userMessage: Message = {
-        id: messages.length + 1,
         text: input.trim(),
         sender: "user",
         timestamp: new Date(),
       };
-      setMessages([...messages, userMessage]);
+      setMessages((prevMessages) => [...prevMessages, userMessage]);
       setInput("");
       setIsLoading(true);
 
       try {
+        await saveChatMessage(userMessage.text, "user");
         // Extract friend IDs from selectedFriends
         const friendIds =
           selectedFriends.length > 0 ? selectedFriends : undefined;
@@ -126,12 +190,12 @@ const Chatbot: React.FC = () => {
         // Pass both the input and friendIds to getRecommendation
         const response = await getRecommendation(input.trim(), friendIds);
         const aiMessage: Message = {
-          id: messages.length + 2,
           text: response.data.recommendation,
           sender: "ai",
           timestamp: new Date(),
         };
         setMessages((prevMessages) => [...prevMessages, aiMessage]);
+        await saveChatMessage(aiMessage.text, "ai");
         if (promptsAreLimited) {
           await updatePromptCount();
           await fetchRemainingPrompts();
@@ -139,7 +203,6 @@ const Chatbot: React.FC = () => {
       } catch (error) {
         console.error("Error getting recommendation:", error);
         const errorMessage: Message = {
-          id: messages.length + 2,
           text: "I'm sorry, I encountered an error while processing your request. Please try again later.",
           sender: "ai",
           timestamp: new Date(),
@@ -172,6 +235,7 @@ const Chatbot: React.FC = () => {
         currentUser.payment_tier as unknown as keyof typeof PaymentTier
       ]
     );
+  console.log(messages);
 
   return (
     <div className="chatbot-container">
@@ -180,13 +244,14 @@ const Chatbot: React.FC = () => {
           <AnimatedTechIcon size={50} speed={3} /> Lena AI
         </h1>
         {canUseFriendSelection && (
-          <div className="friend-selection">
+          <div className="friend-selection" style={{ fontSize: "0.6em" }}>
             <Select
               isMulti
               options={friendOptions}
               value={selectedFriendOptions}
               onChange={handleFriendSelection}
-              placeholder="Select friends..."
+              placeholder=" Include friends! This will allow Lena to discover mutual
+              interests!"
             />
             <div className="selected-friends">
               {selectedFriendOptions.map((friend) => (
@@ -206,25 +271,28 @@ const Chatbot: React.FC = () => {
         style={{
           marginBottom: "20px",
           color: "var(--text-color)",
-          fontSize: "0.5em",
+          fontSize: "0.1em",
         }}>
-        <strong>Disclaimer:</strong> AI responses can at times provide
-        unpredictable or inaccurate results. We are continuously working on
-        updating and improving the model and inaccuracies will become less
-        apparent over time but will probably never go away entirely.
+        <strong>Disclaimer:</strong> AI responses may be inaccurate. We're
+        continually improving, but some inaccuracies may persist.
       </p>
       <div className="chatbot-messages">
         <div ref={messagesContainerRef} className="messages-container">
-          {messages.map((message) => (
+          {messages?.map((message, index) => (
             <div
-              key={message.id}
+              key={index}
               className={`message ${
                 message.sender === "user" ? "user-message" : "ai-message"
               }`}>
               <div className="message-content">
                 <div>
                   {message.sender === "ai" ? (
-                    <FormattedAIResponse response={message.text} />
+                    <FormattedAIResponse
+                      isLastMessage={
+                        index === messages.length - 1 && message.sender === "ai"
+                      }
+                      response={message.text}
+                    />
                   ) : (
                     <div style={{ fontSize: "0.8em" }}>{message.text}</div>
                   )}

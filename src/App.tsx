@@ -30,6 +30,7 @@ import { TutorialProvider } from "./context/TutorialContext";
 import NewUserTutorial from "./components/tutorial/NewUserTutorial";
 import { Elements } from "@stripe/react-stripe-js";
 import { loadStripe } from "@stripe/stripe-js";
+import BubbleBackground from "./BubbleBackground";
 
 const AppContent: React.FC = () => {
   const { isAuthenticated, checkAuthStatus } = useAuth();
@@ -40,9 +41,9 @@ const AppContent: React.FC = () => {
   }, [checkAuthStatus]);
 
   const isOnboardingRoute = location.pathname === "/onboarding";
-  // const stripePromise = loadStripe(
-  //   process.env.REACT_APP_STRIPE_PUBLISHABLE_KEY!
-  // );
+  const stripePromise = loadStripe(
+    process.env.REACT_APP_STRIPE_PUBLISHABLE_KEY!
+  );
 
   return (
     <div
@@ -92,12 +93,11 @@ const AppContent: React.FC = () => {
               path="/profile"
               element={
                 <PrivateRoute
-                  element={<Profile />}
-                  // element={
-                  //   <Elements stripe={stripePromise}>
-                  //     <Profile />
-                  //   </Elements>
-                  // }
+                  element={
+                    <Elements stripe={stripePromise}>
+                      <Profile />
+                    </Elements>
+                  }
                 />
               }
             />
@@ -121,12 +121,11 @@ const AppContent: React.FC = () => {
               path="/upgrade"
               element={
                 <PrivateRoute
-                  element={<Upgrade />}
-                  // element={
-                  //   <Elements stripe={stripePromise}>
-                  //     <Upgrade />
-                  //   </Elements>
-                  // }
+                  element={
+                    <Elements stripe={stripePromise}>
+                      <Upgrade />
+                    </Elements>
+                  }
                 />
               }
             />
@@ -141,12 +140,20 @@ const AppContent: React.FC = () => {
 const App: React.FC = () => {
   return (
     <Router>
-      <AuthProvider>
-        <TutorialProvider>
-          <AppContent />
-          <NewUserTutorial />
-        </TutorialProvider>
-      </AuthProvider>
+      <div
+        style={{
+          position: "relative",
+          minHeight: "100vh",
+          overflow: "hidden",
+        }}>
+        <BubbleBackground />
+        <AuthProvider>
+          <TutorialProvider>
+            <AppContent />
+            <NewUserTutorial />
+          </TutorialProvider>
+        </AuthProvider>
+      </div>
     </Router>
   );
 };

@@ -130,27 +130,27 @@ router.put("/:userId/profile-picture", authMiddleware, async (req, res) => {
 });
 
 router.post("/close-account", authMiddleware, async (req, res) => {
-  const { password } = req.body;
   const userId = req.user.id;
 
   try {
-    // Verify password
-    const user = await pool.query("SELECT * FROM users WHERE id = $1", [
+    // Start a transaction
+    await pool.query("BEGIN");
+
+    // Fetch user data
+    const userResult = await pool.query("SELECT * FROM users WHERE id = $1", [
       userId,
     ]);
-    if (user.rows.length === 0) {
+    const user = userResult.rows[0];
+
+    if (!user) {
+      await pool.query("ROLLBACK");
       return res.status(404).json({ message: "User not found" });
     }
 
-    const isValid = await bcrypt.compare(password, user.rows[0].password);
-    if (!isValid) {
-      return res.status(401).json({ message: "Invalid password" });
-    }
-
     // Check for active Stripe subscription
-    if (user.rows[0].stripe_customer_id) {
+    if (user.stripe_customer_id) {
       const subscriptions = await stripe.subscriptions.list({
-        customer: user.rows[0].stripe_customer_id,
+        customer: user.stripe_customer_id,
         status: "active",
       });
 
@@ -158,9 +158,16 @@ router.post("/close-account", authMiddleware, async (req, res) => {
       if (subscriptions.data.length > 0) {
         await stripe.subscriptions.cancel(subscriptions.data[0].id);
       }
+
+      // Optionally, you might want to delete the Stripe customer as well
+      await stripe.customers.del(user.stripe_customer_id);
     }
 
+    // Delete user from the database
     await pool.query("DELETE FROM users WHERE id = $1", [userId]);
+
+    // Commit the transaction
+    await pool.query("COMMIT");
 
     res.json({ message: "Account closed successfully" });
   } catch (error) {

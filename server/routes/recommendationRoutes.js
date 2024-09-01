@@ -6,7 +6,10 @@ const openai = require("../openai");
 const cleanAIResponse = require("../cleanAiResponse");
 const {
   generateRecommendationsWithRetry,
+  getRecentRecommendations,
+  saveRecommendation,
 } = require("../utils/recommendationUtils");
+const { getChatHistory } = require("../utils/chatHistoryUtils");
 const { checkPaymentTier } = require("../utils/paymentUtils");
 const { DateTime } = require("luxon");
 
@@ -21,6 +24,10 @@ router.post("/get-recommendation", authMiddleware, async (req, res) => {
   try {
     const userId = req.user.id;
     const { query, friendIds } = req.body;
+
+    const chatHistory = await getChatHistory(userId);
+
+    const recentRecommendations = await getRecentRecommendations(userId);
 
     // Fetch user data
     const userQuery = await pool.query(
@@ -75,11 +82,21 @@ router.post("/get-recommendation", authMiddleware, async (req, res) => {
       "h:mm a"
     )}, and we've got an interesting question from ${
       friendsData.length > 0 ? "a group of friends" : "someone"
-    }. Here's what they're asking:
+    }. and we're continuing our chat with ${
+      user.name
+    } Here's what they're asking:
 
 "${query}"
 
-I'll fill you in on ${friendsData.length > 0 ? "these folks" : "this person"}:
+Let me give you a quick recap of your recent conversation:
+
+${chatHistory
+  .map((msg) => `${msg.sender.toUpperCase()}: ${msg.message}`)
+  .join("\n")}
+
+Now, let me remind you about ${
+      friendsData.length > 0 ? "these folks" : "this person"
+    }:
 
 Primary User (${user.name}):
 Location: ${user.city}, ${user.state}
@@ -97,7 +114,7 @@ ${
 Additional Group Members:
 ${friendsData
   .map(
-    (friend, index) => `
+    (friend) => `
 ${friend.name}:
 Location: ${friend.city}, ${friend.state}
 Interests: ${friend.interests
@@ -114,6 +131,8 @@ Interests: ${friend.interests
 `
     : ""
 }
+
+Recent recommendations to avoid: ${recentRecommendations.join(", ")}
 
 Alright, here's what I need from you. Keep it friendly and casual, like you're chatting with a buddy, but make sure to follow these guidelines and make sure to follow this exact format for each one:
 
@@ -146,6 +165,8 @@ CRITICAL GUIDELINES:
       friendsData.length > 0 ? " and works for where their friends are too" : ""
     }.
 8. If you're not sure about something, just say so. It's totally fine!
+9. If you find that all your initial ideas are in the list to avoid, please come up with different recommendations. Be creative!
+10. If you're absolutely uncertain in your confidence in any of the recommendations. At least give one that you are most confident about. If you absolutely have to you can give a recommendation from the list to avoid in order to provide at least one, that's fine. however only do this as a last resort and even if you do, put a unique spin on it.
 
 Now, when you're giving your answer, try to suggest 1-3 cool ideas that:
 1. Actually answer what they're asking
@@ -179,9 +200,22 @@ Keep it real and friendly, like you're just chatting with a buddy. Ready? Let's 
       temperature: 0.7,
     });
 
-    res.json({
-      recommendation: cleanAIResponse(completion.choices[0].message.content),
-    });
+    const recommendationText = completion.choices[0].message.content;
+    const cleanedRecommendation = cleanAIResponse(recommendationText);
+
+    // Extract recommendation titles and save them
+    const recommendationTitles = cleanedRecommendation.match(/^\d+\.\s(.+)$/gm);
+    if (recommendationTitles) {
+      for (const title of recommendationTitles) {
+        const recommendationName = title.split(". ")[1].trim();
+        // Check if this recommendation is not in the recent list before saving
+        if (!recentRecommendations.includes(recommendationName)) {
+          await saveRecommendation(userId, recommendationName);
+        }
+      }
+    }
+
+    res.json({ recommendation: cleanedRecommendation });
   } catch (error) {
     console.error("Error getting recommendation:", error);
     res

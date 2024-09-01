@@ -1,6 +1,11 @@
 const sgMail = require("@sendgrid/mail");
 
-async function sendSubscriptionConfirmation(email, amount, date) {
+async function sendSubscriptionConfirmation(
+  email,
+  amount,
+  date,
+  nextBillingDate
+) {
   const msg = {
     to: email,
     from: process.env.SENDGRID_FROM_EMAIL,
@@ -12,6 +17,7 @@ async function sendSubscriptionConfirmation(email, amount, date) {
             <h1 style="color: #966FD6;">VibeQuest Subscription Confirmation</h1>
             <p>Thank you for your continued subscription to VibeQuest!</p>
             <p>We've successfully processed your payment of $${amount} on ${date}.</p>
+            <p>Your next billing date will be ${nextBillingDate}.</p>
             <p>If you have any questions, please don't hesitate to contact us.</p>
             <p>Best regards,<br>The VibeQuest Team</p>
           </div>

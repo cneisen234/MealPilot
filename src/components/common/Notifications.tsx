@@ -9,7 +9,11 @@ import {
 import { Notification } from "../../types";
 import "../../styles/notifications.css";
 
-const Notifications: React.FC = () => {
+interface NotificationsProps {
+  onClose: () => void;
+}
+
+const Notifications: React.FC<NotificationsProps> = ({ onClose }) => {
   const appLocation = useLocation();
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [isOpen, setIsOpen] = useState(false);
@@ -67,6 +71,9 @@ const Notifications: React.FC = () => {
       markAllAsRead();
     }
     setIsOpen(!isOpen);
+    if (isOpen) {
+      onClose();
+    }
   };
 
   const handleClickOutside = (event: MouseEvent) => {
@@ -79,6 +86,12 @@ const Notifications: React.FC = () => {
       setIsOpen(false);
     }
   };
+
+  useEffect(() => {
+    // Close notifications when location changes
+    setIsOpen(false);
+    onClose();
+  }, [appLocation, onClose]);
 
   return (
     <div className="notifications-container">

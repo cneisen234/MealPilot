@@ -2,10 +2,10 @@ import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { closeAccount } from "../../utils/api";
 import { useAuth } from "../../context/AuthContext";
+import { FaArrowLeft } from "react-icons/fa";
 
 const CloseAccount: React.FC = () => {
   const [isConfirmOpen, setIsConfirmOpen] = useState(false);
-  const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const navigate = useNavigate();
   const { logout } = useAuth();
@@ -14,13 +14,11 @@ const CloseAccount: React.FC = () => {
     e.preventDefault();
     setError("");
     try {
-      await closeAccount(password);
+      await closeAccount();
       logout();
       navigate("/");
     } catch (err) {
-      setError(
-        "Failed to close account. Please check your password and try again."
-      );
+      setError("Failed to close account. Please try again or contact support.");
     }
   };
 
@@ -34,25 +32,36 @@ const CloseAccount: React.FC = () => {
             and cannot be undone.
           </p>
           {!isConfirmOpen ? (
-            <button
-              onClick={() => setIsConfirmOpen(true)}
-              className="btn btn-danger"
-              style={{ width: "100%" }}>
-              I want to close my account
-            </button>
+            <>
+              <button
+                onClick={() => navigate("/profile")}
+                className="btn"
+                style={{
+                  marginBottom: "5px",
+                  alignItems: "center",
+                  gap: "10px",
+                  width: "100%",
+                }}>
+                Back to Profile
+              </button>
+              <button
+                onClick={() => setIsConfirmOpen(true)}
+                className="btn"
+                style={{
+                  width: "100%",
+                  backgroundColor: "#dc3545",
+                  color: "white",
+                  marginTop: "20px",
+                }}>
+                I want to close my account
+              </button>
+            </>
           ) : (
             <form onSubmit={handleCloseAccount}>
-              <p>Please enter your password to confirm account closure:</p>
-              <div className="form-group">
-                <input
-                  type="password"
-                  className="form-control"
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  placeholder="Enter your password"
-                  required
-                />
-              </div>
+              <p>
+                Are you sure you want to close your account? This action cannot
+                be undone.
+              </p>
               {error && <p className="text-danger">{error}</p>}
               <div
                 style={{
@@ -66,7 +75,10 @@ const CloseAccount: React.FC = () => {
                   className="btn btn-secondary">
                   Cancel
                 </button>
-                <button type="submit" className="btn btn-danger">
+                <button
+                  type="submit"
+                  className="btn"
+                  style={{ backgroundColor: "#dc3545", color: "white" }}>
                   Permanently Close Account
                 </button>
               </div>

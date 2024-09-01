@@ -8,6 +8,7 @@ async function getUserById(userId) {
 }
 
 async function updateUserTier(userId, newTier) {
+  console.log("newTier", newTier);
   await pool.query("UPDATE users SET payment_tier = $1 WHERE id = $2", [
     newTier,
     userId,

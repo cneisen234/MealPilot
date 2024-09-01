@@ -1,5 +1,12 @@
 import React from "react";
-import { FaUsers, FaMobileAlt, FaGift, FaThumbsDown } from "react-icons/fa";
+import {
+  FaUsers,
+  FaMobileAlt,
+  FaGift,
+  FaThumbsDown,
+  FaUserPlus,
+  FaGlobe,
+} from "react-icons/fa";
 import { FaHeartCirclePlus } from "react-icons/fa6";
 import { VscLightbulbSparkle } from "react-icons/vsc";
 import "../styles/comingsoon.css";
@@ -8,15 +15,15 @@ const ComingSoon: React.FC = () => {
   const features = [
     {
       icon: <FaUsers />,
-      title: "Geolocation search for likeminded people",
+      title: "Suggested Friends",
       description:
-        "We are adding a feature that uses geolocation to find people near you that have similar interests. This will allow you to ask Lena if there's anyone near you that might enjoy a specific activity or event [or really anything]. Lena will use geolocation to search for people and then allow you to prompt them in the app",
+        "Use Lena combined with geolocation to find friends with mutual interests!",
     },
     {
       icon: <FaHeartCirclePlus />,
       title: "Add interests from chat",
       description:
-        "We are working on creating a feature where you can add Lena's suggestions as interest items on your profile with the click of a button",
+        "Add Lena's suggestions as interest items on your profile with the click of a button",
     },
     {
       icon: <FaMobileAlt />,
@@ -40,6 +47,12 @@ const ComingSoon: React.FC = () => {
       title: "Dislikes List",
       description:
         "Add Dislikes as well as Likes so Lena knows what not to send your way!",
+    },
+    {
+      icon: <FaGlobe />,
+      title: "Multi Lingual",
+      description:
+        "Specify your language on sign up and change your language on the fly when talking to Lena! ",
     },
   ];
 

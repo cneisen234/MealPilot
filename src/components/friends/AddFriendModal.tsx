@@ -178,96 +178,107 @@ const AddFriendModal: React.FC<AddFriendModalProps> = ({
           />
         </div>
         <div style={{ maxHeight: "400px", overflowY: "auto" }}>
-          {filteredUsers.map((user) => (
-            <div
-              key={user.id}
-              style={{
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "space-between",
-                padding: "10px 0",
-                borderBottom: "1px solid rgba(0, 0, 0, 0.1)",
-              }}>
-              <div style={{ display: "flex", alignItems: "center" }}>
-                {user.avatar ? (
-                  <img
-                    src={user.avatar}
-                    alt={user.name}
-                    style={{
-                      width: "40px",
-                      height: "40px",
-                      borderRadius: "50%",
-                      marginRight: "10px",
-                    }}
-                  />
-                ) : (
-                  <div
-                    style={{
-                      width: "40px",
-                      height: "40px",
-                      borderRadius: "50%",
-                      backgroundColor: "var(--primary-color)",
-                      color: "white",
-                      display: "flex",
-                      alignItems: "center",
-                      justifyContent: "center",
-                      marginRight: "10px",
-                      fontSize: "16px",
-                      fontWeight: "bold",
-                    }}>
-                    {getInitials(user.name)}
-                  </div>
-                )}
-                <div>
-                  <div style={{ fontWeight: "bold" }}>{user.name}</div>
-                  <div
-                    style={{ fontSize: "0.8em", color: "var(--text-color)" }}>
-                    @{user.username}
+          {filteredUsers.length > 0 ? (
+            filteredUsers.map((user) => (
+              <div
+                key={user.id}
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "space-between",
+                  padding: "10px 0",
+                  borderBottom: "1px solid rgba(0, 0, 0, 0.1)",
+                }}>
+                <div style={{ display: "flex", alignItems: "center" }}>
+                  {user.avatar ? (
+                    <img
+                      src={user.avatar}
+                      alt={user.name}
+                      style={{
+                        width: "40px",
+                        height: "40px",
+                        borderRadius: "50%",
+                        marginRight: "10px",
+                      }}
+                    />
+                  ) : (
+                    <div
+                      style={{
+                        width: "40px",
+                        height: "40px",
+                        borderRadius: "50%",
+                        backgroundColor: "var(--primary-color)",
+                        color: "white",
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "center",
+                        marginRight: "10px",
+                        fontSize: "16px",
+                        fontWeight: "bold",
+                      }}>
+                      {getInitials(user.name)}
+                    </div>
+                  )}
+                  <div>
+                    <div style={{ fontWeight: "bold" }}>{user.name}</div>
+                    <div
+                      style={{ fontSize: "0.8em", color: "var(--text-color)" }}>
+                      @{user.username}
+                    </div>
                   </div>
                 </div>
+                {isRequestPending(user) ? (
+                  <button
+                    style={{
+                      background: "gray",
+                      color: "white",
+                      border: "none",
+                      borderRadius: "5px",
+                      padding: "5px 10px",
+                      cursor: "not-allowed",
+                      display: "flex",
+                      alignItems: "center",
+                    }}
+                    disabled>
+                    <FaClock style={{ marginRight: "5px" }} />
+                    Pending
+                  </button>
+                ) : (
+                  <button
+                    onClick={() => handleSendFriendRequest(user.id)}
+                    style={{
+                      background:
+                        currentFriendsCount < maxFriends
+                          ? "var(--primary-color)"
+                          : "gray",
+                      color: "white",
+                      border: "none",
+                      borderRadius: "5px",
+                      padding: "5px 10px",
+                      cursor:
+                        currentFriendsCount < maxFriends
+                          ? "pointer"
+                          : "not-allowed",
+                      display: "flex",
+                      alignItems: "center",
+                    }}
+                    disabled={currentFriendsCount >= maxFriends}>
+                    <FaUserPlus style={{ marginRight: "5px" }} />
+                    Add
+                  </button>
+                )}
               </div>
-              {isRequestPending(user) ? (
-                <button
-                  style={{
-                    background: "gray",
-                    color: "white",
-                    border: "none",
-                    borderRadius: "5px",
-                    padding: "5px 10px",
-                    cursor: "not-allowed",
-                    display: "flex",
-                    alignItems: "center",
-                  }}
-                  disabled>
-                  <FaClock style={{ marginRight: "5px" }} />
-                  Pending
-                </button>
-              ) : (
-                <button
-                  onClick={() => handleSendFriendRequest(user.id)}
-                  style={{
-                    background:
-                      currentFriendsCount < maxFriends
-                        ? "var(--primary-color)"
-                        : "gray",
-                    color: "white",
-                    border: "none",
-                    borderRadius: "5px",
-                    padding: "5px 10px",
-                    cursor:
-                      currentFriendsCount < maxFriends
-                        ? "pointer"
-                        : "not-allowed",
-                    display: "flex",
-                    alignItems: "center",
-                  }}
-                  disabled={currentFriendsCount >= maxFriends}>
-                  <FaUserPlus style={{ marginRight: "5px" }} />
-                  Add
-                </button>
-              )}
+            ))
+          ) : searchTerm.trim() !== "" ? (
+            <div
+              style={{
+                textAlign: "center",
+                color: "var(--text-color)",
+                padding: "20px",
+              }}>
+              No results found
             </div>
-          ))}
+          ) : null}
         </div>
       </div>
       <InfoModal

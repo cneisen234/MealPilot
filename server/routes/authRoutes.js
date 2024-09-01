@@ -5,6 +5,7 @@ const jwt = require("jsonwebtoken");
 const pool = require("../db");
 const sgMail = require("@sendgrid/mail");
 const crypto = require("crypto");
+const { checkAndApplyDowngrade } = require("../utils/downgradeUtils");
 
 router.post("/login", async (req, res) => {
   const { email, password } = req.body;
@@ -28,6 +29,8 @@ router.post("/login", async (req, res) => {
     if (!isPasswordValid) {
       return res.status(401).json({ message: "Invalid email or password" });
     }
+
+    await checkAndApplyDowngrade(user.id);
 
     // Generate a JWT token
     const token = jwt.sign(

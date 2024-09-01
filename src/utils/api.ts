@@ -96,8 +96,8 @@ export const sendContactForm = (formData: {
   return api.post('/contact-us', formData);
 };
 
-export const closeAccount = (password: string) => {
-  return api.post('/users/close-account', { password });
+export const closeAccount = () => {
+  return api.post('/users/close-account');
 };
 
 export const updateProfile = async (userId: number, profileData: Partial<User>) => {
@@ -210,6 +210,14 @@ export const updatePromptCount = () => {
   return api.post('/update-prompt-count');
 };
 
+export const getChatHistory = () => {
+  return api.get('/chat-history');
+};
+
+export const saveChatMessage = (message: string, sender: 'user' | 'ai') => {
+  return api.post('/chat-history', { message, sender });
+};
+
 interface GeolocationResult {
   city: string;
   state: string;
@@ -238,13 +246,18 @@ export const getUserLocation = (): Promise<GeolocationResult> => {
   });
 };
 
-export const upgradeUser = async (userId: number, newTier: PaymentTier, paymentMethodId: string, isConfirmation: boolean = false) => {
+export const upgradeUser = async (userId: number, newTier: PaymentTier, paymentMethodId: string, address: any, isConfirmation: boolean = false) => {
   const response = await api.post(`/payments/${userId}/upgrade`, { 
     newTier, 
     paymentMethodId,
+    address,
     isConfirmation 
   });
   return response.data;
+};
+
+export const unfriendUser = (friendId: number) => {
+  return api.post(`/friends/${friendId}/unfriend`);
 };
 
 export const confirmUpgrade = async (userId: number, paymentIntentId: string, newTier: PaymentTier) => {
@@ -256,9 +269,9 @@ export const downgradeUser = (userId: number, newTier: PaymentTier) => {
   return api.post(`/payments/${userId}/downgrade`, { newTier });
 };
 
-export const updatePaymentMethod = async (paymentMethodId: string) => {
+export const updatePaymentMethod = async (paymentMethodId: string, address: any) => {
   try {
-    const response = await api.post('/payments/update-payment-method', { paymentMethodId });
+    const response = await api.post('/payments/update-payment-method', { paymentMethodId, address });
     return response.data;
   } catch (error) {
     // @ts-ignore
