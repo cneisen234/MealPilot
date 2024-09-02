@@ -69,7 +69,7 @@ const UpdatePaymentMethod: React.FC = () => {
           <input
             name="line1"
             className="form-control"
-            value={address.line1}
+            value={address?.line1}
             onChange={handleAddressChange}
             placeholder="Address Line 1"
             required
@@ -77,7 +77,7 @@ const UpdatePaymentMethod: React.FC = () => {
           <input
             name="line2"
             className="form-control"
-            value={address.line2}
+            value={address?.line2}
             onChange={handleAddressChange}
             placeholder="Address Line 2"
           />
@@ -85,7 +85,7 @@ const UpdatePaymentMethod: React.FC = () => {
             <input
               name="city"
               className="form-control"
-              value={address.city}
+              value={address?.city}
               onChange={handleAddressChange}
               placeholder="City"
               required
@@ -94,7 +94,7 @@ const UpdatePaymentMethod: React.FC = () => {
             <input
               name="state"
               className="form-control"
-              value={address.state}
+              value={address?.state}
               onChange={handleAddressChange}
               placeholder="State"
               required
@@ -103,7 +103,7 @@ const UpdatePaymentMethod: React.FC = () => {
             <input
               name="postal_code"
               className="form-control"
-              value={address.postal_code}
+              value={address?.postal_code}
               onChange={handleAddressChange}
               placeholder="Zip Code"
               required
