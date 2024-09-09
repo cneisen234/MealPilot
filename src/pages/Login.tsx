@@ -145,7 +145,6 @@ const Login: React.FC = () => {
             </button>
           </form>
           <p style={{ marginTop: "20px", textAlign: "center" }}>
-            Don't have an account?{" "}
             <Link to="/signup" className="auth-link">
               Sign up here
             </Link>
