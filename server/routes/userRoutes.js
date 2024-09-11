@@ -3,17 +3,18 @@ const router = express.Router();
 const authMiddleware = require("../middleware/auth");
 const pool = require("../db");
 const stripe = require("stripe")(process.env.STRIPE_SECRET_KEY);
-const { checkPromptLimit } = require("../utils/miscUtils.js");
+// const { checkPromptLimit } = require("../utils/miscUtils.js");
 const bcrypt = require("bcrypt");
 
-const PaymentTier = {
-  Owner: 1,
-  Premium: 2,
-  Basic: 3,
-  Free: 4,
-};
+// const PaymentTier = {
+//   Owner: 1,
+//   Premium: 2,
+//   Basic: 3,
+//   Free: 4,
+// };
 
-router.get("/profile", authMiddleware, checkPromptLimit, async (req, res) => {
+// router.get("/profile", authMiddleware, checkPromptLimit, async (req, res) => {
+router.get("/profile", authMiddleware, async (req, res) => {
   try {
     const userId = req.user.id;
     const userResult = await pool.query(
@@ -29,9 +30,9 @@ router.get("/profile", authMiddleware, checkPromptLimit, async (req, res) => {
 
     // Fetch interests based on payment tier
     let interestsResult;
-    if (PaymentTier[user.payment_tier] <= PaymentTier.Basic) {
-      interestsResult = await pool.query(
-        `
+    // if (PaymentTier[user.payment_tier] <= PaymentTier.Basic) {
+    interestsResult = await pool.query(
+      `
         SELECT i.id, i.category, i.visibility, 
                json_agg(json_build_object('id', it.id, 'name', it.name, 'rating', it.rating)) AS items
         FROM interests i
@@ -39,24 +40,24 @@ router.get("/profile", authMiddleware, checkPromptLimit, async (req, res) => {
         WHERE i.user_id = $1
         GROUP BY i.id
       `,
-        [userId]
-      );
-      user.interests = interestsResult.rows;
-    } else {
-      // For Free tier, limit to 3 categories and 5 items per category
-      interestsResult = await pool.query(
-        `
-        SELECT i.id, i.category, i.visibility, 
-               (SELECT json_agg(json_build_object('id', it.id, 'name', it.name, 'rating', it.rating))
-                FROM (SELECT * FROM items WHERE interest_id = i.id LIMIT 5) it) AS items
-        FROM interests i
-        WHERE i.user_id = $1
-        LIMIT 3
-      `,
-        [userId]
-      );
-      user.interests = interestsResult.rows;
-    }
+      [userId]
+    );
+    user.interests = interestsResult.rows;
+    // } else {
+    //   // For Free tier, limit to 3 categories and 5 items per category
+    //   interestsResult = await pool.query(
+    //     `
+    //     SELECT i.id, i.category, i.visibility,
+    //            (SELECT json_agg(json_build_object('id', it.id, 'name', it.name, 'rating', it.rating))
+    //             FROM (SELECT * FROM items WHERE interest_id = i.id LIMIT 5) it) AS items
+    //     FROM interests i
+    //     WHERE i.user_id = $1
+    //     LIMIT 3
+    //   `,
+    //     [userId]
+    //   );
+    //   user.interests = interestsResult.rows;
+    // }
 
     res.json(user);
   } catch (error) {
@@ -190,13 +191,29 @@ router.get("/not-friends", authMiddleware, async (req, res) => {
     FROM users u
     LEFT JOIN friend_requests fr ON (fr.sender_id = $1 AND fr.receiver_id = u.id) OR (fr.receiver_id = $1 AND fr.sender_id = u.id)
     WHERE u.id != $1
-    AND u.payment_tier != 'Free'::payment_tier_enum
     AND u.id NOT IN (
       SELECT friend_id
       FROM friends
       WHERE user_id = $1
     )
     `;
+
+    // const query = `
+    // SELECT u.id, u.name, u.username, u.email, u.avatar,
+    //        CASE
+    //          WHEN fr.status IS NOT NULL THEN json_build_object('status', fr.status, 'requestId', fr.id)
+    //          ELSE NULL
+    //        END AS friend_request_status
+    // FROM users u
+    // LEFT JOIN friend_requests fr ON (fr.sender_id = $1 AND fr.receiver_id = u.id) OR (fr.receiver_id = $1 AND fr.sender_id = u.id)
+    // WHERE u.id != $1
+    // AND u.payment_tier != 'Free'::payment_tier_enum
+    // AND u.id NOT IN (
+    //   SELECT friend_id
+    //   FROM friends
+    //   WHERE user_id = $1
+    // )
+    // `;
 
     const result = await pool.query(query, [userId]);
 

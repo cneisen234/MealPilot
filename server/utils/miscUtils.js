@@ -22,21 +22,22 @@ const checkPromptLimit = async (req, res, next) => {
     }
 
     // Check limits based on payment tier
-    let limit;
-    switch (user.payment_tier) {
-      case "Free":
-        limit = 6;
-        break;
-      case "Basic":
-        limit = 15;
-        break;
-      case "Premium":
-      case "Owner":
-        limit = Infinity;
-        break;
-      default:
-        limit = 6;
-    }
+    let limit = Infinity;
+    // let limit;
+    // switch (user.payment_tier) {
+    //   case "Free":
+    //     limit = 6;
+    //     break;
+    //   case "Basic":
+    //     limit = 15;
+    //     break;
+    //   case "Premium":
+    //   case "Owner":
+    //     limit = Infinity;
+    //     break;
+    //   default:
+    //     limit = 6;
+    // }
 
     if (effectiveCount >= limit && limit !== Infinity) {
       return res.status(403).json({ message: "Daily prompt limit reached" });

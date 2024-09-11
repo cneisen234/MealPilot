@@ -201,9 +201,9 @@ async function handleSubscriptionUpdate(subscription) {
 }
 
 module.exports = {
-  applyDowngrade,
-  scheduleDowngrade,
-  fetchScheduledDowngrades,
-  applyScheduledDowngrades,
-  handleSubscriptionUpdate,
+  // applyDowngrade,
+  // scheduleDowngrade,
+  // fetchScheduledDowngrades,
+  // applyScheduledDowngrades,
+  // handleSubscriptionUpdate,
 };

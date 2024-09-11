@@ -87,21 +87,22 @@ router.get("/remaining-prompts", authMiddleware, async (req, res) => {
     }
 
     // Calculate limit based on payment tier
-    let limit;
-    switch (user.payment_tier) {
-      case "Free":
-        limit = 6;
-        break;
-      case "Basic":
-        limit = 15;
-        break;
-      case "Premium":
-      case "Owner":
-        limit = Infinity;
-        break;
-      default:
-        limit = 6;
-    }
+    let limit = Infinity;
+    // let limit;
+    // switch (user.payment_tier) {
+    //   case "Free":
+    //     limit = 6;
+    //     break;
+    //   case "Basic":
+    //     limit = 15;
+    //     break;
+    //   case "Premium":
+    //   case "Owner":
+    //     limit = Infinity;
+    //     break;
+    //   default:
+    //     limit = 6;
+    // }
 
     const remaining =
       limit === Infinity ? "Unlimited" : Number(limit) - Number(effectiveCount);

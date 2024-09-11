@@ -276,15 +276,15 @@ async function handleFailedPayment(invoice) {
 // };
 
 module.exports = {
-  attachPaymentMethodToCustomer,
-  cancelExistingSubscription,
-  createNewSubscription,
-  createNewSubscriptionWithTrial,
-  calculateProratedAmount,
-  checkPaymentTier,
-  cancelScheduledDowngrade,
-  updateUserSubscription,
-  handleSuccessfulPayment,
-  handleFailedPayment,
+  // attachPaymentMethodToCustomer,
+  // cancelExistingSubscription,
+  // createNewSubscription,
+  // createNewSubscriptionWithTrial,
+  // calculateProratedAmount,
+  // checkPaymentTier,
+  // cancelScheduledDowngrade,
+  // updateUserSubscription,
+  // handleSuccessfulPayment,
+  // handleFailedPayment,
   // calculateTax,
 };

@@ -434,7 +434,7 @@ const Friends: React.FC = () => {
         boxSizing: "border-box",
         position: "relative",
       }}>
-      {PaymentTier[user.payment_tier as unknown as keyof typeof PaymentTier] ===
+      {/* {PaymentTier[user.payment_tier as unknown as keyof typeof PaymentTier] ===
       PaymentTier.Free ? (
         <>
           <div
@@ -446,9 +446,9 @@ const Friends: React.FC = () => {
           </div>
           {renderUpgradeMessage()}
         </>
-      ) : (
-        renderFriendsList()
-      )}
+      ) : ( */}
+      {renderFriendsList()}
+      {/* )} */}
 
       {selectedFriend && (
         <ProfileView
@@ -462,24 +462,24 @@ const Friends: React.FC = () => {
         />
       )}
 
-      {isAddFriendModalOpen &&
-        PaymentTier[
-          user.payment_tier as unknown as keyof typeof PaymentTier
-        ] !== PaymentTier.Free && (
-          <AddFriendModal
-            onClose={() => setIsAddFriendModalOpen(false)}
-            currentUserId={user.id}
-            onSendFriendRequest={handleSendFriendRequest}
-            maxFriends={
-              PaymentTier[
-                user.payment_tier as unknown as keyof typeof PaymentTier
-              ] === PaymentTier.Basic
-                ? 10
-                : Infinity
-            }
-            currentFriendsCount={friends.length}
-          />
-        )}
+      {isAddFriendModalOpen && (
+        // PaymentTier[
+        //   user.payment_tier as unknown as keyof typeof PaymentTier
+        // ] !== PaymentTier.Free &&
+        <AddFriendModal
+          onClose={() => setIsAddFriendModalOpen(false)}
+          currentUserId={user.id}
+          onSendFriendRequest={handleSendFriendRequest}
+          maxFriends={
+            PaymentTier[
+              user.payment_tier as unknown as keyof typeof PaymentTier
+            ] === PaymentTier.Basic
+              ? 10
+              : Infinity
+          }
+          currentFriendsCount={friends.length}
+        />
+      )}
     </div>
   );
 };

@@ -79,9 +79,9 @@ const SideNavbar: React.FC = () => {
           <NavItem to="/coming-soon" icon={<FaClock />} onClick={closeMenu}>
             Coming Soon
           </NavItem>
-          <NavItem to="/upgrade" icon={<FaArrowUp />} onClick={closeMenu}>
+          {/* <NavItem to="/upgrade" icon={<FaArrowUp />} onClick={closeMenu}>
             Upgrade
-          </NavItem>
+          </NavItem> */}
           <NavItem
             to="/contact-us"
             icon={<FaEnvelope />}

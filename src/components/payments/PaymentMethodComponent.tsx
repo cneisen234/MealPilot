@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { useStripe, useElements, CardElement } from "@stripe/react-stripe-js";
+// import { useStripe, useElements, CardElement } from "@stripe/react-stripe-js";
 import { updatePaymentMethod } from "../../utils/api";
 
 interface AddressInfo {
@@ -12,8 +12,8 @@ interface AddressInfo {
 }
 
 const UpdatePaymentMethod: React.FC = () => {
-  const stripe = useStripe();
-  const elements = useElements();
+  // const stripe = useStripe();
+  // const elements = useElements();
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
 
@@ -29,30 +29,30 @@ const UpdatePaymentMethod: React.FC = () => {
   const handleSubmit = async (event: React.FormEvent) => {
     event.preventDefault();
 
-    if (!stripe || !elements) {
-      return;
-    }
+    // if (!stripe || !elements) {
+    //   return;
+    // }
 
-    const cardElement = elements.getElement(CardElement);
+    // const cardElement = elements.getElement(CardElement);
 
-    if (cardElement) {
-      const { error, paymentMethod } = await stripe.createPaymentMethod({
-        type: "card",
-        card: cardElement,
-      });
+    // if (cardElement) {
+    //   const { error, paymentMethod } = await stripe.createPaymentMethod({
+    //     type: "card",
+    //     card: cardElement,
+    //   });
 
-      if (error) {
-        setError(error.message || "An error occurred");
-      } else {
-        try {
-          await updatePaymentMethod(paymentMethod.id, address);
-          setSuccess(true);
-          setError(null);
-        } catch (err) {
-          setError("Failed to update payment method");
-        }
-      }
-    }
+    //   if (error) {
+    //     setError(error.message || "An error occurred");
+    //   } else {
+    //     try {
+    //       await updatePaymentMethod(paymentMethod.id, address);
+    //       setSuccess(true);
+    //       setError(null);
+    //     } catch (err) {
+    //       setError("Failed to update payment method");
+    //     }
+    //   }
+    // }
   };
 
   const handleAddressChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -63,7 +63,7 @@ const UpdatePaymentMethod: React.FC = () => {
     <div>
       <h2>Update Payment Method</h2>
       <form onSubmit={handleSubmit}>
-        <CardElement />
+        {/* <CardElement /> */}
         <div className="form-group" style={{ marginTop: "20px" }}>
           <h4>Billing Address</h4>
           <input
@@ -111,9 +111,9 @@ const UpdatePaymentMethod: React.FC = () => {
             />
           </div>
         </div>
-        <button type="submit" disabled={!stripe}>
+        {/* <button type="submit" disabled={!stripe}>
           Update
-        </button>
+        </button> */}
       </form>
       {error && <div style={{ color: "red" }}>{error}</div>}
       {success && (

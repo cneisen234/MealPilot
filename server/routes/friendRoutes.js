@@ -2,42 +2,42 @@ const express = require("express");
 const router = express.Router();
 const authMiddleware = require("../middleware/auth");
 const pool = require("../db");
-const { checkPaymentTier } = require("../utils/paymentUtils");
+// const { checkPaymentTier } = require("../utils/paymentUtils");
 const { createNotification } = require("../utils/notificationUtils");
 
-const PaymentTier = {
-  Owner: 1,
-  Premium: 2,
-  Basic: 3,
-  Free: 4,
-};
+// const PaymentTier = {
+//   Owner: 1,
+//   Premium: 2,
+//   Basic: 3,
+//   Free: 4,
+// };
 
 router.get("/", authMiddleware, async (req, res) => {
   try {
     const userId = req.user.id;
 
     // Check if user has access to friends list
-    const hasAccess = await checkPaymentTier(userId, PaymentTier.Basic);
-    if (!hasAccess) {
-      return res
-        .status(403)
-        .json({ message: "Upgrade required to access friends list" });
-    }
+    // const hasAccess = await checkPaymentTier(userId, PaymentTier.Basic);
+    // if (!hasAccess) {
+    //   return res
+    //     .status(403)
+    //     .json({ message: "Upgrade required to access friends list" });
+    // }
 
-    const query = `
-      SELECT u.id, u.name, u.username, u.avatar
-      FROM users u
-      INNER JOIN friends f ON u.id = f.friend_id
-      WHERE f.user_id = $1
-    `;
+    // const query = `
+    //   SELECT u.id, u.name, u.username, u.avatar
+    //   FROM users u
+    //   INNER JOIN friends f ON u.id = f.friend_id
+    //   WHERE f.user_id = $1
+    // `;
 
-    const result = await pool.query(query, [userId]);
+    // const result = await pool.query(query, [userId]);
 
     // For Basic tier, limit to 10 friends
-    const friends = result.rows.slice(
-      0,
-      PaymentTier[req.user.payment_tier] === PaymentTier.Basic ? 10 : undefined
-    );
+    // const friends = result.rows.slice(
+    //   0,
+    //   PaymentTier[req.user.payment_tier] === PaymentTier.Basic ? 10 : undefined
+    // );
 
     res.json(friends);
   } catch (error) {

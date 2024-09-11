@@ -10,15 +10,15 @@ const {
   saveRecommendation,
 } = require("../utils/recommendationUtils");
 const { getChatHistory } = require("../utils/chatHistoryUtils");
-const { checkPaymentTier } = require("../utils/paymentUtils");
+// const { checkPaymentTier } = require("../utils/paymentUtils");
 const { DateTime } = require("luxon");
 
-const PaymentTier = {
-  Owner: 1,
-  Premium: 2,
-  Basic: 3,
-  Free: 4,
-};
+// const PaymentTier = {
+//   Owner: 1,
+//   Premium: 2,
+//   Basic: 3,
+//   Free: 4,
+// };
 
 router.post("/get-recommendation", authMiddleware, async (req, res) => {
   try {
@@ -46,13 +46,13 @@ router.post("/get-recommendation", authMiddleware, async (req, res) => {
     let friendsData = [];
     if (friendIds && friendIds.length > 0) {
       // Check payment tier only if friends are included
-      const hasAccess = await checkPaymentTier(userId, PaymentTier.Basic);
-      if (!hasAccess) {
-        return res.status(403).json({
-          message:
-            "Including friends in recommendations is not available on your current plan.",
-        });
-      }
+      // const hasAccess = await checkPaymentTier(userId, PaymentTier.Basic);
+      // if (!hasAccess) {
+      //   return res.status(403).json({
+      //     message:
+      //       "Including friends in recommendations is not available on your current plan.",
+      //   });
+      // }
 
       // Fetch friends' data
       const friendsQuery = await pool.query(
@@ -230,16 +230,16 @@ router.get("/daily", authMiddleware, async (req, res) => {
     const userId = req.user.id;
 
     // Check if user has Premium or Owner access
-    const hasPremiumAccess = await checkPaymentTier(
-      userId,
-      PaymentTier.Premium
-    );
-    if (!hasPremiumAccess) {
-      return res.status(403).json({
-        error:
-          "This feature is only available for Premium and Owner tier users",
-      });
-    }
+    // const hasPremiumAccess = await checkPaymentTier(
+    //   userId,
+    //   PaymentTier.Premium
+    // );
+    // if (!hasPremiumAccess) {
+    //   return res.status(403).json({
+    //     error:
+    //       "This feature is only available for Premium and Owner tier users",
+    //   });
+    // }
 
     const currentDate = new Date();
 

@@ -22,16 +22,16 @@ const Recommendations: React.FC = () => {
       const userResponse = await getProfile();
       setUser(userResponse.data);
 
-      if (
-        PaymentTier[
-          userResponse.data.payment_tier as unknown as keyof typeof PaymentTier
-        ] === PaymentTier.Premium ||
-        PaymentTier[
-          userResponse.data.payment_tier as unknown as keyof typeof PaymentTier
-        ] === PaymentTier.Owner
-      ) {
-        await fetchDailyRecommendations();
-      }
+      // if (
+      //   PaymentTier[
+      //     userResponse.data.payment_tier as unknown as keyof typeof PaymentTier
+      //   ] === PaymentTier.Premium ||
+      //   PaymentTier[
+      //     userResponse.data.payment_tier as unknown as keyof typeof PaymentTier
+      //   ] === PaymentTier.Owner
+      // ) {
+      await fetchDailyRecommendations();
+      // }
     } catch (error) {
       console.error("Error fetching user profile or recommendations:", error);
     } finally {
@@ -170,12 +170,12 @@ const Recommendations: React.FC = () => {
 
   return (
     <div style={{ position: "relative", height: "100%" }}>
-      {PaymentTier[user.payment_tier as unknown as keyof typeof PaymentTier] ===
+      {/* {PaymentTier[user.payment_tier as unknown as keyof typeof PaymentTier] ===
         PaymentTier.Premium ||
       PaymentTier[user.payment_tier as unknown as keyof typeof PaymentTier] ===
-        PaymentTier.Owner ? (
-        renderRecommendationsList()
-      ) : (
+        PaymentTier.Owner ? ( */}
+      {renderRecommendationsList()}
+      {/* ) : (
         <div
           style={{
             position: "absolute",
@@ -224,7 +224,7 @@ const Recommendations: React.FC = () => {
             Upgrade Now
           </button>
         </div>
-      )}
+      )} */}
     </div>
   );
 };

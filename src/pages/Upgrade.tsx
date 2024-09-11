@@ -182,6 +182,8 @@ const Upgrade: React.FC = () => {
       (isCurrentPlan && !isDowngradeScheduled) || // Disable current tier if no downgrade scheduled
       (isScheduledTier && isDowngradeScheduled); // Disable scheduled tier if downgrade is scheduled
 
+    return <div>Page Unavailable</div>;
+
     return (
       <div
         style={{
@@ -321,7 +323,7 @@ const Upgrade: React.FC = () => {
           disabled={isDisabled}>
           {currentUser && tier === currentTier ? "Current Plan" : "Select Plan"}
         </button>
-        {currentUser && tier < currentUser.payment_tier && (
+        {/* {currentUser && tier < currentUser.payment_tier && (
           <div
             style={{
               marginTop: "10px",
@@ -331,7 +333,7 @@ const Upgrade: React.FC = () => {
             <FaInfoCircle style={{ marginRight: "5px" }} />
             Downgrade will take effect at the end of your current billing cycle
           </div>
-        )}
+        )} */}
       </div>
     );
   };

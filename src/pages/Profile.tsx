@@ -34,7 +34,7 @@ import {
 } from "react-icons/fa";
 import { Link } from "react-router-dom";
 import AnimatedTechIcon from "../components/common/AnimatedTechIcon";
-import { CardElement, useElements, useStripe } from "@stripe/react-stripe-js";
+// import { CardElement, useElements, useStripe } from "@stripe/react-stripe-js";
 import "../styles/profile.css";
 
 interface AddressInfo {
@@ -80,8 +80,8 @@ const Profile: React.FC = () => {
     country: "US",
   });
 
-  const stripe = useStripe();
-  const elements = useElements();
+  // const stripe = useStripe();
+  // const elements = useElements();
 
   interface LocationState {
     fromOnboarding?: boolean;
@@ -96,22 +96,22 @@ const Profile: React.FC = () => {
     fetchSubscriptionStatus();
   }, []);
 
-  useEffect(() => {
-    if (user?.id) {
-      fetchPrimaryPaymentMethod(user);
-    }
-  }, [user]);
+  // useEffect(() => {
+  //   if (user?.id) {
+  //     fetchPrimaryPaymentMethod(user);
+  //   }
+  // }, [user]);
 
-  const fetchPrimaryPaymentMethod = async (user: User) => {
-    try {
-      const paymentMethod = await checkPrimaryPaymentMethod(user?.id);
-      //@ts-ignore
-      setAddress(paymentMethod.address);
-      setPrimaryPaymentMethod(paymentMethod);
-    } catch (error) {
-      console.error("Error fetching primary payment method:", error);
-    }
-  };
+  // const fetchPrimaryPaymentMethod = async (user: User) => {
+  //   try {
+  //     const paymentMethod = await checkPrimaryPaymentMethod(user?.id);
+  //     //@ts-ignore
+  //     setAddress(paymentMethod.address);
+  //     setPrimaryPaymentMethod(paymentMethod);
+  //   } catch (error) {
+  //     console.error("Error fetching primary payment method:", error);
+  //   }
+  // };
 
   const getPrivacyIcon = (visibility: string) => {
     switch (visibility) {
@@ -193,69 +193,68 @@ const Profile: React.FC = () => {
     }
   };
 
-  console.log("address", address);
+  // const handleUpdatePaymentMethod = async (event: React.FormEvent) => {
+  //   event.preventDefault();
+  //   if (!stripe || !elements) {
+  //     return;
+  //   }
 
-  const handleUpdatePaymentMethod = async (event: React.FormEvent) => {
-    event.preventDefault();
-    if (!stripe || !elements) {
-      return;
-    }
+  //   const cardElement = elements.getElement(CardElement);
 
-    const cardElement = elements.getElement(CardElement);
+  //   if (cardElement) {
+  //     setPaymentUpdateError(null);
+  //     setPaymentUpdateSuccess(false);
 
-    if (cardElement) {
-      setPaymentUpdateError(null);
-      setPaymentUpdateSuccess(false);
+  //     try {
+  //       // Create a payment method
+  //       const { error, paymentMethod } = await stripe.createPaymentMethod({
+  //         type: "card",
+  //         card: cardElement,
+  //         billing_details: { address: address },
+  //       });
 
-      try {
-        // Create a payment method
-        const { error, paymentMethod } = await stripe.createPaymentMethod({
-          type: "card",
-          card: cardElement,
-          billing_details: { address: address },
-        });
+  //       if (error) {
+  //         throw new Error(error.message);
+  //       }
 
-        if (error) {
-          throw new Error(error.message);
-        }
+  //       // Send the payment method to your server
+  //       const response = await updatePaymentMethod(paymentMethod.id, address);
 
-        // Send the payment method to your server
-        const response = await updatePaymentMethod(paymentMethod.id, address);
-
-        if (response.success) {
-          setPaymentUpdateSuccess(true);
-          setShowPaymentUpdate(false);
-          // Refresh subscription status
-          fetchSubscriptionStatus();
-        } else {
-          throw new Error(
-            response.message || "Failed to update payment method"
-          );
-        }
-      } catch (error: any) {
-        setPaymentUpdateError(error.message);
-      }
-    }
-  };
+  //       if (response.success) {
+  //         setPaymentUpdateSuccess(true);
+  //         setShowPaymentUpdate(false);
+  //         // Refresh subscription status
+  //         fetchSubscriptionStatus();
+  //       } else {
+  //         throw new Error(
+  //           response.message || "Failed to update payment method"
+  //         );
+  //       }
+  //     } catch (error: any) {
+  //       setPaymentUpdateError(error.message);
+  //     }
+  //   }
+  // };
 
   const getMembershipLimits = (paymentTier: PaymentTier) => {
-    switch (paymentTier) {
-      case PaymentTier.Free: // 1
-        return { maxCategories: 3, maxItems: 5 };
-      case PaymentTier.Basic: // 2
-        return { maxCategories: 10, maxItems: 20 };
-      case PaymentTier.Premium: // 3
-      case PaymentTier.Owner: // 4
-        return { maxCategories: 20, maxItems: 50 };
-      default:
-        return { maxCategories: 3, maxItems: 5 }; // Default to Free tier limits
-    }
+    return { maxCategories: 20, maxItems: 50 };
+    // switch (paymentTier) {
+    //   case PaymentTier.Free: // 1
+    //     return { maxCategories: 3, maxItems: 5 };
+    //   case PaymentTier.Basic: // 2
+    //     return { maxCategories: 10, maxItems: 20 };
+    //   case PaymentTier.Premium: // 3
+    //   case PaymentTier.Owner: // 4
+    //     return { maxCategories: 20, maxItems: 50 };
+    //   default:
+    //     return { maxCategories: 3, maxItems: 5 }; // Default to Free tier limits
+    // }
   };
 
   const canAddCategory = () => {
     if (!user) return false;
-    const userTier =
-      PaymentTier[user.payment_tier as unknown as keyof typeof PaymentTier];
+    const userTier = 1;
+    // PaymentTier[user.payment_tier as unknown as keyof typeof PaymentTier];
     const { maxCategories } = getMembershipLimits(userTier);
     return user.interests?.length < maxCategories;
   };
@@ -271,8 +270,8 @@ const Profile: React.FC = () => {
 
   const canAddItem = (categoryId: number) => {
     if (!user) return false;
-    const userTier =
-      PaymentTier[user.payment_tier as unknown as keyof typeof PaymentTier];
+    const userTier = 1;
+    // PaymentTier[user.payment_tier as unknown as keyof typeof PaymentTier];
     const { maxItems } = getMembershipLimits(userTier);
     const category = user.interests.find((int) => int.id === categoryId);
     if (!category?.items) {
@@ -556,12 +555,12 @@ const Profile: React.FC = () => {
                   <AnimatedTechIcon size={10} speed={10} />
                 )}
               </p>
-              <p>
+              {/* <p>
                 <strong>Membership:</strong>{" "}
                 {user.payment_tier !== undefined
                   ? user.payment_tier
                   : "Membership status not set"}
-              </p>
+              </p> */}
             </div>
             <button
               onClick={() => setIsEditModalOpen(true)}
@@ -778,7 +777,7 @@ const Profile: React.FC = () => {
       {/* Account Management section */}
       <div className="account-management">
         <h2>Account Management</h2>
-        <div className="subscription-status">
+        {/* <div className="subscription-status">
           <h3>Subscription Status</h3>
           {subscriptionStatus ? (
             <div>
@@ -810,9 +809,9 @@ const Profile: React.FC = () => {
           ) : (
             <p>Loading subscription status...</p>
           )}
-        </div>
+        </div> */}
 
-        <div className="payment-method">
+        {/* <div className="payment-method">
           <span className="payment-method-text">Payment Method</span>
           {primaryPaymentMethod?.hasPrimaryPaymentMethod ? (
             <div style={{ display: "flex", alignItems: "center" }}>
@@ -835,9 +834,9 @@ const Profile: React.FC = () => {
             )}
             {showPaymentUpdate ? "Cancel" : "Update"}
           </button>
-        </div>
+        </div> */}
 
-        {showPaymentUpdate && (
+        {/* {showPaymentUpdate && (
           <form
             onSubmit={handleUpdatePaymentMethod}
             className="update-payment-form">
@@ -904,19 +903,19 @@ const Profile: React.FC = () => {
               Update Payment Method
             </button>
           </form>
-        )}
+        )} */}
 
-        {paymentUpdateError && (
+        {/* {paymentUpdateError && (
           <div style={{ color: "red", marginTop: "10px" }}>
             {paymentUpdateError}
           </div>
-        )}
+        )} */}
 
-        {paymentUpdateSuccess && (
+        {/* {paymentUpdateSuccess && (
           <div style={{ color: "green", marginTop: "10px" }}>
             Payment method updated successfully!
           </div>
-        )}
+        )} */}
 
         <div className="close-account">
           <span className="payment-method-text">Close Account</span>

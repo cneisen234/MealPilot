@@ -145,11 +145,11 @@ const AddFriendModal: React.FC<AddFriendModalProps> = ({
         <h2 style={{ marginBottom: "20px", color: "var(--primary-color)" }}>
           Add New Friend
         </h2>
-        {currentFriendsCount >= maxFriends && (
+        {/* {currentFriendsCount >= maxFriends && (
           <p style={{ color: "red", marginBottom: "10px" }}>
             You've reached the maximum number of friends for your current plan.
           </p>
-        )}
+        )} */}
         <div
           style={{
             display: "flex",
