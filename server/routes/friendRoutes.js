@@ -24,20 +24,21 @@ router.get("/", authMiddleware, async (req, res) => {
     //     .json({ message: "Upgrade required to access friends list" });
     // }
 
-    // const query = `
-    //   SELECT u.id, u.name, u.username, u.avatar
-    //   FROM users u
-    //   INNER JOIN friends f ON u.id = f.friend_id
-    //   WHERE f.user_id = $1
-    // `;
+    const query = `
+      SELECT u.id, u.name, u.username, u.avatar
+      FROM users u
+      INNER JOIN friends f ON u.id = f.friend_id
+      WHERE f.user_id = $1
+    `;
 
-    // const result = await pool.query(query, [userId]);
+    const result = await pool.query(query, [userId]);
 
     // For Basic tier, limit to 10 friends
-    // const friends = result.rows.slice(
-    //   0,
-    //   PaymentTier[req.user.payment_tier] === PaymentTier.Basic ? 10 : undefined
-    // );
+    const friends = result.rows.slice(
+      0,
+      undefined
+      // PaymentTier[req.user.payment_tier] === PaymentTier.Basic ? 10 : undefined
+    );
 
     res.json(friends);
   } catch (error) {
