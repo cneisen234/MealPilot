@@ -1,7 +1,6 @@
 import React, { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { useAuth } from "../../context/AuthContext";
-import Notifications from "../common/Notifications";
 import "../../styles/header.css";
 
 const Header: React.FC = () => {
@@ -24,7 +23,6 @@ const Header: React.FC = () => {
       <nav className="header-nav">
         {isAuthenticated ? (
           <>
-            <Notifications onClose={handleCloseNotifications} />
             <button onClick={handleLogout} className="logout-button">
               Logout
             </button>
@@ -35,7 +33,7 @@ const Header: React.FC = () => {
               Login
             </Link>
             <Link to="/signup" className="btn signup-link">
-              Join the Quest
+              Sign up for Meal Pilot
             </Link>
           </>
         )}

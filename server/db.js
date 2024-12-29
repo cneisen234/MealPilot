@@ -33,7 +33,7 @@ if (process.env.DATABASE_URL) {
   };
 } else {
   config = {
-    database: "vibequest", // the name of our database on our server
+    database: "mealpilot", // the name of our database on our server
     host: "localhost", // server name (same as postico)
     port: 5432, // local postgres server port, 5432 is the default
     max: 10, // how many connections to the database? 10 is a good number

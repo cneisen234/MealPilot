@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect } from "react";
 import {
   BrowserRouter as Router,
   Routes,
@@ -9,27 +9,16 @@ import {
 import Home from "./pages/Home";
 import Login from "./pages/Login";
 import Signup from "./pages/Signup";
-import Profile from "./pages/Profile";
-import Interests from "./pages/Interests";
-import Chatbot from "./pages/Chatbot";
-import Friends from "./pages/Friends";
-import Recommendations from "./pages/Recommendations";
-import Upgrade from "./pages/Upgrade";
+import Recipe from "./pages/Recipe";
 import Header from "./components/layout/Header";
 import SideNavbar from "./components/layout/SideNavbar";
 import "./styles/main.css";
 import PrivateRoute from "./components/auth/PrivateRoute";
 import { AuthProvider, useAuth } from "./context/AuthContext";
-import Onboarding from "./components/tutorial/Onboarding";
 import ForgotPassword from "./components/auth/ForgotPassword";
 import ResetPassword from "./components/auth/ResetPassword";
-import ContactUs from "./pages/ContactUs";
 import CloseAccount from "./components/profile/CloseAccount";
 import ComingSoon from "./pages/ComingSoon";
-import { TutorialProvider } from "./context/TutorialContext";
-import NewUserTutorial from "./components/tutorial/NewUserTutorial";
-import { Elements } from "@stripe/react-stripe-js";
-import { loadStripe } from "@stripe/stripe-js";
 import BubbleBackground from "./BubbleBackground";
 
 const AppContent: React.FC = () => {
@@ -40,23 +29,18 @@ const AppContent: React.FC = () => {
     checkAuthStatus();
   }, [checkAuthStatus]);
 
-  const isOnboardingRoute = location.pathname === "/onboarding";
-  const stripePromise = loadStripe(
-    process.env.REACT_APP_STRIPE_PUBLISHABLE_KEY!
-  );
-
   return (
     <div
       className="app"
       style={{ display: "flex", flexDirection: "column", height: "100vh" }}>
-      {isAuthenticated && !isOnboardingRoute && <Header />}
+      {isAuthenticated && <Header />}
       <div style={{ display: "flex", flex: 1, overflow: "hidden" }}>
-        {isAuthenticated && !isOnboardingRoute && <SideNavbar />}
+        {isAuthenticated && <SideNavbar />}
         <main
           style={{
             flex: 1,
             overflow: "auto",
-            padding: isOnboardingRoute ? 0 : "10px",
+            padding: "10px",
           }}>
           <Routes>
             <Route
@@ -83,51 +67,10 @@ const AppContent: React.FC = () => {
             />
             <Route path="/forgot-password" element={<ForgotPassword />} />
             <Route path="/reset-password/:token" element={<ResetPassword />} />
-            <Route path="/contact-us" element={<ContactUs />} />
             <Route path="/close-account" element={<CloseAccount />} />
             <Route
-              path="/onboarding"
-              element={<PrivateRoute element={<Onboarding />} />}
-            />
-            <Route
-              path="/profile"
-              element={
-                <PrivateRoute
-                  element={
-                    <Elements stripe={stripePromise}>
-                      <Profile />
-                    </Elements>
-                  }
-                />
-              }
-            />
-            <Route
-              path="/interests"
-              element={<PrivateRoute element={<Interests />} />}
-            />
-            <Route
-              path="/chatbot"
-              element={<PrivateRoute element={<Chatbot />} />}
-            />
-            <Route
-              path="/friends"
-              element={<PrivateRoute element={<Friends />} />}
-            />
-            <Route
-              path="/recommendations"
-              element={<PrivateRoute element={<Recommendations />} />}
-            />
-            <Route
-              path="/upgrade"
-              element={
-                <PrivateRoute
-                  element={
-                    <Elements stripe={stripePromise}>
-                      <Upgrade />
-                    </Elements>
-                  }
-                />
-              }
+              path="/create-recipe"
+              element={<PrivateRoute element={<Recipe />} />}
             />
             <Route path="/coming-soon" element={<ComingSoon />} />
           </Routes>
@@ -148,10 +91,7 @@ const App: React.FC = () => {
         }}>
         <BubbleBackground />
         <AuthProvider>
-          <TutorialProvider>
-            <AppContent />
-            <NewUserTutorial />
-          </TutorialProvider>
+          <AppContent />
         </AuthProvider>
       </div>
     </Router>

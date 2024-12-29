@@ -57,41 +57,19 @@ const SideNavbar: React.FC = () => {
       </button>
       <nav className={`side-navbar ${isOpen ? "open" : ""}`}>
         <ul className="nav-list">
-          <NavItem to="/profile" icon={<FaUser />} onClick={closeMenu}>
-            Profile
-          </NavItem>
           <NavItem
-            to="/chatbot"
-            icon={<AnimatedTechIcon speed={2} />}
-            onClick={closeMenu}>
-            Lena AI
-          </NavItem>
-          <NavItem to="/friends" icon={<FaUserFriends />} onClick={closeMenu}>
-            Friends List
-          </NavItem>
-          <NavItem
-            to="/recommendations"
+            to="/recipe"
             icon={<FaLightbulb />}
-            title="Recommendations"
+            title="NewRecipe"
             onClick={closeMenu}>
-            Recs
+            New Recipe
           </NavItem>
           <NavItem to="/coming-soon" icon={<FaClock />} onClick={closeMenu}>
             Coming Soon
           </NavItem>
-          {/* <NavItem to="/upgrade" icon={<FaArrowUp />} onClick={closeMenu}>
-            Upgrade
-          </NavItem> */}
-          <NavItem
-            to="/contact-us"
-            icon={<FaEnvelope />}
-            title="Contact Us"
-            onClick={closeMenu}>
-            Contact Us
-          </NavItem>
         </ul>
         <div className="copyright">
-          &copy; {currentYear} VibeQuest. All rights reserved.
+          &copy; {currentYear} MealPilot. All rights reserved.
         </div>
       </nav>
     </>

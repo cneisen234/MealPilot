@@ -1,11 +1,6 @@
 import React, { useState, useEffect, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
-import {
-  signup,
-  login,
-  checkEmailAvailability,
-  checkUsernameAvailability,
-} from "../../utils/api";
+import { signup, login, checkEmailAvailability } from "../../utils/api";
 import { FaEye, FaEyeSlash } from "react-icons/fa";
 import { useAuth } from "../../context/AuthContext";
 import useDebounce from "../../hooks/useDebounce";
@@ -44,26 +39,9 @@ const SignupForm: React.FC = () => {
     }
   }, []);
 
-  const checkUsername = useCallback(async (username: string) => {
-    if (username) {
-      try {
-        const response = await checkUsernameAvailability(username);
-        setUsernameError(
-          response.data.available ? "" : "This username is already taken."
-        );
-      } catch (error) {
-        console.error("Error checking username availability:", error);
-      }
-    }
-  }, []);
-
   useEffect(() => {
     checkEmail(debouncedEmail);
   }, [debouncedEmail, checkEmail]);
-
-  useEffect(() => {
-    checkUsername(debouncedUsername);
-  }, [debouncedUsername, checkUsername]);
 
   const togglePasswordVisibility = () => {
     setShowPassword(!showPassword);
@@ -81,7 +59,6 @@ const SignupForm: React.FC = () => {
     try {
       // Final check before submission
       const emailAvailable = await checkEmailAvailability(email);
-      const usernameAvailable = await checkUsernameAvailability(username);
 
       if (!emailFormatValidationHelper(email)) {
         setEmailError("Email address needs to be in correct format.");
@@ -90,12 +67,6 @@ const SignupForm: React.FC = () => {
       }
       if (!emailAvailable.data.available) {
         setEmailError("This email is already taken.");
-        setGeneralError("Please fix the errors before submitting.");
-        return;
-      }
-
-      if (!usernameAvailable.data.available) {
-        setUsernameError("This username is already taken.");
         setGeneralError("Please fix the errors before submitting.");
         return;
       }

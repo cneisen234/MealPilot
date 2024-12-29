@@ -3,9 +3,7 @@ const router = express.Router();
 const bcrypt = require("bcrypt");
 const jwt = require("jsonwebtoken");
 const pool = require("../db");
-const sgMail = require("@sendgrid/mail");
 const crypto = require("crypto");
-const { checkAndApplyDowngrade } = require("../utils/downgradeUtils");
 
 router.post("/login", async (req, res) => {
   const { email, password } = req.body;
@@ -30,8 +28,6 @@ router.post("/login", async (req, res) => {
       return res.status(401).json({ message: "Invalid email or password" });
     }
 
-    await checkAndApplyDowngrade(user.id);
-
     // Generate a JWT token
     const token = jwt.sign(
       { userId: user.id, email: user.email },
@@ -51,25 +47,16 @@ router.post("/login", async (req, res) => {
 });
 
 router.post("/signup", async (req, res) => {
-  const { name, username, email, password } = req.body;
+  const { name, email, password } = req.body;
 
   try {
     // Check if the email is already in use
     const emailCheck = await pool.query(
-      "SELECT * FROM users WHERE LOWER(username) = LOWER($1)",
+      "SELECT * FROM users WHERE LOWER(email) = LOWER($1)",
       [email]
     );
     if (emailCheck.rows.length > 0) {
       return res.status(400).json({ message: "Email already in use" });
-    }
-
-    // Check if the username is already taken
-    const usernameCheck = await pool.query(
-      "SELECT * FROM users WHERE username = $1",
-      [username]
-    );
-    if (usernameCheck.rows.length > 0) {
-      return res.status(400).json({ message: "Username already taken" });
     }
 
     // Hash the password
@@ -78,8 +65,8 @@ router.post("/signup", async (req, res) => {
 
     // Insert the new user into the database
     const result = await pool.query(
-      "INSERT INTO users (name, username, email, password) VALUES ($1, $2, $3, $4) RETURNING id",
-      [name, username, email, hashedPassword]
+      "INSERT INTO users (name, email, password) VALUES ($1, $2, $3) RETURNING id",
+      [name, email, hashedPassword]
     );
 
     res.status(201).json({
@@ -119,7 +106,7 @@ router.post("/forgot-password", async (req, res) => {
     <body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px;">
       <div style="text-align: center; margin-bottom: 20px;">
         <div style="background-color: #966FD6; color: white; font-size: 24px; font-weight: bold; padding: 10px 20px; display: inline-block; border-radius: 5px;">
-          VibeQuest
+          MealPilot
         </div>
       </div>
       <div style="background-color: #f8f9fa; border-radius: 5px; padding: 20px; margin-bottom: 20px;">
@@ -133,7 +120,7 @@ router.post("/forgot-password", async (req, res) => {
         <p>If you did not request this, please ignore this email and your password will remain unchanged.</p>
       </div>
       <div style="text-align: center; font-size: 12px; color: #666;">
-        <p>&copy; 2024 VibeQuest. All rights reserved.</p>
+        <p>&copy; 2024 MealPilot. All rights reserved.</p>
       </div>
     </body>
     </html>
@@ -142,9 +129,9 @@ router.post("/forgot-password", async (req, res) => {
     const msg = {
       to: user.rows[0].email,
       from: process.env.SENDGRID_FROM_EMAIL,
-      subject: "VibeQuest Password Reset Request",
+      subject: "MealPilot Password Reset Request",
       html: htmlContent,
-      text: `Reset your VibeQuest password by visiting: ${resetUrl}`,
+      text: `Reset your MealPilot password by visiting: ${resetUrl}`,
     };
 
     await sgMail.send(msg);
@@ -194,20 +181,6 @@ router.get("/check-email", async (req, res) => {
     res.json({ available: result.rows.length === 0 });
   } catch (error) {
     console.error("Error checking email availability:", error);
-    res.status(500).json({ message: "Server error" });
-  }
-});
-
-router.get("/check-username", async (req, res) => {
-  const { username } = req.query;
-  try {
-    const result = await pool.query(
-      "SELECT * FROM users WHERE LOWER(username) = LOWER($1)",
-      [username]
-    );
-    res.json({ available: result.rows.length === 0 });
-  } catch (error) {
-    console.error("Error checking username availability:", error);
     res.status(500).json({ message: "Server error" });
   }
 });
