@@ -19,7 +19,7 @@ const Header: React.FC = () => {
 
   return (
     <header className="header">
-      <div className="header-title">VibeQuest</div>
+      <div className="header-title">MealPilot</div>
       <nav className="header-nav">
         {isAuthenticated ? (
           <>

@@ -17,3 +17,12 @@ export interface Recipe {
   confidence: number;
   rating: number;
 }
+
+export interface DietaryItem {
+  id: number;
+  userId: number;
+  value: string;
+}
+
+export interface CantHave extends DietaryItem {}
+export interface MustHave extends DietaryItem {}

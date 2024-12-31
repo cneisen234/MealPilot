@@ -12,19 +12,16 @@ import {
 
 const SignupForm: React.FC = () => {
   const [name, setName] = useState("");
-  const [username, setUsername] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [passwordError, setPasswordError] = useState<string[]>([]);
   const [emailError, setEmailError] = useState("");
-  const [usernameError, setUsernameError] = useState("");
   const [generalError, setGeneralError] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const navigate = useNavigate();
   const { checkAuthStatus } = useAuth();
 
   const debouncedEmail = useDebounce(email, 300);
-  const debouncedUsername = useDebounce(username, 300);
 
   const checkEmail = useCallback(async (email: string) => {
     if (email) {
@@ -51,7 +48,7 @@ const SignupForm: React.FC = () => {
     e.preventDefault();
     setGeneralError("");
 
-    if (emailError || usernameError || passwordError.length > 0) {
+    if (emailError || passwordError.length > 0) {
       setGeneralError("Please fix the errors before submitting.");
       return;
     }
@@ -80,7 +77,6 @@ const SignupForm: React.FC = () => {
       // Proceed with signup
       await signup({
         name,
-        username,
         email: email.toLowerCase(),
         password,
       });
@@ -93,9 +89,6 @@ const SignupForm: React.FC = () => {
 
       // Update auth status
       checkAuthStatus();
-
-      // Redirect to onboarding page
-      navigate("/onboarding");
     } catch (error) {
       console.error("Signup error", error);
       setGeneralError("An error occurred during signup. Please try again.");
@@ -113,20 +106,6 @@ const SignupForm: React.FC = () => {
           onChange={(e) => setName(e.target.value)}
           required
         />
-      </div>
-      <div className="form-group">
-        <input
-          type="text"
-          className={`form-control ${usernameError ? "is-invalid" : ""}`}
-          onFocus={() => setUsernameError("")}
-          placeholder="Username"
-          value={username}
-          onChange={(e) => setUsername(e.target.value)}
-          required
-        />
-        {usernameError && (
-          <div className="invalid-feedback">{usernameError}</div>
-        )}
       </div>
       <div className="form-group">
         <input

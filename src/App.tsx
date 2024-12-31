@@ -46,30 +46,26 @@ const AppContent: React.FC = () => {
             <Route
               path="/"
               element={
-                isAuthenticated ? <Navigate to="/profile" replace /> : <Home />
+                isAuthenticated ? <Navigate to="/recipe" replace /> : <Home />
               }
             />
             <Route
               path="/login"
               element={
-                isAuthenticated ? <Navigate to="/profile" replace /> : <Login />
+                isAuthenticated ? <Navigate to="/recipe" replace /> : <Login />
               }
             />
             <Route
               path="/signup"
               element={
-                isAuthenticated ? (
-                  <Navigate to="/onboarding" replace />
-                ) : (
-                  <Signup />
-                )
+                isAuthenticated ? <Navigate to="/recipe" replace /> : <Signup />
               }
             />
             <Route path="/forgot-password" element={<ForgotPassword />} />
             <Route path="/reset-password/:token" element={<ResetPassword />} />
             <Route path="/close-account" element={<CloseAccount />} />
             <Route
-              path="/create-recipe"
+              path="/recipe"
               element={<PrivateRoute element={<Recipe />} />}
             />
             <Route path="/coming-soon" element={<ComingSoon />} />

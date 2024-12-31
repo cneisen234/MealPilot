@@ -112,7 +112,7 @@ router.post("/forgot-password", async (req, res) => {
       <div style="background-color: #f8f9fa; border-radius: 5px; padding: 20px; margin-bottom: 20px;">
         <h2 style="color: #966FD6; margin-top: 0;">Password Reset Request</h2>
         <p>Hello,</p>
-        <p>You are receiving this because you (or someone else) have requested to reset the password for your VibeQuest account.</p>
+        <p>You are receiving this because you (or someone else) have requested to reset the password for your MealPilot account.</p>
         <p>Please click the button below to complete the process:</p>
         <div style="text-align: center; margin: 30px 0;">
           <a href="${resetUrl}" style="background-color: #966FD6; color: white; padding: 12px 20px; text-decoration: none; border-radius: 5px; font-weight: bold;">Reset Your Password</a>

@@ -29,7 +29,7 @@ const ComingSoon: React.FC = () => {
       icon: <FaMobileAlt />,
       title: "Mobile App",
       description:
-        "Take VibeQuest on the go with our upcoming mobile application for iOS and Android.",
+        "Take MealPilot on the go with our upcoming mobile application for iOS and Android.",
     },
     {
       icon: <VscLightbulbSparkle />,
@@ -58,7 +58,7 @@ const ComingSoon: React.FC = () => {
 
   return (
     <div className="enhanced-coming-soon-container">
-      <h1 className="enhanced-coming-soon-title">Coming Soon to VibeQuest</h1>
+      <h1 className="enhanced-coming-soon-title">Coming Soon to MealPilot</h1>
       <p className="enhanced-coming-soon-description">
         We're constantly working to enhance your quest. Check out these exciting
         features on the horizon!

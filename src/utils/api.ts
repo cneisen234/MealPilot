@@ -71,7 +71,7 @@ export const login = (credentials: { email: string; password: string }) => {
   return api.post('/auth/login', credentials);
 };
 
-export const signup = (userData: { name: string; username: string; email: string, password: string; }) => {
+export const signup = (userData: { name: string; email: string, password: string; }) => {
   return api.post('/auth/signup', userData);
 };
 
@@ -104,8 +104,35 @@ export const updateProfile = async (userId: number, profileData: Partial<User>) 
   return response.data;
 };
 
-export const getRecipe = (query: string, friendIds: number[] = []) => {
-  return api.post('/recipes/get-recipe', { query, friendIds });
+// Can't Haves
+export const getCantHaves = () => {
+  return api.get('/cant-haves');
+};
+
+export const addCantHave = (value: string) => {
+  return api.post('/cant-haves', { value });
+};
+
+export const removeCantHave = (id: number) => {
+  return api.delete(`/cant-haves/${id}`);
+};
+
+// Must Haves
+export const getMustHaves = () => {
+  return api.get('/must-haves');
+};
+
+export const addMustHave = (value: string) => {
+  return api.post('/must-haves', { value });
+};
+
+export const removeMustHave = (id: number) => {
+  return api.delete(`/must-haves/${id}`);
+};
+
+// Recipe Generation
+export const generateRecipe = () => {
+  return api.post('/recipe/generate');
 };
 
 export default api;
