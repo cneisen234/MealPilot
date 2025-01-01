@@ -58,12 +58,12 @@
 
 .input-group {
     display: flex;
-    gap: 12px;
-    margin-bottom: 20px;
+    flex-direction: column;
+    gap: 8px;
 }
 
 .preference-input {
-    flex: 1;
+    width: 80%;
     padding: 12px 16px;
     border: 2px solid #E0E0E0;
     border-radius: 12px;
@@ -77,10 +77,56 @@
     box-shadow: 0 0 0 3px rgba(150, 111, 214, 0.2);
 }
 
+.preference-select {
+    width: 100%;
+    padding: 12px 16px;
+    border: 2px solid #E0E0E0;
+    border-radius: 12px;
+    font-size: 1rem;
+    background-color: white;
+    cursor: pointer;
+    appearance: none;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='24' height='24' viewBox='0 0 24 24' fill='none' stroke='%23666' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 12px center;
+    background-size: 16px;
+}
+
+.preference-select:focus {
+    outline: none;
+    border-color: #966FD6;
+    box-shadow: 0 0 0 3px rgba(150, 111, 214, 0.2);
+}
+
+.input-with-button {
+    display: flex;
+    gap: 8px;
+    width: 100%;
+}
+
+.custom-input-container {
+    display: flex;
+    gap: 8px;
+    margin-top: 8px;
+}
+
+@media (max-width: 768px) {
+    .input-group {
+        flex-direction: column;
+        gap: 8px;
+    }
+
+    .preference-select {
+        width: 100%;
+        margin-right: 0;
+    }
+}
+
 .add-button {
-    background-color: #966FD6;
+    width: 20%;
+    background-color: #FF9D72;
     color: white;
-    padding: 12px 24px;
+    padding: 12px;
     border: none;
     border-radius: 12px;
     font-weight: 600;
@@ -88,8 +134,8 @@
     transition: all 0.3s ease;
     display: flex;
     align-items: center;
+    justify-content: center;
     gap: 8px;
-    white-space: nowrap;
 }
 
 .add-button:hover {

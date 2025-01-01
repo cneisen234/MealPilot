@@ -106,28 +106,28 @@ export const updateProfile = async (userId: number, profileData: Partial<User>) 
 
 // Can't Haves
 export const getCantHaves = () => {
-  return api.get('/cant-haves');
+  return api.get('/preference/cant-haves');
 };
 
-export const addCantHave = (value: string) => {
-  return api.post('/cant-haves', { value });
+export const addCantHave = (item: string) => {
+  return api.post('/preference/cant-haves', { item });
 };
 
 export const removeCantHave = (id: number) => {
-  return api.delete(`/cant-haves/${id}`);
+  return api.delete(`/preference/cant-haves/${id}`);
 };
 
 // Must Haves
 export const getMustHaves = () => {
-  return api.get('/must-haves');
+  return api.get('/preference/must-haves');
 };
 
-export const addMustHave = (value: string) => {
-  return api.post('/must-haves', { value });
+export const addMustHave = (item: string) => {
+  return api.post('/preference/must-haves', { item });
 };
 
 export const removeMustHave = (id: number) => {
-  return api.delete(`/must-haves/${id}`);
+  return api.delete(`/preference/must-haves/${id}`);
 };
 
 // Recipe Generation

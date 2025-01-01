@@ -21,7 +21,7 @@ export interface Recipe {
 export interface DietaryItem {
   id: number;
   userId: number;
-  value: string;
+  item: string;
 }
 
 export interface CantHave extends DietaryItem {}

@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { CantHave, MustHave } from "../types";
-import { FaPlus, FaTimes } from "react-icons/fa";
 import AnimatedTechIcon from "../components/common/AnimatedTechIcon";
+import PreferenceInput from "../components/common/PreferenceInput";
 import {
   getCantHaves,
   addCantHave,
@@ -11,74 +11,19 @@ import {
   removeMustHave,
   generateRecipe,
 } from "../utils/api";
+import { MEAL_TYPES } from "../constants/mealTypes";
+import {
+  COMMON_CANT_HAVES,
+  COMMON_MUST_HAVES,
+} from "../constants/dietaryItems";
 import "../styles/recipe.css";
 
-const PreferenceInput: React.FC<{
-  label: string;
-  description: string;
-  placeholder: string;
-  items: Array<CantHave | MustHave>;
-  onAdd: (value: string) => Promise<void>;
-  onRemove: (id: number) => Promise<void>;
-}> = ({ label, description, placeholder, items, onAdd, onRemove }) => {
-  const [value, setValue] = useState("");
-  const [isSubmitting, setIsSubmitting] = useState(false);
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!value.trim() || isSubmitting) return;
-
-    setIsSubmitting(true);
-    try {
-      await onAdd(value.trim());
-      setValue("");
-    } finally {
-      setIsSubmitting(false);
-    }
-  };
-
-  return (
-    <div className="preference-section">
-      <h3>{label}</h3>
-      <p>{description}</p>
-
-      <form onSubmit={handleSubmit}>
-        <div className="input-group">
-          <input
-            type="text"
-            value={value}
-            onChange={(e) => setValue(e.target.value)}
-            placeholder={placeholder}
-            className="preference-input"
-            disabled={isSubmitting}
-          />
-          <button type="submit" disabled={isSubmitting} className="add-button">
-            <FaPlus size={14} />
-            Add
-          </button>
-        </div>
-      </form>
-
-      <div className="items-container">
-        {items.map((item) => (
-          <div key={item.id} className="preference-item">
-            <span>{item.value}</span>
-            <button
-              onClick={() => onRemove(item.id)}
-              className="remove-button"
-              aria-label="Remove item">
-              <FaTimes size={14} />
-            </button>
-          </div>
-        ))}
-      </div>
-    </div>
-  );
-};
+console.log(COMMON_CANT_HAVES);
 
 const Recipe: React.FC = () => {
   const [cantHaves, setCantHaves] = useState<CantHave[]>([]);
   const [mustHaves, setMustHaves] = useState<MustHave[]>([]);
+  const [selectedMealType, setSelectedMealType] = useState<string>("");
   const [isLoading, setIsLoading] = useState(true);
   const [isGenerating, setIsGenerating] = useState(false);
 
@@ -101,9 +46,9 @@ const Recipe: React.FC = () => {
     }
   };
 
-  const handleAddCantHave = async (value: string) => {
+  const handleAddCantHave = async (item: string) => {
     try {
-      await addCantHave(value);
+      await addCantHave(item);
       const response = await getCantHaves();
       setCantHaves(response.data);
     } catch (error) {
@@ -121,9 +66,9 @@ const Recipe: React.FC = () => {
     }
   };
 
-  const handleAddMustHave = async (value: string) => {
+  const handleAddMustHave = async (item: string) => {
     try {
-      await addMustHave(value);
+      await addMustHave(item);
       const response = await getMustHaves();
       setMustHaves(response.data);
     } catch (error) {
@@ -173,21 +118,33 @@ const Recipe: React.FC = () => {
 
       <div className="preferences-grid">
         <PreferenceInput
+          label="Meal Type"
+          description="Select the type of meal you want to prepare."
+          type="select"
+          options={MEAL_TYPES}
+          selectedItem={selectedMealType}
+          onSelect={setSelectedMealType}
+        />
+        <PreferenceInput
           label="Can't Haves"
-          description="Add ingredients or foods that you cannot or prefer not to eat."
+          description="Select from common restrictions or add your own ingredients that you cannot eat."
           placeholder="Enter an ingredient you can't eat..."
           items={cantHaves}
           onAdd={handleAddCantHave}
           onRemove={handleRemoveCantHave}
+          type="combo"
+          options={COMMON_CANT_HAVES}
         />
 
         <PreferenceInput
           label="Must Haves"
-          description="Add ingredients or foods that you want to include in your recipes."
+          description="Select from common ingredients or add your own that you want in your recipes."
           placeholder="Enter an ingredient you must have..."
           items={mustHaves}
           onAdd={handleAddMustHave}
           onRemove={handleRemoveMustHave}
+          type="combo"
+          options={COMMON_MUST_HAVES}
         />
       </div>
 

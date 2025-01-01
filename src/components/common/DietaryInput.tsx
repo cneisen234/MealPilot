@@ -7,7 +7,7 @@ interface DietaryInputProps {
   placeholder: string;
   description?: string;
   items: DietaryItem[];
-  onAdd: (value: string) => Promise<void>;
+  onAdd: (item: string) => Promise<void>;
   onRemove: (id: number) => Promise<void>;
 }
 
@@ -19,16 +19,16 @@ const DietaryInput: React.FC<DietaryInputProps> = ({
   onAdd,
   onRemove,
 }) => {
-  const [value, setValue] = useState("");
+  const [item, setItem] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (value.trim() && !isSubmitting) {
+    if (item.trim() && !isSubmitting) {
       setIsSubmitting(true);
       try {
-        await onAdd(value.trim());
-        setValue("");
+        await onAdd(item.trim());
+        setItem("");
       } finally {
         setIsSubmitting(false);
       }
@@ -54,8 +54,8 @@ const DietaryInput: React.FC<DietaryInputProps> = ({
         <div className="flex gap-2">
           <input
             type="text"
-            value={value}
-            onChange={(e) => setValue(e.target.value)}
+            value={item}
+            onChange={(e) => setItem(e.target.value)}
             placeholder={placeholder}
             className="flex-1 p-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
             disabled={isSubmitting}
@@ -70,13 +70,13 @@ const DietaryInput: React.FC<DietaryInputProps> = ({
       </form>
 
       <div className="flex flex-wrap gap-2">
-        {items.map((item) => (
+        {items.map((i) => (
           <div
-            key={item.id}
+            key={i.id}
             className="flex items-center gap-2 bg-gray-100 px-3 py-1 rounded-full">
-            <span className="text-sm">{item.value}</span>
+            <span className="text-sm">{i.item}</span>
             <button
-              onClick={() => handleRemove(item.id)}
+              onClick={() => handleRemove(i.id)}
               className="text-gray-500 hover:text-red-500 transition-colors">
               <FaTimes size={12} />
             </button>

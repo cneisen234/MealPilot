@@ -7,3 +7,17 @@ CREATE TABLE users
     reset_password_token VARCHAR(255),
     reset_password_expires TIMESTAMP
 );
+
+CREATE TABLE cant_haves
+(
+    id SERIAL PRIMARY KEY,
+    user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
+    item VARCHAR(255) NOT NULL
+);
+
+CREATE TABLE must_haves
+(
+    id SERIAL PRIMARY KEY,
+    user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
+    item VARCHAR(255) NOT NULL
+);
