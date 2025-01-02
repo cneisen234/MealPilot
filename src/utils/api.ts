@@ -167,5 +167,9 @@ export const updateRecipe = (id: string, recipeData: {
   return api.put(`/recipe/myrecipes/${id}`, recipeData);
 };
 
+export const deleteRecipe = (id: string) => {
+  return api.delete(`/recipe/myrecipes/${id}`);
+};
+
 export default api;
 

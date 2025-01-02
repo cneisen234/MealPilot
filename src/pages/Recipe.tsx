@@ -237,6 +237,21 @@ const Recipe = () => {
           Customize your dietary preferences to get personalized recipe
           recommendations.
         </p>
+        <div
+          style={{
+            backgroundColor: "rgba(5, 71, 42, 0.1)",
+            padding: "12px 20px",
+            borderRadius: "8px",
+            marginTop: "-20px",
+            fontSize: "0.9rem",
+            color: "var(--text-color)",
+            maxWidth: "800px",
+            margin: "20px auto",
+          }}>
+          MEDICAL DISCLAIMER: MealPilot is not a substitute for professional
+          medical advice. Always consult your healthcare provider about your
+          dietary needs and restrictions.
+        </div>
       </div>
 
       <div className="preferences-grid">

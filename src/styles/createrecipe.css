@@ -5,13 +5,13 @@
 }
 
 .title-input {
-    width: 100%;
+    width: 90%;
     padding: 15px;
     font-size: 2rem;
     border: 2px solid transparent;
     border-radius: 8px;
     color: var(--primary-color);
-    background-color: rgba(150, 111, 214, 0.1);
+    background-color: rgba(5, 71, 42, 0.1);
     transition: all 0.3s ease;
 }
 
@@ -27,7 +27,7 @@
     border: 2px solid transparent;
     border-radius: 6px;
     font-size: 1rem;
-    background-color: rgba(150, 111, 214, 0.1);
+    background-color: rgba(5, 71, 42, 0.1);
     transition: all 0.3s ease;
 }
 
@@ -55,7 +55,7 @@
     border: 2px solid transparent;
     border-radius: 8px;
     font-size: 1rem;
-    background-color: rgba(150, 111, 214, 0.1);
+    background-color: rgba(5, 71, 42, 0.1);
     transition: all 0.3s ease;
 }
 

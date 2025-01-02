@@ -114,11 +114,13 @@ const PreferenceInput: React.FC<PreferenceInputProps> = ({
                     onChange={handleInputChange}
                     placeholder="Or type your own..."
                     className="preference-input"
+                    style={{ width: "80%" }}
                     disabled={isSubmitting}
                   />
                   <button
                     type="submit"
                     disabled={isSubmitting}
+                    style={{ width: "20%" }}
                     className="add-button">
                     Add
                   </button>

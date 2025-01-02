@@ -1,8 +1,9 @@
 import React, { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
-import { getRecipe, updateRecipe } from "../../utils/api";
+import { getRecipe, updateRecipe, deleteRecipe } from "../../utils/api";
 import AnimatedTechIcon from "../common/AnimatedTechIcon";
 import { FaEdit, FaTrash, FaTimes, FaSave } from "react-icons/fa";
+import ConfirmDeleteModal from "../common/ConfirmDeleteModal";
 
 interface Recipe {
   id: number;
@@ -21,8 +22,10 @@ const RecipeDetail: React.FC = () => {
   const [isEditing, setIsEditing] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [editedRecipe, setEditedRecipe] = useState<Recipe | null>(null);
+  const [isDeleteConfirmOpen, setIsDeleteConfirmOpen] = useState(false);
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
+  let currentStep = 1;
 
   useEffect(() => {
     loadRecipe();
@@ -75,20 +78,13 @@ const RecipeDetail: React.FC = () => {
   };
 
   const addArrayItem = (
-    field: "ingredients" | "instructions" | "nutritional_info",
-    isMainStep?: boolean
+    field: "ingredients" | "instructions" | "nutritional_info"
   ) => {
     if (!editedRecipe) return;
 
-    let newValue = "";
-
-    if (isMainStep) {
-      newValue = "**" + newValue + "**";
-    }
-
     setEditedRecipe((prev) => ({
       ...prev!,
-      [field]: [...prev![field], newValue],
+      [field]: [...prev![field], ""],
     }));
   };
 
@@ -130,6 +126,25 @@ const RecipeDetail: React.FC = () => {
     }
   };
 
+  const openDeleteConfirmModal = () => {
+    setIsDeleteConfirmOpen(true);
+  };
+
+  const closeDeleteConfirmModal = () => {
+    setIsDeleteConfirmOpen(false);
+  };
+
+  const handleDelete = async () => {
+    if (!id) return;
+
+    try {
+      await deleteRecipe(id);
+      navigate("/myrecipes");
+    } catch (error) {
+      console.error("Error deleting recipe:", error);
+    }
+  };
+
   if (isLoading) {
     return (
       <div className="loading-container">
@@ -149,13 +164,13 @@ const RecipeDetail: React.FC = () => {
           <button
             onClick={handleCancelEdit}
             className="recipe-action-button back-button">
-            <FaTimes /> Cancel
+            <FaTimes />
           </button>
           <button
             onClick={handleSave}
             disabled={isSaving}
             className="recipe-action-button save-button">
-            <FaSave /> {isSaving ? "Saving..." : "Save Changes"}
+            <FaSave />
           </button>
         </div>
 
@@ -235,6 +250,17 @@ const RecipeDetail: React.FC = () => {
 
         <div className="recipe-section">
           <h2>Instructions</h2>
+          <p
+            style={{
+              marginBottom: "15px",
+              fontSize: "0.9rem",
+              color: "var(--secondary-color)",
+              fontStyle: "italic",
+            }}>
+            Tip: Wrap steps with double stars (**) to create numbered items. For
+            example, "**Prepare ingredients**" will appear as "1. Prepare
+            ingredients"
+          </p>
           <div className="recipe-array-inputs">
             {editedRecipe.instructions.map((instruction, index) => (
               <div key={index} className="array-input-row">
@@ -316,10 +342,12 @@ const RecipeDetail: React.FC = () => {
         <button
           onClick={handleEditClick}
           className="recipe-action-button edit-button">
-          <FaEdit /> Edit
+          <FaEdit />
         </button>
-        <button className="recipe-action-button delete-button">
-          <FaTrash /> Delete
+        <button
+          onClick={openDeleteConfirmModal}
+          className="recipe-action-button delete-button">
+          <FaTrash />
         </button>
       </div>
 
@@ -364,17 +392,19 @@ const RecipeDetail: React.FC = () => {
             const isMainStep =
               instruction.startsWith("**") && instruction.endsWith("**");
             const content = isMainStep
-              ? `${index + 1}. ${instruction.slice(2, -2)}`
+              ? `${currentStep}. ${instruction.slice(2, -2)}`
               : `- ${instruction}`;
+
+            isMainStep && currentStep++;
 
             return (
               <React.Fragment key={`instruction-${index}`}>
+                {isMainStep && <br />}
                 <div
                   className="recipe-list-item"
                   style={!isMainStep ? { marginLeft: "20px" } : {}}>
                   {content}
                 </div>
-                {isMainStep && <br />}
               </React.Fragment>
             );
           })}
@@ -391,6 +421,14 @@ const RecipeDetail: React.FC = () => {
           ))}
         </ul>
       </div>
+      {isDeleteConfirmOpen && (
+        <ConfirmDeleteModal
+          isOpen={isDeleteConfirmOpen}
+          onClose={closeDeleteConfirmModal}
+          onConfirm={handleDelete}
+          itemName={recipe.title}
+        />
+      )}
     </div>
   );
 };

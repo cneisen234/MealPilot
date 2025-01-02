@@ -117,7 +117,6 @@ const CreateRecipe: React.FC = () => {
             onChange={handleBasicInputChange}
             placeholder="Recipe Title"
             className="title-input"
-            style={{ width: "95%" }}
             required
           />
         </div>

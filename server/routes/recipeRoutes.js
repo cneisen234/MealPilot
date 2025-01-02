@@ -10,12 +10,14 @@ router.post("/create-recipe", authMiddleware, async (req, res) => {
     const userId = req.user.id;
     const { mealType } = req.body;
 
-    // Fetch user data
-    const userQuery = await pool.query(
-      "SELECT id, name FROM users WHERE id = $1",
-      [userId]
-    );
+    // Fetch both user data and existing recipes in parallel
+    const [userQuery, recipesQuery] = await Promise.all([
+      pool.query("SELECT id, name FROM users WHERE id = $1", [userId]),
+      pool.query("SELECT title FROM recipes WHERE user_id = $1", [userId]),
+    ]);
+
     const user = userQuery.rows[0];
+    const existingRecipes = recipesQuery.rows.map((recipe) => recipe.title);
 
     // Fetch dietary restrictions
     const cantHavesQuery = await pool.query(
@@ -46,6 +48,12 @@ router.post("/create-recipe", authMiddleware, async (req, res) => {
     // Add required ingredients if any
     if (mustHaves.length > 0) {
       prompt += `\nThe recipe MUST include the following ingredients: ${mustHaves.join(
+        ", "
+      )}.`;
+    }
+
+    if (existingRecipes.length > 0) {
+      prompt += `\nIMPORTANT: The recipe must be unique and MUST NOT be any of these existing recipes: ${existingRecipes.join(
         ", "
       )}.`;
     }
@@ -242,6 +250,33 @@ router.put("/myrecipes/:id", authMiddleware, async (req, res) => {
     res
       .status(500)
       .json({ error: "An error occurred while updating the recipe" });
+  }
+});
+
+router.delete("/myrecipes/:id", authMiddleware, async (req, res) => {
+  try {
+    const userId = req.user.id;
+    const recipeId = req.params.id;
+
+    // Verify recipe belongs to user
+    const checkRecipe = await pool.query(
+      "SELECT id FROM recipes WHERE id = $1 AND user_id = $2",
+      [recipeId, userId]
+    );
+
+    if (checkRecipe.rows.length === 0) {
+      return res.status(404).json({ message: "Recipe not found" });
+    }
+
+    // Delete recipe
+    await pool.query("DELETE FROM recipes WHERE id = $1", [recipeId]);
+
+    res.json({ message: "Recipe deleted successfully" });
+  } catch (error) {
+    console.error("Error deleting recipe:", error);
+    res
+      .status(500)
+      .json({ error: "An error occurred while deleting the recipe" });
   }
 });
 

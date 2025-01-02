@@ -1,58 +1,58 @@
 import React from "react";
 import {
-  FaUsers,
-  FaMobileAlt,
-  FaGift,
-  FaThumbsDown,
-  FaUserPlus,
-  FaGlobe,
+  FaCalendarAlt,
+  FaBoxes,
+  FaListUl,
+  FaBarcode,
+  FaHeart,
+  FaPlayCircle,
+  FaShareAlt,
 } from "react-icons/fa";
-import { FaHeartCirclePlus } from "react-icons/fa6";
-import { VscLightbulbSparkle } from "react-icons/vsc";
 import "../styles/comingsoon.css";
 
 const ComingSoon: React.FC = () => {
   const features = [
     {
-      icon: <FaUsers />,
-      title: "Suggested Friends",
+      icon: <FaCalendarAlt />,
+      title: "Weekly Meal Planning",
       description:
-        "Use Lena combined with geolocation to find friends with mutual interests!",
+        "Get personalized weekly meal plans generated based on your preferences and dietary needs!",
     },
     {
-      icon: <FaHeartCirclePlus />,
-      title: "Add interests from chat",
+      icon: <FaBoxes />,
+      title: "Smart Inventory Management",
       description:
-        "Add Lena's suggestions as interest items on your profile with the click of a button",
+        "Keep track of your current ingredients so that our recipe generator knows what you already have on hand.",
     },
     {
-      icon: <FaMobileAlt />,
-      title: "Mobile App",
+      icon: <FaListUl />,
+      title: "Shopping List",
       description:
-        "Take MealPilot on the go with our upcoming mobile application for iOS and Android.",
+        "Automatically generate shopping lists from your recipes or manually manage your grocery needs. Never forget an ingredient again!",
     },
     {
-      icon: <VscLightbulbSparkle />,
-      title: "Suggested Prompts",
+      icon: <FaBarcode />,
+      title: "Barcode Scanner",
       description:
-        "Allow Lena to suggest questions and prompts for you for the moments where you're not quite sure what to say.",
+        "Quickly add items to your inventory or shopping list by scanning their barcodes, making inventory management a breeze!",
     },
     {
-      icon: <FaGift />,
-      title: "Gift a Plan to a Friend",
-      description: "Create the ability to buy a free month for a friend",
+      icon: <FaHeart />,
+      title: "Enhanced Preferences",
+      description:
+        "Fine-tune your recipe suggestions with expanded preference options including taste preferences, dietary goals, and cuisine types.",
     },
     {
-      icon: <FaThumbsDown />,
-      title: "Dislikes List",
+      icon: <FaPlayCircle />,
+      title: "Interactive Cooking Mode",
       description:
-        "Add Dislikes as well as Likes so Lena knows what not to send your way!",
+        "Follow recipes step-by-step with built-in timers, automatic inventory updates, and shopping list tracking.",
     },
     {
-      icon: <FaGlobe />,
-      title: "Multi Lingual",
+      icon: <FaShareAlt />,
+      title: "Share & Print",
       description:
-        "Specify your language on sign up and change your language on the fly when talking to Lena! ",
+        "Easily share your favorite recipes with friends and family or print them from your recipe collection.",
     },
   ];
 
@@ -60,8 +60,8 @@ const ComingSoon: React.FC = () => {
     <div className="enhanced-coming-soon-container">
       <h1 className="enhanced-coming-soon-title">Coming Soon to MealPilot</h1>
       <p className="enhanced-coming-soon-description">
-        We're constantly working to enhance your quest. Check out these exciting
-        features on the horizon!
+        We're constantly working to enhance your experience. Check out these
+        exciting features on the horizon!
       </p>
       <div className="enhanced-feature-grid">
         {features.map((feature, index) => (

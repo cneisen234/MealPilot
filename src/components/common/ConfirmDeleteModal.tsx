@@ -1,5 +1,3 @@
-// src/components/ConfirmDeleteModal.tsx
-
 import React from "react";
 
 interface ConfirmDeleteModalProps {
@@ -43,8 +41,7 @@ const ConfirmDeleteModal: React.FC<ConfirmDeleteModalProps> = ({
           Confirm Deletion
         </h2>
         <p style={{ marginBottom: "20px" }}>
-          Are you sure you want to delete the category "{itemName}"? All items
-          within it will also be deleted.
+          Are you sure you want to delete "{itemName}"?
         </p>
         <div
           style={{ display: "flex", justifyContent: "flex-end", gap: "10px" }}>
