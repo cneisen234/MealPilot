@@ -20,10 +20,12 @@ import ResetPassword from "./components/auth/ResetPassword";
 import CloseAccount from "./components/profile/CloseAccount";
 import ComingSoon from "./pages/ComingSoon";
 import BubbleBackground from "./BubbleBackground";
+import MyRecipes from "./pages/MyRecipes";
+import RecipeDetail from "./components/myrecipes/RecipeDetail";
+import CreateRecipe from "./components/myrecipes/CreateRecipe";
 
 const AppContent: React.FC = () => {
   const { isAuthenticated, checkAuthStatus } = useAuth();
-  const location = useLocation();
 
   useEffect(() => {
     checkAuthStatus();
@@ -67,6 +69,15 @@ const AppContent: React.FC = () => {
             <Route
               path="/recipe"
               element={<PrivateRoute element={<Recipe />} />}
+            />
+            <Route path="/myrecipes" element={<MyRecipes />} />
+            <Route
+              path="/myrecipes/:id"
+              element={<PrivateRoute element={<RecipeDetail />} />}
+            />
+            <Route
+              path="/recipe/create"
+              element={<PrivateRoute element={<CreateRecipe />} />}
             />
             <Route path="/coming-soon" element={<ComingSoon />} />
           </Routes>

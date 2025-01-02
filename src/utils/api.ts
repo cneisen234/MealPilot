@@ -131,8 +131,40 @@ export const removeMustHave = (id: number) => {
 };
 
 // Recipe Generation
-export const generateRecipe = () => {
-  return api.post('/recipe/generate');
+export const generateRecipe = (mealType?: string) => {
+  return api.post('/recipe/create-recipe', { mealType });
+};
+
+export const saveRecipe = (recipeData: {
+  title: string;
+  prepTime: string;
+  cookTime: string;
+  servings: string;
+  ingredients: string[];
+  instructions: string[];
+  nutritionalInfo: string[];
+}) => {
+  return api.post('/recipe/save-recipe', recipeData);
+};
+
+export const getUserRecipes = () => {
+  return api.get('/recipe/myrecipes');
+};
+
+export const getRecipe = (id: string) => {
+  return api.get(`/recipe/myrecipes/${id}`);
+};
+
+export const updateRecipe = (id: string, recipeData: {
+  title: string;
+  prepTime: string;
+  cookTime: string;
+  servings: string;
+  ingredients: string[];
+  instructions: string[];
+  nutritionalInfo: string[];
+}) => {
+  return api.put(`/recipe/myrecipes/${id}`, recipeData);
 };
 
 export default api;

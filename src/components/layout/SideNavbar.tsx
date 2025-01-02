@@ -1,16 +1,6 @@
 import React, { useState } from "react";
 import { Link, useLocation } from "react-router-dom";
-import {
-  FaUser,
-  FaUserFriends,
-  FaArrowUp,
-  FaLightbulb,
-  FaEnvelope,
-  FaClock,
-  FaBars,
-  FaTimes,
-} from "react-icons/fa";
-import AnimatedTechIcon from "../common/AnimatedTechIcon";
+import { FaLightbulb, FaBook, FaClock, FaBars, FaTimes } from "react-icons/fa";
 import "../../styles/sidebar.css";
 
 const NavItem: React.FC<{
@@ -62,7 +52,14 @@ const SideNavbar: React.FC = () => {
             icon={<FaLightbulb />}
             title="NewRecipe"
             onClick={closeMenu}>
-            New Recipe
+            Generate
+          </NavItem>
+          <NavItem
+            to="/myrecipes"
+            icon={<FaBook />}
+            title="MyRecipes"
+            onClick={closeMenu}>
+            My Recipes
           </NavItem>
           <NavItem to="/coming-soon" icon={<FaClock />} onClick={closeMenu}>
             Coming Soon

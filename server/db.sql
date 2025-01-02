@@ -21,3 +21,17 @@ CREATE TABLE must_haves
     user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
     item VARCHAR(255) NOT NULL
 );
+
+CREATE TABLE recipes
+(
+    id SERIAL PRIMARY KEY,
+    user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
+    title VARCHAR(255) NOT NULL,
+    prep_time VARCHAR(50),
+    cook_time VARCHAR(50),
+    servings VARCHAR(50),
+    ingredients TEXT
+    [],
+    instructions TEXT[],
+    nutritional_info TEXT[]
+);

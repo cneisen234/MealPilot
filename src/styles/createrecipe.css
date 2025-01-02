@@ -1,0 +1,102 @@
+/* Add to createrecipe.css */
+
+.recipe-form-title {
+    margin-bottom: 30px;
+}
+
+.title-input {
+    width: 100%;
+    padding: 15px;
+    font-size: 2rem;
+    border: 2px solid transparent;
+    border-radius: 8px;
+    color: var(--primary-color);
+    background-color: rgba(150, 111, 214, 0.1);
+    transition: all 0.3s ease;
+}
+
+.title-input:focus {
+    outline: none;
+    border-color: var(--primary-color);
+    background-color: white;
+}
+
+.meta-input {
+    width: 100%;
+    padding: 8px 12px;
+    border: 2px solid transparent;
+    border-radius: 6px;
+    font-size: 1rem;
+    background-color: rgba(150, 111, 214, 0.1);
+    transition: all 0.3s ease;
+}
+
+.meta-input:focus {
+    outline: none;
+    border-color: var(--primary-color);
+    background-color: white;
+}
+
+.recipe-array-inputs {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.array-input-row {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+}
+
+.array-input {
+    flex: 1;
+    padding: 12px;
+    border: 2px solid transparent;
+    border-radius: 8px;
+    font-size: 1rem;
+    background-color: rgba(150, 111, 214, 0.1);
+    transition: all 0.3s ease;
+}
+
+.array-input:focus {
+    outline: none;
+    border-color: var(--primary-color);
+    background-color: white;
+}
+
+.remove-item-button {
+    padding: 8px;
+    border: none;
+    background: none;
+    color: #dc3545;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 50%;
+}
+
+.remove-item-button:hover {
+    background-color: rgba(220, 53, 69, 0.1);
+    transform: scale(1.1);
+}
+
+.add-item-button {
+    align-self: flex-start;
+    padding: 8px 16px;
+    border: 2px dashed var(--primary-color);
+    background: none;
+    color: var(--primary-color);
+    border-radius: 20px;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    font-weight: 600;
+}
+
+.add-item-button:hover {
+    background-color: var(--primary-color);
+    color: white;
+    transform: translateY(-2px);
+}

@@ -10,6 +10,7 @@ import {
   addMustHave,
   removeMustHave,
   generateRecipe,
+  saveRecipe,
 } from "../utils/api";
 import { MEAL_TYPES } from "../constants/mealTypes";
 import {
@@ -17,15 +18,28 @@ import {
   COMMON_MUST_HAVES,
 } from "../constants/dietaryItems";
 import "../styles/recipe.css";
+import { useNavigate } from "react-router-dom";
 
-console.log(COMMON_CANT_HAVES);
+interface Recipe {
+  title: string;
+  prepTime: string;
+  cookTime: string;
+  servings: string;
+  ingredients: string[];
+  instructions: string[];
+  nutritionalInfo: string[];
+}
 
-const Recipe: React.FC = () => {
+const Recipe = () => {
+  const navigate = useNavigate();
   const [cantHaves, setCantHaves] = useState<CantHave[]>([]);
   const [mustHaves, setMustHaves] = useState<MustHave[]>([]);
-  const [selectedMealType, setSelectedMealType] = useState<string>("");
+  const [selectedMealType, setSelectedMealType] =
+    useState<string>("main course");
   const [isLoading, setIsLoading] = useState(true);
-  const [isGenerating, setIsGenerating] = useState(false);
+  const [recipe, setRecipe] = useState<Recipe | null>(null);
+  const [isSaving, setIsSaving] = useState(false);
+  let currentStep = 1;
 
   useEffect(() => {
     loadPreferences();
@@ -87,14 +101,39 @@ const Recipe: React.FC = () => {
   };
 
   const handleGenerateRecipe = async () => {
-    setIsGenerating(true);
+    setIsLoading(true);
     try {
-      await generateRecipe();
-      // Handle response when backend is implemented
+      const response = await generateRecipe(selectedMealType);
+      setRecipe(response.data.recipe);
+      setIsLoading(false);
     } catch (error) {
       console.error("Error generating recipe:", error);
+      setIsLoading(false);
+    }
+  };
+
+  const handleSaveRecipe = async () => {
+    if (!recipe || isSaving) return;
+
+    setIsSaving(true);
+    try {
+      await saveRecipe({
+        title: recipe.title,
+        prepTime: recipe.prepTime,
+        cookTime: recipe.cookTime,
+        servings: recipe.servings,
+        ingredients: recipe.ingredients,
+        instructions: recipe.instructions,
+        nutritionalInfo: recipe.nutritionalInfo,
+      });
+      setRecipe(null);
+      navigate("/myrecipes");
+      // Could add success notification here
+    } catch (error) {
+      console.error("Error saving recipe:", error);
+      // Could add error notification here
     } finally {
-      setIsGenerating(false);
+      setIsSaving(false);
     }
   };
 
@@ -102,6 +141,90 @@ const Recipe: React.FC = () => {
     return (
       <div className="loading-container">
         <AnimatedTechIcon size={100} speed={4} />
+      </div>
+    );
+  }
+
+  if (recipe) {
+    return (
+      <div className="recipe-result">
+        <div className="recipe-actions">
+          <button
+            onClick={() => setRecipe(null)}
+            className="recipe-action-button back-button">
+            Go Back
+          </button>
+          <button
+            onClick={handleSaveRecipe}
+            className="recipe-action-button save-button"
+            disabled={isSaving}>
+            {isSaving ? "Saving..." : "Save Recipe"}
+          </button>
+        </div>
+        <h1 className="recipe-title">{recipe.title}</h1>
+
+        <div className="recipe-meta">
+          <div className="recipe-meta-item">
+            <span className="meta-label">Prep Time:</span>
+            <span className="meta-value">{recipe.prepTime}</span>
+          </div>
+          <div className="recipe-meta-item">
+            <span className="meta-label">Cook Time:</span>
+            <span className="meta-value">{recipe.cookTime}</span>
+          </div>
+          <div className="recipe-meta-item">
+            <span className="meta-label">Servings:</span>
+            <span className="meta-value">{recipe.servings}</span>
+          </div>
+        </div>
+
+        <div className="recipe-section">
+          <h2>Ingredients</h2>
+          <ul className="recipe-list">
+            {recipe.ingredients.map((ingredient, index) => (
+              <li key={`ingredient-${index}`} className="recipe-list-item">
+                {ingredient}
+              </li>
+            ))}
+          </ul>
+        </div>
+
+        <div className="recipe-section">
+          <h2>Instructions</h2>
+          <div className="recipe-list">
+            {recipe.instructions.map((instruction, index) => {
+              // Check if the instruction is surrounded by double stars
+              const isMainStep =
+                instruction.startsWith("**") && instruction.endsWith("**");
+              const content = isMainStep
+                ? `${currentStep}. ${instruction.slice(2, -2)}` // Add number and remove stars
+                : `- ${instruction}`;
+              isMainStep && currentStep++;
+
+              return (
+                <React.Fragment key={`instruction-${index}`}>
+                  {isMainStep && <br />}
+                  <div
+                    style={!isMainStep ? { marginLeft: "20px" } : {}}
+                    className="recipe-list-item">
+                    {content}
+                  </div>
+                </React.Fragment>
+              );
+            })}
+          </div>
+        </div>
+
+        <div className="recipe-section">
+          <h2>Nutritional Information</h2>
+          <ul className="recipe-list nutrition-list">
+            {recipe.nutritionalInfo.map((info, index) => (
+              <li key={`nutrition-${index}`} className="recipe-list-item">
+                {info}
+              </li>
+            ))}
+          </ul>
+        </div>
       </div>
     );
   }
@@ -149,18 +272,8 @@ const Recipe: React.FC = () => {
       </div>
 
       <div className="generate-container">
-        <button
-          onClick={handleGenerateRecipe}
-          disabled={isGenerating}
-          className="generate-button">
-          {isGenerating ? (
-            <>
-              <AnimatedTechIcon size={24} speed={4} />
-              Generating Recipe...
-            </>
-          ) : (
-            "Generate Recipe"
-          )}
+        <button onClick={handleGenerateRecipe} className="generate-button">
+          Generate Recipe
         </button>
       </div>
     </div>

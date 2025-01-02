@@ -1,51 +1,146 @@
 function cleanAIResponse(response) {
-  // Remove extra symbols and clean up formatting
-  let cleanedResponse = response
-    .replace(/#+/g, "") // Remove hash symbols
-    .replace(/\*\*/g, "") // Remove asterisks
-    .replace(/^-\s*/gm, "") // Remove leading dashes
-    .replace(/\n+/g, "\n")
-    .trim(); // Remove extra newlines
+  // Initialize the structured recipe object
+  const recipe = {
+    title: "",
+    prepTime: "",
+    cookTime: "",
+    servings: "",
+    ingredients: [],
+    instructions: [],
+    nutritionalInfo: [],
+  };
 
-  // Split the response into lines
-  let lines = cleanedResponse.split("\n");
-  let formattedLines = [];
-  let inNumberedList = false;
-  let listCounter = 1;
+  // Split the response into lines and remove empty lines
+  const lines = response.split("\n").filter((line) => line.trim());
 
-  for (let i = 0; i < lines.length; i++) {
-    let line = lines[i].trim();
+  let currentSection = null;
 
-    // Check for section headers or important phrases
-    if (line.includes(":")) {
-      let [title, content] = line.split(":");
-      formattedLines.push(`**${title.trim()}:** ${content.trim()}`);
-      inNumberedList = false;
-      listCounter = listCounter++;
+  // Helper function to clean measurement text
+  const cleanMeasurement = (text) => {
+    return text
+      .replace(/^[-•*]\s+/, "") // Remove bullet points
+      .replace(/^\d+[\.)]\s*/, "") // Remove numbers
+      .trim();
+  };
+
+  // First pass - get title and metadata
+  for (let line of lines) {
+    line = line.trim();
+
+    // Skip empty lines
+    if (!line) continue;
+
+    // Extract recipe title (could be multiple formats)
+    if (
+      !recipe.title &&
+      !line.toLowerCase().includes("prep time") &&
+      !line.toLowerCase().includes("cook time") &&
+      !line.toLowerCase().includes("servings")
+    ) {
+      console.log(line);
+      recipe.title = line
+        .replace(/Name:?/i, "")
+        .replace(/:/g, "")
+        .trim();
+      continue;
     }
-    // Check for numbered items
-    else if (line.match(/^\d+\./)) {
-      formattedLines.push(
-        `${listCounter}. ${line.replace(/^\d+\./, "").trim()}`
-      );
-      inNumberedList = true;
-      listCounter++;
+
+    // Extract prep time
+    if (line.toLowerCase().includes("prep time")) {
+      recipe.prepTime = line.split(":")[1]?.trim() || "";
+      continue;
     }
-    // Continue numbered list if we're in one
-    else if (inNumberedList && line) {
-      formattedLines.push(`${listCounter}. ${line}`);
-      listCounter++;
+
+    // Extract cook time
+    if (line.toLowerCase().includes("cook time")) {
+      recipe.cookTime = line.split(":")[1]?.trim() || "";
+      continue;
     }
-    // Regular text
-    else if (line) {
-      formattedLines.push(line);
-      inNumberedList = false;
-      listCounter = 1;
+
+    // Extract servings
+    if (line.toLowerCase().includes("servings")) {
+      recipe.servings = line.split(":")[1]?.trim() || "";
+      continue;
     }
   }
 
-  // Join the lines back together
-  return formattedLines.join("\n\n");
+  // Second pass - get ingredients, instructions, and nutritional info
+  currentSection = null;
+  for (let line of lines) {
+    line = line.trim();
+
+    // Skip empty lines
+    if (!line) continue;
+
+    // Detect sections
+    if (line.toLowerCase().includes("ingredients:")) {
+      currentSection = "ingredients";
+      continue;
+    } else if (line.toLowerCase().includes("instructions:")) {
+      currentSection = "instructions";
+      continue;
+    } else if (
+      line.toLowerCase().includes("nutritional") ||
+      line.toLowerCase().includes("nutrition")
+    ) {
+      currentSection = "nutritionalInfo";
+      continue;
+    }
+
+    // Skip lines that we already processed in the first pass
+    if (
+      line.toLowerCase().includes("prep time") ||
+      line.toLowerCase().includes("cook time") ||
+      line.toLowerCase().includes("servings") ||
+      line === recipe.title
+    ) {
+      continue;
+    }
+
+    // Process line based on current section
+    if (currentSection) {
+      const cleanedLine = cleanMeasurement(line);
+
+      // Skip empty lines after cleaning
+      if (!cleanedLine) continue;
+
+      // Special handling for nutritional information
+      if (currentSection === "nutritionalInfo") {
+        // Only add if it looks like nutritional information
+        if (
+          cleanedLine.match(/\d+\s*(?:g|mg|kcal|calories|carbs?|protein|fat)/i)
+        ) {
+          recipe.nutritionalInfo.push(cleanedLine);
+        }
+      }
+      // For ingredients, only add if it has measurements or common ingredient words
+      else if (currentSection === "ingredients") {
+        if (
+          cleanedLine.match(
+            /\d+|cup|tablespoon|teaspoon|pound|ounce|gram|ml|g|tsp|tbsp|oz|lb|piece|slice/i
+          )
+        ) {
+          recipe.ingredients.push(cleanedLine);
+        }
+      }
+      // For instructions, only add if it looks like an instruction (not nutritional info)
+      else if (currentSection === "instructions") {
+        if (
+          !cleanedLine.match(/\d+\s*(?:g|mg|kcal|calories|carbs?|protein|fat)/i)
+        ) {
+          recipe.instructions.push(cleanedLine);
+        }
+      }
+    }
+  }
+
+  // Clean up any stray asterisks or formatting
+  recipe.title = recipe.title.replace(/\*+/g, "").trim();
+  recipe.prepTime = recipe.prepTime.replace(/\*+/g, "").trim();
+  recipe.cookTime = recipe.cookTime.replace(/\*+/g, "").trim();
+  recipe.servings = recipe.servings.replace(/\*+/g, "").trim();
+
+  return recipe;
 }
 
 module.exports = cleanAIResponse;
