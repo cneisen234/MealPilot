@@ -171,5 +171,43 @@ export const deleteRecipe = (id: string) => {
   return api.delete(`/recipe/myrecipes/${id}`);
 };
 
+export const getCurrentMealPlan = () => {
+  return api.get('/mealplan/current');
+};
+
+export const generateMealPlan = () => {
+  return api.post('/mealplan/generate');
+};
+
+// Inventory Management
+export const getInventoryItems = () => {
+  return api.get('/inventory');
+};
+
+export const addInventoryItem = (itemData: {
+  item_name: string;
+  quantity: number;
+  unit: string;
+  expiration_date: string;
+}) => {
+  return api.post('/inventory', itemData);
+};
+
+export const updateInventoryItem = (
+  id: number,
+  itemData: {
+    item_name: string;
+    quantity: number;
+    unit: string;
+    expiration_date: string;
+  }
+) => {
+  return api.put(`/inventory/${id}`, itemData);
+};
+
+export const deleteInventoryItem = (id: number) => {
+  return api.delete(`/inventory/${id}`);
+};
+
 export default api;
 

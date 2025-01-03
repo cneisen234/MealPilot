@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { useAuth } from "../../context/AuthContext";
 import "../../styles/header.css";
@@ -6,20 +6,23 @@ import "../../styles/header.css";
 const Header: React.FC = () => {
   const { isAuthenticated, logout } = useAuth();
   const navigate = useNavigate();
-  const [isNotificationsOpen, setIsNotificationsOpen] = useState(false);
 
   const handleLogout = () => {
     logout();
     navigate("/");
   };
 
-  const handleCloseNotifications = () => {
-    setIsNotificationsOpen(false);
-  };
-
   return (
     <header className="header">
-      <div className="header-title">MealPilot</div>
+      <div className="header-title">
+        {" "}
+        <img
+          src="/MealPilot-icon-transparent.png"
+          alt="MealPilot Logo"
+          className="header-logo"
+        />
+        MealPilot
+      </div>
       <nav className="header-nav">
         {isAuthenticated ? (
           <>

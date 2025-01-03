@@ -104,7 +104,7 @@ const Login: React.FC = () => {
                 onChange={(e) => setPassword(e.target.value)}
                 required
               />
-              <button
+              {/* <button
                 type="button"
                 onClick={togglePasswordVisibility}
                 style={{
@@ -117,7 +117,7 @@ const Login: React.FC = () => {
                   cursor: "pointer",
                 }}>
                 {showPassword ? <FaEye size={20} /> : <FaEyeSlash size={20} />}
-              </button>
+              </button> */}
             </div>
             {loginError && (
               <div

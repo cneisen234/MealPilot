@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { useParams, useNavigate } from "react-router-dom";
+import { useParams, useNavigate, useLocation } from "react-router-dom";
 import { getRecipe, updateRecipe, deleteRecipe } from "../../utils/api";
 import AnimatedTechIcon from "../common/AnimatedTechIcon";
 import { FaEdit, FaTrash, FaTimes, FaSave } from "react-icons/fa";
@@ -25,6 +25,8 @@ const RecipeDetail: React.FC = () => {
   const [isDeleteConfirmOpen, setIsDeleteConfirmOpen] = useState(false);
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
+  const routeLocation = useLocation();
+  const fromMealPlan = routeLocation.state?.fromMealPlan;
   let currentStep = 1;
 
   useEffect(() => {
@@ -142,6 +144,14 @@ const RecipeDetail: React.FC = () => {
       navigate("/myrecipes");
     } catch (error) {
       console.error("Error deleting recipe:", error);
+    }
+  };
+
+  const handleBack = () => {
+    if (fromMealPlan) {
+      navigate("/mealplan");
+    } else {
+      navigate("/myrecipes");
     }
   };
 
@@ -335,7 +345,7 @@ const RecipeDetail: React.FC = () => {
     <div className="recipe-result">
       <div className="recipe-actions">
         <button
-          onClick={() => navigate("/myrecipes")}
+          onClick={handleBack}
           className="recipe-action-button back-button">
           Go Back
         </button>
@@ -426,7 +436,7 @@ const RecipeDetail: React.FC = () => {
           isOpen={isDeleteConfirmOpen}
           onClose={closeDeleteConfirmModal}
           onConfirm={handleDelete}
-          itemName={recipe.title}
+          item_name={recipe.title}
         />
       )}
     </div>

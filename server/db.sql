@@ -35,3 +35,25 @@ CREATE TABLE recipes
     instructions TEXT[],
     nutritional_info TEXT[]
 );
+
+    CREATE TABLE meal_plans
+    (
+        id SERIAL PRIMARY KEY,
+        user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
+        created_at TIMESTAMP DEFAULT NOW(),
+        expires_at TIMESTAMP NOT NULL,
+        meals JSONB NOT NULL,
+        CONSTRAINT unique_user_meal_plan UNIQUE (user_id)
+    );
+
+    CREATE TABLE inventory
+    (
+        id SERIAL PRIMARY KEY,
+        user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
+        item_name VARCHAR(255) NOT NULL,
+        quantity INTEGER NOT NULL,
+        unit VARCHAR(50),
+        created_at TIMESTAMP DEFAULT NOW(),
+        updated_at TIMESTAMP DEFAULT NOW(),
+        expiration_date DATE
+    );

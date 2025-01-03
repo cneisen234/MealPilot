@@ -18,7 +18,7 @@ import {
   COMMON_MUST_HAVES,
 } from "../constants/dietaryItems";
 import "../styles/recipe.css";
-import { useNavigate } from "react-router-dom";
+import { useLocation, useNavigate } from "react-router-dom";
 
 interface Recipe {
   title: string;
@@ -32,6 +32,7 @@ interface Recipe {
 
 const Recipe = () => {
   const navigate = useNavigate();
+  const routeLocation = useLocation();
   const [cantHaves, setCantHaves] = useState<CantHave[]>([]);
   const [mustHaves, setMustHaves] = useState<MustHave[]>([]);
   const [selectedMealType, setSelectedMealType] =
@@ -44,6 +45,12 @@ const Recipe = () => {
   useEffect(() => {
     loadPreferences();
   }, []);
+
+  useEffect(() => {
+    if (routeLocation.state?.recipe) {
+      setRecipe(routeLocation.state.recipe);
+    }
+  }, [routeLocation.state]);
 
   const loadPreferences = async () => {
     try {
@@ -127,13 +134,30 @@ const Recipe = () => {
         nutritionalInfo: recipe.nutritionalInfo,
       });
       setRecipe(null);
-      navigate("/myrecipes");
+      if (routeLocation.state?.fromMealPlan) {
+        navigate("/mealplan", {
+          state: {
+            isNew: false,
+            recipe,
+          },
+        });
+      } else {
+        navigate("/myrecipes");
+      }
       // Could add success notification here
     } catch (error) {
       console.error("Error saving recipe:", error);
       // Could add error notification here
     } finally {
       setIsSaving(false);
+    }
+  };
+
+  const handleBack = () => {
+    if (routeLocation.state?.fromMealPlan) {
+      navigate("/mealplan");
+    } else {
+      setRecipe(null);
     }
   };
 
@@ -147,85 +171,103 @@ const Recipe = () => {
 
   if (recipe) {
     return (
-      <div className="recipe-result">
-        <div className="recipe-actions">
-          <button
-            onClick={() => setRecipe(null)}
-            className="recipe-action-button back-button">
-            Go Back
-          </button>
-          <button
-            onClick={handleSaveRecipe}
-            className="recipe-action-button save-button"
-            disabled={isSaving}>
-            {isSaving ? "Saving..." : "Save Recipe"}
-          </button>
+      <>
+        <div
+          style={{
+            backgroundColor: "rgba(5, 71, 42, 0.1)",
+            padding: "12px 20px",
+            borderRadius: "8px",
+            marginTop: "-20px",
+            fontSize: "0.9rem",
+            color: "var(--text-color)",
+            maxWidth: "850px",
+            margin: "20px auto",
+          }}>
+          DISCLAIMER: Recipes are AI generated and are intended to act as a
+          starting point. It is always advised that you review any generated
+          recipe for accuracy. To modify a recipe first save it and then you can
+          edit it from your recipe list.
         </div>
-        <h1 className="recipe-title">{recipe.title}</h1>
-
-        <div className="recipe-meta">
-          <div className="recipe-meta-item">
-            <span className="meta-label">Prep Time:</span>
-            <span className="meta-value">{recipe.prepTime}</span>
+        <div className="recipe-result">
+          <div className="recipe-actions">
+            <button
+              onClick={handleBack}
+              className="recipe-action-button back-button">
+              Go Back
+            </button>
+            <button
+              onClick={handleSaveRecipe}
+              className="recipe-action-button save-button"
+              disabled={isSaving}>
+              {isSaving ? "Saving..." : "Save Recipe"}
+            </button>
           </div>
-          <div className="recipe-meta-item">
-            <span className="meta-label">Cook Time:</span>
-            <span className="meta-value">{recipe.cookTime}</span>
+          <h1 className="recipe-title">{recipe.title}</h1>
+
+          <div className="recipe-meta">
+            <div className="recipe-meta-item">
+              <span className="meta-label">Prep Time:</span>
+              <span className="meta-value">{recipe.prepTime}</span>
+            </div>
+            <div className="recipe-meta-item">
+              <span className="meta-label">Cook Time:</span>
+              <span className="meta-value">{recipe.cookTime}</span>
+            </div>
+            <div className="recipe-meta-item">
+              <span className="meta-label">Servings:</span>
+              <span className="meta-value">{recipe.servings}</span>
+            </div>
           </div>
-          <div className="recipe-meta-item">
-            <span className="meta-label">Servings:</span>
-            <span className="meta-value">{recipe.servings}</span>
+
+          <div className="recipe-section">
+            <h2>Ingredients</h2>
+            <ul className="recipe-list">
+              {recipe.ingredients.map((ingredient, index) => (
+                <li key={`ingredient-${index}`} className="recipe-list-item">
+                  {ingredient}
+                </li>
+              ))}
+            </ul>
+          </div>
+
+          <div className="recipe-section">
+            <h2>Instructions</h2>
+            <div className="recipe-list">
+              {recipe.instructions.map((instruction, index) => {
+                // Check if the instruction is surrounded by double stars
+                const isMainStep =
+                  instruction.startsWith("**") && instruction.endsWith("**");
+                const content = isMainStep
+                  ? `${currentStep}. ${instruction.slice(2, -2)}` // Add number and remove stars
+                  : `- ${instruction}`;
+                isMainStep && currentStep++;
+
+                return (
+                  <React.Fragment key={`instruction-${index}`}>
+                    {isMainStep && <br />}
+                    <div
+                      style={!isMainStep ? { marginLeft: "20px" } : {}}
+                      className="recipe-list-item">
+                      {content}
+                    </div>
+                  </React.Fragment>
+                );
+              })}
+            </div>
+          </div>
+
+          <div className="recipe-section">
+            <h2>Nutritional Information</h2>
+            <ul className="recipe-list nutrition-list">
+              {recipe.nutritionalInfo.map((info, index) => (
+                <li key={`nutrition-${index}`} className="recipe-list-item">
+                  {info}
+                </li>
+              ))}
+            </ul>
           </div>
         </div>
-
-        <div className="recipe-section">
-          <h2>Ingredients</h2>
-          <ul className="recipe-list">
-            {recipe.ingredients.map((ingredient, index) => (
-              <li key={`ingredient-${index}`} className="recipe-list-item">
-                {ingredient}
-              </li>
-            ))}
-          </ul>
-        </div>
-
-        <div className="recipe-section">
-          <h2>Instructions</h2>
-          <div className="recipe-list">
-            {recipe.instructions.map((instruction, index) => {
-              // Check if the instruction is surrounded by double stars
-              const isMainStep =
-                instruction.startsWith("**") && instruction.endsWith("**");
-              const content = isMainStep
-                ? `${currentStep}. ${instruction.slice(2, -2)}` // Add number and remove stars
-                : `- ${instruction}`;
-              isMainStep && currentStep++;
-
-              return (
-                <React.Fragment key={`instruction-${index}`}>
-                  {isMainStep && <br />}
-                  <div
-                    style={!isMainStep ? { marginLeft: "20px" } : {}}
-                    className="recipe-list-item">
-                    {content}
-                  </div>
-                </React.Fragment>
-              );
-            })}
-          </div>
-        </div>
-
-        <div className="recipe-section">
-          <h2>Nutritional Information</h2>
-          <ul className="recipe-list nutrition-list">
-            {recipe.nutritionalInfo.map((info, index) => (
-              <li key={`nutrition-${index}`} className="recipe-list-item">
-                {info}
-              </li>
-            ))}
-          </ul>
-        </div>
-      </div>
+      </>
     );
   }
 

@@ -1,0 +1,225 @@
+import React, { useState, useEffect } from "react";
+import { FaPlus, FaPencilAlt, FaTrash } from "react-icons/fa";
+import AnimatedTechIcon from "../components/common/AnimatedTechIcon";
+import ConfirmationModal from "../components/common/ConfirmationModal";
+import InventoryForm from "../components/inventory/InventoryForm";
+import ExpirationAlert from "../components/inventory/ExpirationAlert";
+import {
+  getInventoryItems,
+  addInventoryItem,
+  updateInventoryItem,
+  deleteInventoryItem,
+} from "../utils/api";
+import "../styles/inventory.css";
+
+interface InventoryItem {
+  id: number;
+  item_name: string;
+  quantity: number;
+  unit: string;
+  expiration_date?: string;
+  created_at: string;
+  updated_at: string;
+}
+
+interface InventoryFormData {
+  item_name: string;
+  quantity: number;
+  unit: string;
+  expiration_date: string;
+}
+
+type ExpiringItemData = {
+  id: number;
+  item_name: string;
+  quantity: number;
+  unit: string;
+  expiration_date: string;
+};
+
+const Inventory: React.FC = () => {
+  const [items, setItems] = useState<InventoryItem[]>([]);
+  const [alertDidShow, setAlertDidShow] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
+  const [isFormOpen, setIsFormOpen] = useState(false);
+  const [editingItem, setEditingItem] = useState<InventoryItem | null>(null);
+  const [deleteItem, setDeleteItem] = useState<InventoryItem | null>(null);
+  const [error, setError] = useState("");
+  const [showExpirationAlert, setShowExpirationAlert] = useState(false);
+  const [expiringItems, setExpiringItems] = useState<ExpiringItemData[]>([]);
+  const threeDaysFromNow = new Date();
+  threeDaysFromNow.setDate(threeDaysFromNow.getDate() + 3);
+
+  useEffect(() => {
+    loadInventory();
+  }, []);
+
+  // Check for expiring items whenever items list changes
+  useEffect(() => {
+    if (items.length > 0 && !alertDidShow) {
+      const expiring = items
+        .filter((item): item is InventoryItem & { expiration_date: string } => {
+          if (!item.expiration_date) return false;
+          const expirationDate = new Date(item.expiration_date);
+          return (
+            expirationDate <= threeDaysFromNow && expirationDate >= new Date()
+          );
+        })
+        .map((item) => ({
+          id: item.id,
+          item_name: item.item_name,
+          quantity: item.quantity,
+          unit: item.unit,
+          expiration_date: item.expiration_date,
+        }));
+
+      if (expiring.length > 0) {
+        setExpiringItems(expiring);
+        setShowExpirationAlert(true);
+        setAlertDidShow(true);
+      }
+    }
+  }, [items]);
+
+  const loadInventory = async () => {
+    try {
+      const response = await getInventoryItems();
+      setItems(response.data);
+    } catch (error) {
+      setError("Failed to load inventory items");
+      console.error("Error loading inventory:", error);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleAddItem = async (formData: InventoryFormData) => {
+    try {
+      const response = await addInventoryItem(formData);
+      setItems((prev) => [response.data, ...prev]);
+      setIsFormOpen(false);
+    } catch (error) {
+      if (error instanceof Error) {
+        setError(error.message);
+      } else {
+        setError("Failed to add item");
+      }
+      console.error("Error adding item:", error);
+    }
+  };
+
+  const handleUpdateItem = async (formData: InventoryFormData) => {
+    if (!editingItem) return;
+    try {
+      const response = await updateInventoryItem(editingItem.id, formData);
+      setItems((prev) =>
+        prev.map((item) =>
+          item.id === response.data.id ? response.data : item
+        )
+      );
+      setEditingItem(null);
+    } catch (error) {
+      setError("Failed to update item");
+      console.error("Error updating item:", error);
+    }
+  };
+
+  const handleDeleteItem = async () => {
+    if (!deleteItem) return;
+    try {
+      await deleteInventoryItem(deleteItem.id);
+      setItems((prev) => prev.filter((item) => item.id !== deleteItem.id));
+      setDeleteItem(null);
+    } catch (error) {
+      setError("Failed to delete item");
+      console.error("Error deleting item:", error);
+    }
+  };
+
+  if (isLoading) {
+    return (
+      <div className="loading-container">
+        <AnimatedTechIcon size={100} speed={4} />
+      </div>
+    );
+  }
+
+  return (
+    <div className="inventory-container">
+      <div className="inventory-header">
+        <h1>My Inventory</h1>
+        <button onClick={() => setIsFormOpen(true)} className="add-item-button">
+          <FaPlus /> Add Item
+        </button>
+      </div>
+
+      {error && <div className="error-message">{error}</div>}
+
+      <div className="inventory-grid">
+        {items.map((item) => (
+          <div key={item.id} className="inventory-item">
+            <div className="item-details">
+              <h3>{item.item_name}</h3>
+              <p>
+                {item.quantity} {item.unit}
+              </p>
+              {item.expiration_date && (
+                <p
+                  className={
+                    new Date(item.expiration_date) <= threeDaysFromNow &&
+                    new Date(item.expiration_date) >= new Date()
+                      ? "expiring-item expiration-date"
+                      : "expiration-date"
+                  }>
+                  Expires: {new Date(item.expiration_date).toLocaleDateString()}
+                </p>
+              )}
+            </div>
+            <div className="item-actions">
+              <button
+                onClick={() => setEditingItem(item)}
+                className="edit-button"
+                title="Edit item">
+                <FaPencilAlt />
+              </button>
+              <button
+                onClick={() => setDeleteItem(item)}
+                className="delete-button"
+                title="Delete item">
+                <FaTrash />
+              </button>
+            </div>
+          </div>
+        ))}
+      </div>
+
+      {(isFormOpen || editingItem) && (
+        <InventoryForm
+          item={editingItem}
+          onSubmit={editingItem ? handleUpdateItem : handleAddItem}
+          onClose={() => {
+            setIsFormOpen(false);
+            setEditingItem(null);
+          }}
+        />
+      )}
+
+      {deleteItem && (
+        <ConfirmationModal
+          message={`Are you sure you want to delete "${deleteItem.item_name}"?`}
+          onConfirm={handleDeleteItem}
+          onClose={() => setDeleteItem(null)}
+        />
+      )}
+
+      {showExpirationAlert && (
+        <ExpirationAlert
+          items={expiringItems}
+          onClose={() => setShowExpirationAlert(false)}
+        />
+      )}
+    </div>
+  );
+};
+
+export default Inventory;

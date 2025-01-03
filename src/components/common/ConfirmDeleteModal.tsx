@@ -4,14 +4,14 @@ interface ConfirmDeleteModalProps {
   isOpen: boolean;
   onClose: () => void;
   onConfirm: () => void;
-  itemName: string;
+  item_name: string;
 }
 
 const ConfirmDeleteModal: React.FC<ConfirmDeleteModalProps> = ({
   isOpen,
   onClose,
   onConfirm,
-  itemName,
+  item_name,
 }) => {
   if (!isOpen) return null;
 
@@ -41,7 +41,7 @@ const ConfirmDeleteModal: React.FC<ConfirmDeleteModalProps> = ({
           Confirm Deletion
         </h2>
         <p style={{ marginBottom: "20px" }}>
-          Are you sure you want to delete "{itemName}"?
+          Are you sure you want to delete "{item_name}"?
         </p>
         <div
           style={{ display: "flex", justifyContent: "flex-end", gap: "10px" }}>

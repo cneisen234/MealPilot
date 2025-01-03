@@ -26,3 +26,24 @@ export interface DietaryItem {
 
 export interface CantHave extends DietaryItem {}
 export interface MustHave extends DietaryItem {}
+
+export interface Meal {
+  title: string;
+  isNew: boolean;
+  recipeId: number | null;
+}
+
+export interface DayPlan {
+  breakfast: Meal;
+  lunch: Meal;
+  dinner: Meal;
+}
+
+export interface Plan {
+  id: number;
+  created_at: string;
+  expires_at: string;
+  meals: {
+    [key: string]: DayPlan;
+  };
+}

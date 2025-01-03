@@ -13,12 +13,6 @@ import "../styles/comingsoon.css";
 const ComingSoon: React.FC = () => {
   const features = [
     {
-      icon: <FaCalendarAlt />,
-      title: "Weekly Meal Planning",
-      description:
-        "Get personalized weekly meal plans generated based on your preferences and dietary needs!",
-    },
-    {
       icon: <FaBoxes />,
       title: "Smart Inventory Management",
       description:

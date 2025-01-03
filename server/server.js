@@ -6,6 +6,8 @@ const sgMail = require("@sendgrid/mail");
 const authRoutes = require("./routes/authRoutes");
 const userRoutes = require("./routes/userRoutes");
 const recipeRoutes = require("./routes/recipeRoutes");
+const mealPlanRoutes = require("./routes/mealPlanRoutes");
+const inventoryRoutes = require("./routes/inventoryRoutes");
 const preferenceRoutes = require("./routes/preferenceRoutes");
 const path = require("path");
 
@@ -37,6 +39,8 @@ sgMail.setApiKey(process.env.SENDGRID_API_KEY);
 app.use("/api/auth", authRoutes);
 app.use("/api/users", userRoutes);
 app.use("/api/recipe", recipeRoutes);
+app.use("/api/mealplan", mealPlanRoutes);
+app.use("/api/inventory", inventoryRoutes);
 app.use("/api/preference", preferenceRoutes);
 
 app.get("*", (req, res) => {

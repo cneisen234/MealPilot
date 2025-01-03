@@ -124,7 +124,11 @@ router.post("/save-recipe", authMiddleware, async (req, res) => {
       nutritionalInfo,
     } = req.body;
 
-    const result = await pool.query(
+    // Start transaction
+    await pool.query("BEGIN");
+
+    // First, save the recipe and get its ID
+    const recipeResult = await pool.query(
       `INSERT INTO recipes 
         (user_id, title, prep_time, cook_time, servings, ingredients, instructions, nutritional_info)
        VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
@@ -141,15 +145,58 @@ router.post("/save-recipe", authMiddleware, async (req, res) => {
       ]
     );
 
+    const newRecipeId = recipeResult.rows[0].id;
+
+    // Check for meal plan
+    const mealPlanResult = await pool.query(
+      "SELECT meals FROM meal_plans WHERE user_id = $1",
+      [userId]
+    );
+
+    // If meal plan exists, look for matching recipe titles
+    if (mealPlanResult.rows.length > 0) {
+      const meals = mealPlanResult.rows[0].meals;
+
+      // Check each day and meal for matching title
+      for (const date in meals) {
+        for (const mealTime of ["breakfast", "lunch", "dinner"]) {
+          if (meals[date][mealTime].title === title) {
+            // Update with saved recipe details
+            meals[date][mealTime] = {
+              title,
+              prepTime,
+              cookTime,
+              servings,
+              ingredients,
+              instructions,
+              nutritionalInfo,
+              isNew: false,
+              recipeId: newRecipeId,
+            };
+          }
+        }
+      }
+
+      // Update meal plan
+      await pool.query("UPDATE meal_plans SET meals = $1 WHERE user_id = $2", [
+        meals,
+        userId,
+      ]);
+    }
+
+    await pool.query("COMMIT");
+
     res.status(201).json({
       message: "Recipe saved successfully",
-      recipeId: result.rows[0].id,
+      recipeId: newRecipeId,
     });
   } catch (error) {
+    await pool.query("ROLLBACK");
     console.error("Error saving recipe:", error);
-    res
-      .status(500)
-      .json({ error: "An error occurred while saving the recipe" });
+    res.status(500).json({
+      message: "Error saving recipe",
+      error: error.message,
+    });
   }
 });
 
@@ -198,7 +245,7 @@ router.get("/myrecipes/:id", authMiddleware, async (req, res) => {
 router.put("/myrecipes/:id", authMiddleware, async (req, res) => {
   try {
     const userId = req.user.id;
-    const recipeId = req.params.id;
+    const recipeId = parseInt(req.params.id);
     const {
       title,
       prepTime,
@@ -209,17 +256,47 @@ router.put("/myrecipes/:id", authMiddleware, async (req, res) => {
       nutritionalInfo,
     } = req.body;
 
-    // Verify recipe belongs to user
-    const checkRecipe = await pool.query(
-      "SELECT id FROM recipes WHERE id = $1 AND user_id = $2",
-      [recipeId, userId]
+    // Start transaction
+    await pool.query("BEGIN");
+
+    // Check for meal plan
+    const mealPlanResult = await pool.query(
+      "SELECT meals FROM meal_plans WHERE user_id = $1",
+      [userId]
     );
 
-    if (checkRecipe.rows.length === 0) {
-      return res.status(404).json({ message: "Recipe not found" });
+    // If meal plan exists, update any matching recipes
+    if (mealPlanResult.rows.length > 0) {
+      const meals = mealPlanResult.rows[0].meals;
+
+      // Check each day and meal for the recipe ID
+      for (const date in meals) {
+        for (const mealTime of ["breakfast", "lunch", "dinner"]) {
+          if (meals[date][mealTime].recipeId === recipeId) {
+            // Update recipe details while preserving isNew and recipeId
+            meals[date][mealTime] = {
+              ...meals[date][mealTime],
+              title,
+              prepTime,
+              cookTime,
+              servings,
+              ingredients,
+              instructions,
+              nutritionalInfo,
+              // isNew and recipeId remain unchanged
+            };
+          }
+        }
+      }
+
+      // Update meal plan
+      await pool.query("UPDATE meal_plans SET meals = $1 WHERE user_id = $2", [
+        meals,
+        userId,
+      ]);
     }
 
-    // Update recipe
+    // Update the recipe
     const result = await pool.query(
       `UPDATE recipes 
        SET title = $1, 
@@ -244,39 +321,82 @@ router.put("/myrecipes/:id", authMiddleware, async (req, res) => {
       ]
     );
 
-    res.json(result.rows[0]);
-  } catch (error) {
-    console.error("Error updating recipe:", error);
-    res
-      .status(500)
-      .json({ error: "An error occurred while updating the recipe" });
-  }
-});
-
-router.delete("/myrecipes/:id", authMiddleware, async (req, res) => {
-  try {
-    const userId = req.user.id;
-    const recipeId = req.params.id;
-
-    // Verify recipe belongs to user
-    const checkRecipe = await pool.query(
-      "SELECT id FROM recipes WHERE id = $1 AND user_id = $2",
-      [recipeId, userId]
-    );
-
-    if (checkRecipe.rows.length === 0) {
+    if (result.rows.length === 0) {
+      await pool.query("ROLLBACK");
       return res.status(404).json({ message: "Recipe not found" });
     }
 
-    // Delete recipe
-    await pool.query("DELETE FROM recipes WHERE id = $1", [recipeId]);
+    await pool.query("COMMIT");
+    res.json(result.rows[0]);
+  } catch (error) {
+    await pool.query("ROLLBACK");
+    console.error("Error updating recipe:", error);
+    res.status(500).json({
+      message: "Error updating recipe",
+      error: error.message,
+    });
+  }
+});
+
+// recipeRoutes.js
+router.delete("/myrecipes/:id", authMiddleware, async (req, res) => {
+  try {
+    const userId = req.user.id;
+    const recipeId = parseInt(req.params.id);
+
+    // Start a transaction
+    await pool.query("BEGIN");
+
+    // Check if meal plan exists
+    const mealPlanResult = await pool.query(
+      "SELECT meals FROM meal_plans WHERE user_id = $1",
+      [userId]
+    );
+
+    // If meal plan exists, process it
+    if (mealPlanResult.rows.length > 0) {
+      const meals = mealPlanResult.rows[0].meals; // meals is already a JS object
+
+      // Check each day and meal for the recipe ID
+      for (const date in meals) {
+        for (const mealTime of ["breakfast", "lunch", "dinner"]) {
+          if (meals[date][mealTime].recipeId === recipeId) {
+            // Update the meal to be a new recipe instead of saved
+            meals[date][mealTime].recipeId = null;
+            meals[date][mealTime].isNew = true;
+          }
+        }
+      }
+
+      // Update the meal plan with modified meals
+      await pool.query(
+        "UPDATE meal_plans SET meals = $1 WHERE user_id = $2",
+        [meals, userId] // PostgreSQL will handle the JSON conversion
+      );
+    }
+
+    // Delete the recipe
+    const deleteResult = await pool.query(
+      "DELETE FROM recipes WHERE id = $1 AND user_id = $2 RETURNING id",
+      [recipeId, userId]
+    );
+
+    if (deleteResult.rows.length === 0) {
+      await pool.query("ROLLBACK");
+      return res.status(404).json({ message: "Recipe not found" });
+    }
+
+    // Commit the transaction
+    await pool.query("COMMIT");
 
     res.json({ message: "Recipe deleted successfully" });
   } catch (error) {
+    await pool.query("ROLLBACK");
     console.error("Error deleting recipe:", error);
-    res
-      .status(500)
-      .json({ error: "An error occurred while deleting the recipe" });
+    res.status(500).json({
+      message: "Error deleting recipe",
+      error: error.message,
+    });
   }
 });
 
