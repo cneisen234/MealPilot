@@ -99,13 +99,24 @@ const MealPlan: React.FC = () => {
     }
   };
 
-  const getDaysRemaining = () => {
+  const getFilteredMealPlan = () => {
     if (!mealPlan) return null;
-    const expiryDate = new Date(mealPlan.expires_at);
+
     const today = new Date();
-    const diffTime = expiryDate.getTime() - today.getTime();
-    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-    return diffDays;
+    today.setHours(0, 0, 0, 0);
+
+    return Object.entries(mealPlan.meals)
+      .filter(([date]) => new Date(date) >= today)
+      .sort(
+        ([dateA], [dateB]) =>
+          new Date(dateA).getTime() - new Date(dateB).getTime()
+      );
+  };
+
+  const getDaysRemaining = () => {
+    const filteredMealPlan = getFilteredMealPlan();
+    if (!filteredMealPlan || filteredMealPlan.length === 0) return 0;
+    return filteredMealPlan.length;
   };
 
   if (isLoading) {
@@ -116,6 +127,8 @@ const MealPlan: React.FC = () => {
       </div>
     );
   }
+
+  const filteredMealPlan = getFilteredMealPlan();
 
   return (
     <div className="meal-plan-container">
@@ -150,35 +163,30 @@ const MealPlan: React.FC = () => {
         edit it from your recipe list.
       </div>
 
-      {mealPlan ? (
+      {mealPlan && filteredMealPlan && filteredMealPlan.length > 0 ? (
         <div className="meal-plan-grid">
-          {Object.entries(mealPlan.meals)
-            .sort(
-              ([dateA], [dateB]) =>
-                new Date(dateA).getTime() - new Date(dateB).getTime() + 86400000
-            )
-            .map(([date, meals]) => (
-              <div key={date} className="day-card">
-                <h2>{formatDate(date)}</h2>
-                <div className="meals-list">
-                  <MealItem
-                    mealType="Breakfast"
-                    meal={meals.breakfast}
-                    accentColor="#FF9D72"
-                  />
-                  <MealItem
-                    mealType="Lunch"
-                    meal={meals.lunch}
-                    accentColor="#05472A"
-                  />
-                  <MealItem
-                    mealType="Dinner"
-                    meal={meals.dinner}
-                    accentColor="#a1c800"
-                  />
-                </div>
+          {filteredMealPlan.map(([date, meals]) => (
+            <div key={date} className="day-card">
+              <h2>{formatDate(date)}</h2>
+              <div className="meals-list">
+                <MealItem
+                  mealType="Breakfast"
+                  meal={meals.breakfast}
+                  accentColor="#FF9D72"
+                />
+                <MealItem
+                  mealType="Lunch"
+                  meal={meals.lunch}
+                  accentColor="#05472A"
+                />
+                <MealItem
+                  mealType="Dinner"
+                  meal={meals.dinner}
+                  accentColor="#a1c800"
+                />
               </div>
-            ))}
+            </div>
+          ))}
         </div>
       ) : (
         <div className="empty-state">

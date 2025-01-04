@@ -41,16 +41,23 @@ router.post("/generate", authMiddleware, async (req, res) => {
     await pool.query("DELETE FROM meal_plans WHERE user_id = $1", [userId]);
 
     // Get saved recipes and restrictions
-    const [savedRecipesResult, cantHaves, mustHaves] = await Promise.all([
-      pool.query("SELECT * FROM recipes WHERE user_id = $1", [userId]),
-      pool.query("SELECT item FROM cant_haves WHERE user_id = $1", [userId]),
-      pool.query("SELECT item FROM must_haves WHERE user_id = $1", [userId]),
-    ]);
+    const [savedRecipesResult, cantHaves, mustHaves, inventoryQuery] =
+      await Promise.all([
+        pool.query("SELECT * FROM recipes WHERE user_id = $1", [userId]),
+        pool.query("SELECT item FROM cant_haves WHERE user_id = $1", [userId]),
+        pool.query("SELECT item FROM must_haves WHERE user_id = $1", [userId]),
+        pool.query(
+          "SELECT item_name, quantity, unit FROM inventory WHERE user_id = $1",
+          [userId]
+        ),
+      ]);
 
     const restrictions = {
       cantHaves: cantHaves.rows.map((row) => row.item),
       mustHaves: mustHaves.rows.map((row) => row.item),
     };
+
+    const inventory = inventoryQuery.rows;
 
     // Generate array of next 7 days
     const days = Array.from({ length: 7 }, (_, i) => {
@@ -70,7 +77,8 @@ router.post("/generate", authMiddleware, async (req, res) => {
         date,
         existingMeals,
         savedRecipesResult.rows,
-        restrictions
+        restrictions,
+        inventory
       );
 
       // Add these meals to our tracking array
@@ -116,26 +124,38 @@ async function generateDayMeals(
   date,
   existingMeals,
   savedRecipes,
-  restrictions
+  restrictions,
+  inventory
 ) {
+  const inventoryList = inventory
+    .map((item) => `${item.quantity} ${item.unit} of ${item.item_name}`)
+    .join("\n");
   const prompt = `Generate meals for a single day (${date}) following these rules:
-  1. Do not duplicate any of these existing meals: ${JSON.stringify(
+  - Do not duplicate any of these existing meals: ${JSON.stringify(
     existingMeals
   )}
-  2. Use a mix of saved recipes (${JSON.stringify(savedRecipes)}) and new ones
-  3. For new recipes, include complete details
+  - Use a mix of saved recipes (${JSON.stringify(savedRecipes)}) and new ones
+  - Make sure you generate a meal that fits with the meal type. For example if you generate a meal for lunch, it should be fitting for what someone would make for lunch (dont fit a desert in there!)
   ${
-    (restrictions.cantHaves.length > 0 || restrictions.cantHaves.length > 0) &&
-    "4. Follow dietary restrictions: "
+    inventoryList.length > 0 &&
+    `- Consider the following available ingredients when generating new recipes:
+     ${inventoryList}
+     Prioritize using these ingredients when possible, considering quantities available.
+     Recipes don't have to use these ingredients, but prefer ones that make good use of what's on hand.
+     If a recipe would require more of an ingredient than is available, consider alternatives.`
+  }
+  ${
+    (restrictions.cantHaves.length > 0 || restrictions.mustHaves.length > 0) &&
+    "- IMPORTANT THESE DIETARY RESTRICTIONS MUST BE FOLLOWED UNDER ANY AND ALL CIRCUMSTANCES: "
   }
       ${
         restrictions.cantHaves.length > 0 &&
         "Can't have: " + restrictions.cantHaves.join(", ")
       }
-     ${
-       restrictions.cantHaves.length > 0 &&
-       "Must have: " + restrictions.mustHaves.join(", ")
-     }
+      ${
+        restrictions.mustHaves.length > 0 &&
+        "Must have: " + restrictions.mustHaves.join(", ")
+      }
 
   Return a JSON object with this exact structure:
   {
@@ -151,10 +171,26 @@ async function generateDayMeals(
       "nutritionalInfo": []
     },
     "lunch": {
-      // same structure as breakfast
+      "title": "",
+      "isNew": true,
+      "recipeId": null,
+      "prepTime": "",
+      "cookTime": "",
+      "servings": "",
+      "ingredients": [],
+      "instructions": [],
+      "nutritionalInfo": []
     },
     "dinner": {
-      // same structure as breakfast
+      "title": "",
+      "isNew": true,
+      "recipeId": null,
+      "prepTime": "",
+      "cookTime": "",
+      "servings": "",
+      "ingredients": [],
+      "instructions": [],
+      "nutritionalInfo": []
     }
   }`;
 

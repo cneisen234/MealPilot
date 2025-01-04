@@ -339,10 +339,6 @@ input, textarea, select {
     box-shadow: 0 6px 15px rgba(0, 230, 118, 0.4);
 }
 
-.form-group {
-    margin-bottom: 24px;
-}
-
 .form-control {
     width: 90%;
     padding: 12px;

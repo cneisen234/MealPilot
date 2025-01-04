@@ -57,3 +57,22 @@ CREATE TABLE recipes
         updated_at TIMESTAMP DEFAULT NOW(),
         expiration_date DATE
     );
+
+    CREATE TABLE shopping_list
+    (
+        id SERIAL PRIMARY KEY,
+        user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
+        item_name VARCHAR(255) NOT NULL,
+        quantity INTEGER NOT NULL,
+        unit VARCHAR(50),
+        created_at TIMESTAMP DEFAULT NOW(),
+        updated_at TIMESTAMP DEFAULT NOW()
+    );
+
+    CREATE TABLE shopping_list_recipes
+    (
+        id SERIAL PRIMARY KEY,
+        shopping_list_item_id INTEGER REFERENCES shopping_list(id) ON DELETE CASCADE,
+        recipe_id INTEGER REFERENCES recipes(id) ON DELETE CASCADE,
+        UNIQUE(shopping_list_item_id, recipe_id)
+    );

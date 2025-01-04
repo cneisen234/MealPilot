@@ -8,6 +8,7 @@ import {
   FaTimes,
   FaCalendar,
   FaBoxes,
+  FaShoppingBasket,
 } from "react-icons/fa";
 import "../../styles/sidebar.css";
 
@@ -82,6 +83,13 @@ const SideNavbar: React.FC = () => {
             title="Inventory"
             onClick={closeMenu}>
             Inventory
+          </NavItem>
+          <NavItem
+            to="/shopping-list"
+            icon={<FaShoppingBasket />}
+            title="Shopping List"
+            onClick={closeMenu}>
+            Shopping List
           </NavItem>
           <NavItem to="/coming-soon" icon={<FaClock />} onClick={closeMenu}>
             Coming Soon

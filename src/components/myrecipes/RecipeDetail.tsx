@@ -252,7 +252,7 @@ const RecipeDetail: React.FC = () => {
             <button
               type="button"
               onClick={() => addArrayItem("ingredients")}
-              className="add-item-button">
+              className="add-item-button-list">
               Add Ingredient
             </button>
           </div>

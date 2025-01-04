@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { saveRecipe } from "../../utils/api";
 import { FaSave, FaTimes } from "react-icons/fa";
 import "../../styles/createrecipe.css";
+import RecipeImport from "./RecipeImport";
 
 interface RecipeFormData {
   title: string;
@@ -17,6 +18,7 @@ interface RecipeFormData {
 const CreateRecipe: React.FC = () => {
   const navigate = useNavigate();
   const [isSaving, setIsSaving] = useState(false);
+  const [error, setError] = useState("");
   const [formData, setFormData] = useState<RecipeFormData>({
     title: "",
     prepTime: "",
@@ -90,6 +92,21 @@ const CreateRecipe: React.FC = () => {
 
   return (
     <div className="recipe-result">
+      <RecipeImport
+        onRecipeImported={(recipe) => {
+          setFormData({
+            ...formData,
+            title: recipe.title,
+            prepTime: recipe.prepTime,
+            cookTime: recipe.cookTime,
+            servings: recipe.servings,
+            ingredients: recipe.ingredients,
+            instructions: recipe.instructions,
+            nutritionalInfo: recipe.nutritionalInfo,
+          });
+        }}
+        onError={(error) => setError(error)}
+      />
       <form onSubmit={handleSubmit}>
         <div className="recipe-actions">
           <button

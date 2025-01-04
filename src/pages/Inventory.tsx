@@ -148,46 +148,52 @@ const Inventory: React.FC = () => {
     <div className="inventory-container">
       <div className="inventory-header">
         <h1>My Inventory</h1>
-        <button onClick={() => setIsFormOpen(true)} className="add-item-button">
+        <button
+          onClick={() => setIsFormOpen(true)}
+          className="add-item-button-list">
           <FaPlus /> Add Item
         </button>
       </div>
 
       {error && <div className="error-message">{error}</div>}
 
-      <div className="inventory-grid">
+      <div className="list-grid">
         {items.map((item) => (
-          <div key={item.id} className="inventory-item">
-            <div className="item-details">
-              <h3>{item.item_name}</h3>
-              <p>
+          <div key={item.id} className="list-card">
+            <div className="card-header">
+              <h3 className="card-title">{item.item_name}</h3>
+              <div className="card-actions">
+                <button
+                  onClick={() => setEditingItem(item)}
+                  className="card-button edit"
+                  title="Edit item">
+                  <FaPencilAlt />
+                </button>
+                <button
+                  onClick={() => setDeleteItem(item)}
+                  className="card-button delete"
+                  title="Delete item">
+                  <FaTrash />
+                </button>
+              </div>
+            </div>
+
+            <div className="card-content">
+              <div className="quantity-info">
                 {item.quantity} {item.unit}
-              </p>
+              </div>
+
               {item.expiration_date && (
-                <p
+                <div
                   className={
                     new Date(item.expiration_date) <= threeDaysFromNow &&
                     new Date(item.expiration_date) >= new Date()
-                      ? "expiring-item expiration-date"
-                      : "expiration-date"
+                      ? "expiry-info warning"
+                      : "expiry-info"
                   }>
                   Expires: {new Date(item.expiration_date).toLocaleDateString()}
-                </p>
+                </div>
               )}
-            </div>
-            <div className="item-actions">
-              <button
-                onClick={() => setEditingItem(item)}
-                className="edit-button"
-                title="Edit item">
-                <FaPencilAlt />
-              </button>
-              <button
-                onClick={() => setDeleteItem(item)}
-                className="delete-button"
-                title="Delete item">
-                <FaTrash />
-              </button>
             </div>
           </div>
         ))}

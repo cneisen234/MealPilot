@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from "react";
+import decimalHelper from "../../helpers/decimalHelper";
 import { FaTimes } from "react-icons/fa";
 
 interface InventoryItem {
@@ -11,20 +12,19 @@ interface InventoryItem {
   expiration_date?: string;
 }
 
-interface InventoryFormData {
-  item_name: string;
-  quantity: number;
-  unit: string;
-  expiration_date: string;
-}
-
 interface InventoryFormProps {
   item?: InventoryItem | null;
-  onSubmit: (item: InventoryFormData) => Promise<void>;
+  onSubmit: (item: {
+    item_name: string;
+    quantity: number;
+    unit: string;
+    expiration_date: string;
+  }) => Promise<void>;
   onClose: () => void;
 }
 
 const COMMON_UNITS = [
+  "units",
   "grams",
   "kg",
   "gal",
@@ -43,62 +43,54 @@ const InventoryForm: React.FC<InventoryFormProps> = ({
   onSubmit,
   onClose,
 }) => {
-  const [formData, setFormData] = useState<InventoryFormData>({
-    item_name: "",
-    quantity: 1,
-    unit: "pieces",
-    expiration_date: "",
-  });
+  const [itemName, setItemName] = useState("");
+  const [quantity, setQuantity] = useState(1);
+  const [unit, setUnit] = useState("pieces");
+  const [expirationDate, setExpirationDate] = useState("");
 
-  const [errors, setErrors] = useState({
-    item_name: "",
-    quantity: "",
-    expiration_date: "",
-  });
+  const [itemNameError, setItemNameError] = useState("");
+  const [quantityError, setQuantityError] = useState("");
+  const [expirationDateError, setExpirationDateError] = useState("");
 
   useEffect(() => {
-    const expDate = new Date(item?.expiration_date || "");
-    const day = String(expDate.getDate()).padStart(2, "0");
-    const month = String(expDate.getMonth() + 1).padStart(2, "0"); // January is 0
-    const year = expDate.getFullYear();
-
-    const formattedDate = `${year}-${month}-${day}`;
-
-    console.log(formattedDate);
     if (item) {
-      setFormData({
-        item_name: item.item_name,
-        quantity: item.quantity,
-        unit: item.unit,
-        expiration_date: formattedDate,
-      });
+      const expDate = new Date(item.expiration_date || "");
+      const day = String(expDate.getDate()).padStart(2, "0");
+      const month = String(expDate.getMonth() + 1).padStart(2, "0");
+      const year = expDate.getFullYear();
+      const formattedDate = `${year}-${month}-${day}`;
+
+      setItemName(item.item_name);
+      setQuantity(item.quantity);
+      setUnit(item.unit);
+      setExpirationDate(formattedDate);
     }
   }, [item]);
 
   const validateForm = () => {
-    const newErrors = {
-      item_name: "",
-      quantity: "",
-      expiration_date: "",
-    };
     let isValid = true;
 
-    if (!formData.item_name.trim()) {
-      newErrors.item_name = "Item name is required";
+    if (!itemName.trim()) {
+      setItemNameError("Item name is required");
       isValid = false;
+    } else {
+      setItemNameError("");
     }
 
-    if (formData.quantity <= 0) {
-      newErrors.quantity = "Quantity must be greater than 0";
+    if (quantity <= 0) {
+      setQuantityError("Quantity must be greater than 0");
       isValid = false;
+    } else {
+      setQuantityError("");
     }
 
-    if (!formData.expiration_date) {
-      newErrors.expiration_date = "Expiration date is required";
+    if (!expirationDate) {
+      setExpirationDateError("Expiration date is required");
       isValid = false;
+    } else {
+      setExpirationDateError("");
     }
 
-    setErrors(newErrors);
     return isValid;
   };
 
@@ -107,7 +99,12 @@ const InventoryForm: React.FC<InventoryFormProps> = ({
     if (!validateForm()) return;
 
     try {
-      await onSubmit(formData);
+      await onSubmit({
+        item_name: itemName,
+        quantity,
+        unit,
+        expiration_date: expirationDate,
+      });
       onClose();
     } catch (error) {
       console.error("Error submitting form:", error);
@@ -130,15 +127,13 @@ const InventoryForm: React.FC<InventoryFormProps> = ({
             <input
               type="text"
               id="item_name"
-              value={formData.item_name}
-              onChange={(e) =>
-                setFormData((prev) => ({ ...prev, item_name: e.target.value }))
-              }
-              className={errors.item_name ? "error" : ""}
+              value={itemName}
+              onChange={(e) => setItemName(e.target.value)}
+              className={itemNameError ? "error" : ""}
               placeholder="Enter item name"
             />
-            {errors.item_name && (
-              <span className="error-message">{errors.item_name}</span>
+            {itemNameError && (
+              <span className="error-message">{itemNameError}</span>
             )}
           </div>
 
@@ -148,21 +143,15 @@ const InventoryForm: React.FC<InventoryFormProps> = ({
               <input
                 type="text"
                 id="quantity"
-                value={formData.quantity}
-                onChange={(e) =>
-                  //@ts-ignore
-                  setFormData((prev) => ({
-                    ...prev,
-                    quantity: e.target.value,
-                  }))
-                }
-                className={errors.quantity ? "error" : ""}
+                value={quantity}
+                onChange={(e) => decimalHelper(setQuantity, e)}
+                className={quantityError ? "error" : ""}
                 min="0"
                 step="1"
                 placeholder="Enter quantity"
               />
-              {errors.quantity && (
-                <span className="error-message">{errors.quantity}</span>
+              {quantityError && (
+                <span className="error-message">{quantityError}</span>
               )}
             </div>
 
@@ -170,13 +159,11 @@ const InventoryForm: React.FC<InventoryFormProps> = ({
               <label htmlFor="unit">Unit</label>
               <select
                 id="unit"
-                value={formData.unit}
-                onChange={(e) =>
-                  setFormData((prev) => ({ ...prev, unit: e.target.value }))
-                }>
-                {COMMON_UNITS.map((unit) => (
-                  <option key={unit} value={unit}>
-                    {unit}
+                value={unit}
+                onChange={(e) => setUnit(e.target.value)}>
+                {COMMON_UNITS.map((unitOption) => (
+                  <option key={unitOption} value={unitOption}>
+                    {unitOption}
                   </option>
                 ))}
               </select>
@@ -188,17 +175,12 @@ const InventoryForm: React.FC<InventoryFormProps> = ({
             <input
               type="date"
               id="expiration_date"
-              value={formData.expiration_date}
-              onChange={(e) =>
-                setFormData((prev) => ({
-                  ...prev,
-                  expiration_date: e.target.value,
-                }))
-              }
-              className={errors.expiration_date ? "error" : ""}
+              value={expirationDate}
+              onChange={(e) => setExpirationDate(e.target.value)}
+              className={expirationDateError ? "error" : ""}
             />
-            {errors.expiration_date && (
-              <span className="error-message">{errors.expiration_date}</span>
+            {expirationDateError && (
+              <span className="error-message">{expirationDateError}</span>
             )}
           </div>
 

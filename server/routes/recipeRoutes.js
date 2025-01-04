@@ -3,7 +3,10 @@ const router = express.Router();
 const authMiddleware = require("../middleware/auth");
 const pool = require("../db");
 const openai = require("../openai");
+const axios = require("axios");
+const cheerio = require("cheerio");
 const cleanAIResponse = require("../cleanAiResponse");
+const { createWorker } = require("tesseract.js");
 
 router.post("/create-recipe", authMiddleware, async (req, res) => {
   try {
@@ -11,32 +14,44 @@ router.post("/create-recipe", authMiddleware, async (req, res) => {
     const { mealType } = req.body;
 
     // Fetch both user data and existing recipes in parallel
-    const [userQuery, recipesQuery] = await Promise.all([
+    const [
+      userQuery,
+      recipesQuery,
+      inventoryQuery,
+      cantHavesQuery,
+      mustHavesQuery,
+    ] = await Promise.all([
       pool.query("SELECT id, name FROM users WHERE id = $1", [userId]),
       pool.query("SELECT title FROM recipes WHERE user_id = $1", [userId]),
+      pool.query(
+        "SELECT item_name, quantity, unit FROM inventory WHERE user_id = $1",
+        [userId]
+      ),
+      pool.query("SELECT item FROM cant_haves WHERE user_id = $1", [userId]),
+      pool.query("SELECT item FROM must_haves WHERE user_id = $1", [userId]),
     ]);
 
     const user = userQuery.rows[0];
     const existingRecipes = recipesQuery.rows.map((recipe) => recipe.title);
-
-    // Fetch dietary restrictions
-    const cantHavesQuery = await pool.query(
-      "SELECT item FROM cant_haves WHERE user_id = $1",
-      [userId]
-    );
+    const inventory = inventoryQuery.rows;
     const cantHaves = cantHavesQuery.rows.map((row) => row.item);
-
-    // Fetch required ingredients
-    const mustHavesQuery = await pool.query(
-      "SELECT item FROM must_haves WHERE user_id = $1",
-      [userId]
-    );
     const mustHaves = mustHavesQuery.rows.map((row) => row.item);
+
+    // Format inventory for the prompt
+    const inventoryList = inventory
+      .map((item) => `${item.quantity} ${item.unit} of ${item.item_name}`)
+      .join("\n");
 
     // Prepare the prompt for OpenAI
     let prompt = `Generate a detailed recipe for ${
       user.name
-    }. This should be a ${mealType || "meal"} recipe.`;
+    }. This should be a ${mealType || "meal"} recipe.
+    
+    INVENTORY CONSIDERATION:
+The user has the following ingredients available:
+${inventoryList}
+
+Please try to incorporate these ingredients when possible, considering the available quantities. While the recipe doesn't have to use these ingredients, prioritize recipes that make good use of what's available. If a recipe requires more of an ingredient than is available (e.g., recipe needs 2 cups but only 1 cup is available), consider alternative recipes or ingredients.`;
 
     // Add dietary restrictions if any
     if (cantHaves.length > 0) {
@@ -89,7 +104,8 @@ Follow these formatting rules exactly:
 - Sub-steps should be listed directly below their main step
 - Use standard measurements (cups, tablespoons, teaspoons, etc.)
 - List exact quantities for all ingredients
-- Include complete, detailed sub-steps for each main step`;
+- Include complete, detailed sub-steps for each main step
+- When possible, note which ingredients were chosen based on inventory availability`;
 
     // Call OpenAI API
     const completion = await openai.chat.completions.create({
@@ -395,6 +411,126 @@ router.delete("/myrecipes/:id", authMiddleware, async (req, res) => {
     console.error("Error deleting recipe:", error);
     res.status(500).json({
       message: "Error deleting recipe",
+      error: error.message,
+    });
+  }
+});
+
+// Update in recipeRoutes.js
+router.post("/scrape-recipe", authMiddleware, async (req, res) => {
+  try {
+    const { url } = req.body;
+
+    // Fetch the webpage content
+    const response = await axios.get(url);
+    const html = response.data;
+
+    // Load the HTML into cheerio for basic data extraction
+    const $ = cheerio.load(html);
+
+    // Extract all text content from the page
+    const pageText = $("body").text().replace(/\s+/g, " ").trim();
+
+    // Prepare the prompt for OpenAI to extract recipe information
+    const prompt = `Extract recipe information from this webpage content and format it as a JSON object. The webpage is from ${url}.
+    
+    Return a JSON object with exactly this structure:
+    {
+      "title": "Recipe title",
+      "prepTime": "30 minutes",
+      "cookTime": "45 minutes",
+      "servings": "4",
+      "ingredients": [
+        "1 cup ingredient one",
+        "2 tablespoons ingredient two"
+      ],
+      "instructions": [
+        "**Preparation:**",
+        "First step details",
+        "Second step details",
+        "**Cooking:**",
+        "First cooking step",
+        "Second cooking step"
+      ],
+      "nutritionalInfo": [
+        "Calories: 350",
+        "Protein: 12g",
+        "Carbohydrates: 45g",
+        "Fat: 15g"
+      ]
+    }
+
+    Extract the information from this webpage content and return it as a valid JSON object:
+    ${pageText.substring(0, 8000)} // Limit content length for token constraints
+
+    If any information is missing from the webpage, make a reasonable estimate based on similar recipes. Ensure all fields are present in the JSON response.`;
+
+    const completion = await openai.chat.completions.create({
+      model: "gpt-4o",
+      messages: [
+        {
+          role: "system",
+          content:
+            "You are a recipe extraction expert. Extract recipe details from webpage content and format them as a JSON object following the specified structure exactly.",
+        },
+        { role: "user", content: prompt },
+      ],
+      max_tokens: 1000,
+      temperature: 0.3,
+      response_format: { type: "json_object" },
+    });
+
+    const recipe = JSON.parse(completion.choices[0].message.content);
+
+    res.json({ recipe });
+  } catch (error) {
+    console.error("Error scraping recipe:", error);
+    res.status(500).json({
+      message: "Error extracting recipe information",
+      error: error.message,
+    });
+  }
+});
+
+router.post("/ocr-recipe", authMiddleware, async (req, res) => {
+  try {
+    const { imageData } = req.body;
+
+    const completion = await openai.chat.completions.create({
+      model: "gpt-4o",
+      messages: [
+        {
+          role: "system",
+          content:
+            "You are a recipe extraction expert that converts recipe images into structured JSON data.",
+        },
+        {
+          role: "user",
+          content: [
+            {
+              type: "text",
+              text: "Extract the complete recipe from this image and return it as a JSON object with this exact structure: title, prepTime, cookTime, servings, ingredients (array), instructions (array), and nutritionalInfo (array). If any information is not visible, make reasonable estimates based on similar recipes. Format instructions with section headers using ** prefix (e.g., **Preparation:**).",
+            },
+            {
+              type: "image_url",
+              image_url: {
+                url: imageData,
+              },
+            },
+          ],
+        },
+      ],
+      max_tokens: 1500,
+      temperature: 0.3,
+      response_format: { type: "json_object" },
+    });
+
+    const recipe = JSON.parse(completion.choices[0].message.content);
+    res.json({ recipe });
+  } catch (error) {
+    console.error("Error processing image:", error);
+    res.status(500).json({
+      message: "Error extracting recipe from image",
       error: error.message,
     });
   }

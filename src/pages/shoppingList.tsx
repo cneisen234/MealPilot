@@ -1,0 +1,300 @@
+import React, { useState, useEffect, useRef } from "react";
+import {
+  FaPlus,
+  FaPencilAlt,
+  FaTrash,
+  FaTags,
+  FaReceipt,
+} from "react-icons/fa";
+import AnimatedTechIcon from "../components/common/AnimatedTechIcon";
+import ConfirmationModal from "../components/common/ConfirmationModal";
+import ShoppingListForm from "../components/shoppingList/shoppingListForm";
+import {
+  getShoppingList,
+  addShoppingListItem,
+  updateShoppingListItem,
+  deleteShoppingListItem,
+  moveToInventory,
+  addRecieptItemsToInventory,
+  processReceipt,
+} from "../utils/api";
+import "../styles/inventory.css";
+import ReceiptMatchesModal from "../components/shoppingList/ReceiptMatchesModal";
+
+interface Recipe {
+  id: number;
+  title: string;
+}
+
+interface ShoppingListItem {
+  id: number;
+  item_name: string;
+  quantity: number;
+  unit: string;
+  created_at: string;
+  updated_at: string;
+  tagged_recipes: Recipe[];
+}
+
+interface ShoppingListFormData {
+  item_name: string;
+  quantity: number;
+  unit: string;
+  recipe_ids: number[];
+}
+
+const ShoppingList: React.FC = () => {
+  const [items, setItems] = useState<ShoppingListItem[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [isFormOpen, setIsFormOpen] = useState(false);
+  const [editingItem, setEditingItem] = useState<ShoppingListItem | null>(null);
+  const [deleteItem, setDeleteItem] = useState<ShoppingListItem | null>(null);
+  const [isUploadingReceipt, setIsUploadingReceipt] = useState(false);
+  const [receiptMatches, setReceiptMatches] = useState<any[] | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [error, setError] = useState("");
+
+  useEffect(() => {
+    loadShoppingList();
+  }, []);
+
+  const loadShoppingList = async () => {
+    try {
+      const response = await getShoppingList();
+      setItems(response.data);
+    } catch (error) {
+      setError("Failed to load shopping list items");
+      console.error("Error loading shopping list:", error);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleReceiptUpload = async (
+    e: React.ChangeEvent<HTMLInputElement>
+  ) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    if (file.size > 5 * 1024 * 1024) {
+      setError("Receipt image must be less than 5MB");
+      return;
+    }
+
+    const reader = new FileReader();
+    reader.onload = async (event) => {
+      try {
+        setIsUploadingReceipt(true);
+        const response = await processReceipt(event.target?.result as string);
+        if (response.data.matches.length === 0) {
+          setError("No matching items found on receipt");
+        } else {
+          setReceiptMatches(response.data.matches);
+        }
+      } catch (error) {
+        setError("Failed to process receipt. Please try again.");
+        console.error("Error processing receipt:", error);
+      } finally {
+        setIsUploadingReceipt(false);
+        if (fileInputRef.current) {
+          fileInputRef.current.value = "";
+        }
+      }
+    };
+
+    reader.readAsDataURL(file);
+  };
+
+  const handleAddItem = async (formData: ShoppingListFormData) => {
+    try {
+      const response = await addShoppingListItem(formData);
+      setItems((prev) => [response.data, ...prev]);
+      setIsFormOpen(false);
+    } catch (error) {
+      if (error instanceof Error) {
+        setError(error.message);
+      } else {
+        setError("Failed to add item");
+      }
+      console.error("Error adding item:", error);
+    }
+  };
+
+  const handleAddToInventoryFromReciept = async (selectedItems: any[]) => {
+    try {
+      await addRecieptItemsToInventory(selectedItems);
+      // Refresh shopping list after adding to inventory
+      await loadShoppingList();
+    } catch (error) {
+      setError("Failed to add items to inventory");
+      console.error("Error adding to inventory:", error);
+    }
+  };
+
+  const handleUpdateItem = async (formData: ShoppingListFormData) => {
+    if (!editingItem) return;
+    try {
+      const response = await updateShoppingListItem(editingItem.id, formData);
+      setItems((prev) =>
+        prev.map((item) =>
+          item.id === response.data.id ? response.data : item
+        )
+      );
+      setEditingItem(null);
+    } catch (error) {
+      setError("Failed to update item");
+      console.error("Error updating item:", error);
+    }
+  };
+
+  const handleDeleteItem = async () => {
+    if (!deleteItem) return;
+    try {
+      await deleteShoppingListItem(deleteItem.id);
+      setItems((prev) => prev.filter((item) => item.id !== deleteItem.id));
+      setDeleteItem(null);
+    } catch (error) {
+      setError("Failed to delete item");
+      console.error("Error deleting item:", error);
+    }
+  };
+
+  const handleMoveToInventory = async (
+    itemId: number,
+    expirationDate: string
+  ) => {
+    try {
+      await moveToInventory(itemId, expirationDate);
+      setItems((prev) => prev.filter((item) => item.id !== itemId));
+      setEditingItem(null);
+    } catch (error) {
+      setError("Failed to move item to inventory");
+      console.error("Error moving item to inventory:", error);
+    }
+  };
+
+  if (isLoading) {
+    return (
+      <div className="loading-container">
+        <AnimatedTechIcon size={100} speed={4} />
+      </div>
+    );
+  }
+
+  return (
+    <div className="inventory-container">
+      <div className="inventory-header">
+        <h1>Shopping List</h1>
+        <div
+          style={{
+            display: "flex",
+            justifyContent: "flex-end",
+          }}>
+          <input
+            type="file"
+            ref={fileInputRef}
+            onChange={handleReceiptUpload}
+            accept="image/*"
+            className="hidden"
+          />
+          <button
+            onClick={() => fileInputRef.current?.click()}
+            className="scan-receipt-button"
+            disabled={isUploadingReceipt}>
+            {isUploadingReceipt ? (
+              <div className="flex items-center gap-2">
+                <AnimatedTechIcon size={20} speed={4} />
+                <span>Processing Receipt...</span>
+              </div>
+            ) : (
+              <>
+                <FaReceipt />
+                <span>Upload Receipt</span>
+              </>
+            )}
+          </button>
+          <button
+            onClick={() => setIsFormOpen(true)}
+            className="add-item-button-list">
+            <FaPlus /> Add Item
+          </button>
+        </div>
+      </div>
+
+      {error && <div className="error-message">{error}</div>}
+
+      <div className="list-grid">
+        {items.map((item) => (
+          <div key={item.id} className="list-card">
+            <div className="card-header">
+              <h3 className="card-title">{item.item_name}</h3>
+              <div className="card-actions">
+                <button
+                  onClick={() => setEditingItem(item)}
+                  className="card-button edit"
+                  title="Edit item">
+                  <FaPencilAlt />
+                </button>
+                <button
+                  onClick={() => setDeleteItem(item)}
+                  className="card-button delete"
+                  title="Delete item">
+                  <FaTrash />
+                </button>
+              </div>
+            </div>
+
+            <div className="card-content">
+              <div className="quantity-info">
+                {item.quantity} {item.unit}
+              </div>
+
+              {item.tagged_recipes.length > 0 &&
+                item.tagged_recipes[0].id !== null && (
+                  <div className="recipe-tags">
+                    <div className="tagged-recipes-header">
+                      <FaTags /> For recipes:
+                    </div>
+                    {item.tagged_recipes.map((recipe) => (
+                      <div key={recipe.id} className="recipe-tag">
+                        {recipe.title}
+                      </div>
+                    ))}
+                  </div>
+                )}
+            </div>
+          </div>
+        ))}
+      </div>
+
+      {(isFormOpen || editingItem) && (
+        <ShoppingListForm
+          item={editingItem}
+          onSubmit={editingItem ? handleUpdateItem : handleAddItem}
+          onClose={() => {
+            setIsFormOpen(false);
+            setEditingItem(null);
+          }}
+          onMoveToInventory={handleMoveToInventory}
+        />
+      )}
+
+      {deleteItem && (
+        <ConfirmationModal
+          message={`Are you sure you want to delete "${deleteItem.item_name}"?`}
+          onConfirm={handleDeleteItem}
+          onClose={() => setDeleteItem(null)}
+        />
+      )}
+      {receiptMatches && (
+        <ReceiptMatchesModal
+          matches={receiptMatches}
+          onClose={() => setReceiptMatches(null)}
+          onAddToInventory={handleAddToInventoryFromReciept}
+        />
+      )}
+    </div>
+  );
+};
+
+export default ShoppingList;

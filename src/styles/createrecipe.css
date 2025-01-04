@@ -100,3 +100,187 @@
     color: white;
     transform: translateY(-2px);
 }
+
+.url-import-container {
+    margin-bottom: 30px;
+}
+
+.toggle-import-button {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    background: none;
+    border: none;
+    color: var(--primary-color);
+    font-weight: 600;
+    cursor: pointer;
+    padding: 8px;
+    border-radius: 6px;
+    transition: all 0.3s ease;
+}
+
+.toggle-import-button:hover {
+    background-color: rgba(5, 71, 42, 0.05);
+}
+
+.url-import-form {
+    margin-bottom: 30px;
+    background-color: rgba(5, 71, 42, 0.05);
+    padding: 20px;
+    border-radius: 12px;
+}
+
+.url-input-wrapper {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    background-color: white;
+    padding: 12px;
+    border-radius: 8px;
+    border: 2px solid transparent;
+    transition: all 0.3s ease;
+}
+
+.url-input-wrapper:focus-within {
+    border-color: var(--primary-color);
+    box-shadow: 0 0 0 3px rgba(5, 71, 42, 0.1);
+}
+
+.url-icon {
+    color: var(--secondary-color);
+    font-size: 1.2rem;
+}
+
+.url-input {
+    flex: 1;
+    border: none;
+    outline: none;
+    font-size: 1rem;
+    padding: 0;
+    background: transparent;
+}
+
+.url-input:disabled {
+    opacity: 0.7;
+    cursor: not-allowed;
+}
+
+.import-button {
+    background-color: var(--primary-color);
+    color: white;
+    border: none;
+    padding: 8px 16px;
+    border-radius: 6px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.import-button:hover:not(:disabled) {
+    opacity: 0.9;
+    transform: scale(1.05);
+}
+
+.import-button:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+.recipe-import-container {
+    margin-bottom: 30px;
+}
+
+.import-method-toggle {
+    display: flex;
+    gap: 10px;
+}
+
+.import-form {
+    margin-top: 12px;
+    background-color: rgba(5, 71, 42, 0.05);
+    padding: 20px;
+    border-radius: 12px;
+    animation: slideDown 0.3s ease;
+}
+
+.hidden {
+    display: none;
+}
+
+.image-input-section {
+    animation: fadeIn 0.3s ease;
+}
+
+.image-upload-button {
+    width: 100%;
+    padding: 40px 20px;
+    border: 2px dashed var(--primary-color);
+    border-radius: 12px;
+    background: none;
+    cursor: pointer;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 12px;
+    color: var(--primary-color);
+    transition: all 0.3s ease;
+}
+
+.image-upload-button:hover:not(:disabled) {
+    background-color: rgba(5, 71, 42, 0.05);
+}
+
+.image-upload-button:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+.upload-hint {
+    font-size: 0.8rem;
+    opacity: 0.7;
+}
+
+.selected-image-container {
+    position: relative;
+    width: 100%;
+    border-radius: 12px;
+    overflow: hidden;
+}
+
+.selected-image {
+    width: 100%;
+    height: auto;
+    display: block;
+}
+
+.loading-overlay {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(255, 255, 255, 0.9);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 12px;
+}
+
+.loading-overlay p {
+    color: var(--primary-color);
+    font-weight: 600;
+}
+
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+    }
+
+    to {
+        opacity: 1;
+    }
+}

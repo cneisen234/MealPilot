@@ -25,6 +25,7 @@ import RecipeDetail from "./components/myrecipes/RecipeDetail";
 import CreateRecipe from "./components/myrecipes/CreateRecipe";
 import MealPlan from "./pages/MealPlan";
 import Inventory from "./pages/Inventory";
+import ShoppingList from "./pages/shoppingList";
 
 const AppContent: React.FC = () => {
   const { isAuthenticated, checkAuthStatus } = useAuth();
@@ -88,6 +89,10 @@ const AppContent: React.FC = () => {
             <Route
               path="/inventory"
               element={<PrivateRoute element={<Inventory />} />}
+            />
+            <Route
+              path="/shopping-list"
+              element={<PrivateRoute element={<ShoppingList />} />}
             />
             <Route path="/coming-soon" element={<ComingSoon />} />
           </Routes>

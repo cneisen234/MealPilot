@@ -171,6 +171,14 @@ export const deleteRecipe = (id: string) => {
   return api.delete(`/recipe/myrecipes/${id}`);
 };
 
+export const scrapeRecipe = (url: string) => {
+  return api.post('/recipe/scrape-recipe', { url });
+};
+
+export const extractRecipeFromImage = (imageData: string) => {
+  return api.post('/recipe/ocr-recipe', { imageData });
+};
+
 export const getCurrentMealPlan = () => {
   return api.get('/mealplan/current');
 };
@@ -207,6 +215,63 @@ export const updateInventoryItem = (
 
 export const deleteInventoryItem = (id: number) => {
   return api.delete(`/inventory/${id}`);
+};
+
+export interface ShoppingListItem {
+  id: number;
+  item_name: string;
+  quantity: number;
+  unit: string;
+  tagged_recipes: Array<{
+    id: number;
+    title: string;
+  }>;
+}
+
+export const getShoppingList = () => {
+  return api.get('/shopping-list');
+};
+
+export const addShoppingListItem = (itemData: {
+  item_name: string;
+  quantity: number;
+  unit: string;
+  recipe_ids?: number[];
+}) => {
+  return api.post('/shopping-list', itemData);
+};
+
+export const updateShoppingListItem = (
+  id: number,
+  itemData: {
+    item_name: string;
+    quantity: number;
+    unit: string;
+    recipe_ids?: number[];
+  }
+) => {
+  return api.put(`/shopping-list/${id}`, itemData);
+};
+
+export const deleteShoppingListItem = (id: number) => {
+  return api.delete(`/shopping-list/${id}`);
+};
+
+export const moveToInventory = (id: number, expiration_date: string) => {
+  return api.post(`/shopping-list/${id}/move-to-inventory`, { expiration_date });
+};
+
+export const processReceipt = (imageData: string) => {
+  return api.post('/shopping-list/process-receipt', { imageData });
+};
+
+export const addRecieptItemsToInventory = (items: Array<{
+  shopping_list_id: number;
+  shopping_list_item: string;
+  quantity: number;
+  unit: string;
+}>) => {
+  return api.post('/shopping-list/add-from-reciept', { items });
 };
 
 export default api;
