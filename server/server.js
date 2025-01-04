@@ -9,6 +9,7 @@ const recipeRoutes = require("./routes/recipeRoutes");
 const mealPlanRoutes = require("./routes/mealPlanRoutes");
 const inventoryRoutes = require("./routes/inventoryRoutes");
 const shoppingListRoutes = require("./routes/shoppingListRoutes");
+const sharedListRoutes = require("./routes/sharedListRoutes");
 const preferenceRoutes = require("./routes/preferenceRoutes");
 const path = require("path");
 
@@ -43,6 +44,7 @@ app.use("/api/recipe", recipeRoutes);
 app.use("/api/mealplan", mealPlanRoutes);
 app.use("/api/inventory", inventoryRoutes);
 app.use("/api/shopping-list", shoppingListRoutes);
+app.use("/api/shared-list", sharedListRoutes);
 app.use("/api/preference", preferenceRoutes);
 
 app.get("*", (req, res) => {

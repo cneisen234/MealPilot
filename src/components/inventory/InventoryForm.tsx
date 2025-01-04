@@ -84,13 +84,6 @@ const InventoryForm: React.FC<InventoryFormProps> = ({
       setQuantityError("");
     }
 
-    if (!expirationDate) {
-      setExpirationDateError("Expiration date is required");
-      isValid = false;
-    } else {
-      setExpirationDateError("");
-    }
-
     return isValid;
   };
 
@@ -114,9 +107,9 @@ const InventoryForm: React.FC<InventoryFormProps> = ({
   return (
     <div className="modal-overlay">
       <div className="modal-content">
-        <div className="modal-header">
+        <div className="modal-header-form">
           <h2>{item ? "Edit Item" : "Add New Item"}</h2>
-          <button onClick={onClose} className="close-button">
+          <button onClick={onClose} className="modal-close-btn">
             <FaTimes />
           </button>
         </div>

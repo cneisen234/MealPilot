@@ -265,13 +265,22 @@ export const processReceipt = (imageData: string) => {
   return api.post('/shopping-list/process-receipt', { imageData });
 };
 
-export const addRecieptItemsToInventory = (items: Array<{
+export const addMultiItemsToInventory = (items: Array<{
   shopping_list_id: number;
   shopping_list_item: string;
   quantity: number;
   unit: string;
 }>) => {
-  return api.post('/shopping-list/add-from-reciept', { items });
+  return api.post('/shopping-list/bulk-add', { items });
+};
+
+export const createSharedList = (items: any[], shareId: string) => {
+  return api.post(`/shared-list/create/${shareId}`, { items });
+};
+
+// Get a shared list by ID
+export const getSharedList = (shareId: string) => {
+  return api.get(`/shared-list/get/${shareId}`);
 };
 
 export default api;

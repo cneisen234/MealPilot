@@ -22,7 +22,12 @@ router.get("/", authMiddleware, async (req, res) => {
 router.post("/", authMiddleware, async (req, res) => {
   try {
     const userId = req.user.id;
-    const { item_name, quantity, unit, expiration_date } = req.body;
+    const { item_name, quantity, unit } = req.body;
+    let expiration_date = req.body.expiration_date;
+
+    if (expiration_date === "") {
+      expiration_date = null;
+    }
 
     if (!item_name || quantity === undefined) {
       return res
@@ -49,7 +54,12 @@ router.put("/:id", authMiddleware, async (req, res) => {
   try {
     const userId = req.user.id;
     const itemId = req.params.id;
-    const { item_name, quantity, unit, expiration_date } = req.body;
+    const { item_name, quantity, unit } = req.body;
+    let expiration_date = req.body.expiration_date;
+
+    if (expiration_date === "") {
+      expiration_date = null;
+    }
 
     if (!item_name || quantity === undefined) {
       return res

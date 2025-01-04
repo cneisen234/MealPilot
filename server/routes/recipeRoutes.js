@@ -238,22 +238,152 @@ router.get("/myrecipes/:id", authMiddleware, async (req, res) => {
     const userId = req.user.id;
     const recipeId = req.params.id;
 
-    const result = await pool.query(
-      `SELECT * FROM recipes 
-       WHERE id = $1 AND user_id = $2`,
-      [recipeId, userId]
-    );
+    // Get recipe, inventory, and shopping list data in parallel
+    const [recipeResult, inventoryResult, shoppingListResult] =
+      await Promise.all([
+        pool.query("SELECT * FROM recipes WHERE id = $1 AND user_id = $2", [
+          recipeId,
+          userId,
+        ]),
+        pool.query("SELECT * FROM inventory WHERE user_id = $1", [userId]),
+        pool.query("SELECT * FROM shopping_list WHERE user_id = $1", [userId]),
+      ]);
 
-    if (result.rows.length === 0) {
+    if (recipeResult.rows.length === 0) {
       return res.status(404).json({ message: "Recipe not found" });
     }
 
-    res.json(result.rows[0]);
+    const recipe = recipeResult.rows[0];
+    const inventory = inventoryResult.rows;
+    const shoppingList = shoppingListResult.rows;
+
+    // Prepare the data for AI analysis
+    const analysisPrompt = `Analyze these recipe ingredients and provide the analysis as a JSON response. Compare them with available inventory and shopping list items. 
+
+IMPORTANT PARSING RULES:
+- Handle mixed fractions (e.g., "1 1/2" should be parsed as 1.5)
+- Handle simple fractions (e.g., "1/2" should be parsed as 0.5)
+- Handle decimal numbers (e.g., "1.5")
+- Convert all fractions to decimal numbers for accurate comparison
+- Examples:
+  * "1 1/2 cups flour" -> quantity: 1.5
+  * "1/2 cup sugar" -> quantity: 0.5
+  * "2 1/4 cups milk" -> quantity: 2.25
+
+Recipe Ingredients:
+${recipe.ingredients.join("\n")}
+
+Current Inventory:
+${inventory
+  .map((item) => `${item.quantity} ${item.unit} of ${item.item_name}`)
+  .join("\n")}
+
+Shopping List:
+${shoppingList
+  .map((item) => `${item.quantity} ${item.unit} of ${item.item_name}`)
+  .join("\n")}
+
+Analyze each ingredient and return a JSON array where each object has this exact structure:
+[
+  {
+    "original": "original ingredient text",
+    "parsed": {
+      "quantity": number, // MUST be decimal, convert any fractions
+      "unit": "string",
+      "name": "string"
+    },
+    "status": {
+      "type": "in-inventory" | "in-shopping-list" | "missing" | "unparseable",
+      "hasEnough": boolean,
+      "available": {
+        "quantity": number,
+        "unit": "string",
+        "id": number
+      } | null,
+      "notes": "string explaining the match or mismatch"
+    }
+  }
+]
+
+Make sure to:
+1. Convert any fractions in the quantity to decimal numbers
+2. Check for exact or suitable matches with inventory items
+3. If not in inventory, check for matches in shopping list
+4. Include quantity analysis
+5. Consider ingredient relationships (e.g., "fresh lemon" is not equivalent to "lemon juice")
+6. MAKE ABSOLUTELY SURE THAT YOU ARE CONFIDENT, DONT MIX UP NAMES [example: "cream cheese" is not the same thing as "cheese"]. IF YOU LACK CONFIDENCE, VEER ON THE SIDE OF CAUTION AND DEFAULT TO SETTING "hasEnough" to false.
+7. Return the response as a valid JSON array`;
+
+    const completion = await openai.chat.completions.create({
+      model: "gpt-4o",
+      messages: [
+        {
+          role: "system",
+          content:
+            "You are an expert chef and ingredient analyst. For each recipe ingredient provided, you will analyze it and return an entry in a JSON array. Make sure to analyze ALL ingredients provided, not just one.",
+        },
+        {
+          role: "user",
+          content: `Analyze all of these recipe ingredients and return an array of analyses in JSON format:
+
+${analysisPrompt}
+
+Return each ingredient analysis as an array entry. Your response MUST include analysis for ALL provided ingredients, not just one.
+
+For example, if given:
+2 cups flour
+1/2 cup sugar
+3 eggs
+
+Your response should look like:
+[
+  {
+    "original": "2 cups flour",
+    ...analysis for flour...
+  },
+  {
+    "original": "1/2 cup sugar",
+    ...analysis for sugar...
+  },
+  {
+    "original": "3 eggs",
+    ...analysis for eggs...
+  }
+]`,
+        },
+      ],
+      max_tokens: 1500,
+      temperature: 0.2,
+    });
+
+    const cleanGPTResponse = (response) => {
+      // Remove markdown code blocks
+      const jsonContent = response.replace(/```json\n|\n```/g, "");
+
+      // Try to parse the cleaned content
+      try {
+        return JSON.parse(jsonContent);
+      } catch (e) {
+        console.error("Error parsing cleaned response:", e);
+        throw e;
+      }
+    };
+
+    // In your route handler:
+    const content = completion.choices[0].message.content;
+    const ingredients = cleanGPTResponse(content);
+
+    // Return recipe with AI-analyzed ingredients
+    res.json({
+      ...recipe,
+      ingredients,
+    });
   } catch (error) {
-    console.error("Error fetching recipe:", error);
-    res
-      .status(500)
-      .json({ error: "An error occurred while fetching the recipe" });
+    console.error("Error analyzing recipe:", error);
+    res.status(500).json({
+      error: "An error occurred while analyzing the recipe",
+      details: error.message,
+    });
   }
 });
 

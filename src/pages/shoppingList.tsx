@@ -5,6 +5,7 @@ import {
   FaTrash,
   FaTags,
   FaReceipt,
+  FaShare,
 } from "react-icons/fa";
 import AnimatedTechIcon from "../components/common/AnimatedTechIcon";
 import ConfirmationModal from "../components/common/ConfirmationModal";
@@ -15,11 +16,12 @@ import {
   updateShoppingListItem,
   deleteShoppingListItem,
   moveToInventory,
-  addRecieptItemsToInventory,
+  addMultiItemsToInventory,
   processReceipt,
 } from "../utils/api";
 import "../styles/inventory.css";
 import ReceiptMatchesModal from "../components/shoppingList/ReceiptMatchesModal";
+import ShareableListModal from "../components/shoppingList/SharableListModal";
 
 interface Recipe {
   id: number;
@@ -34,6 +36,7 @@ interface ShoppingListItem {
   created_at: string;
   updated_at: string;
   tagged_recipes: Recipe[];
+  isSelected?: boolean;
 }
 
 interface ShoppingListFormData {
@@ -51,12 +54,34 @@ const ShoppingList: React.FC = () => {
   const [deleteItem, setDeleteItem] = useState<ShoppingListItem | null>(null);
   const [isUploadingReceipt, setIsUploadingReceipt] = useState(false);
   const [receiptMatches, setReceiptMatches] = useState<any[] | null>(null);
+  const [selectedItems, setSelectedItems] = useState<Set<number>>(new Set());
+  const [isShareModalOpen, setIsShareModalOpen] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [error, setError] = useState("");
 
   useEffect(() => {
     loadShoppingList();
   }, []);
+
+  useEffect(() => {
+    if (items.length > 0) {
+      setSelectedItems(new Set(items.map((item) => item.id)));
+    }
+  }, [items]);
+
+  const handleToggleSelect = (itemId: number) => {
+    const newSelectedItems = new Set(selectedItems);
+    if (newSelectedItems.has(itemId)) {
+      newSelectedItems.delete(itemId);
+    } else {
+      newSelectedItems.add(itemId);
+    }
+    setSelectedItems(newSelectedItems);
+  };
+
+  const handleShareList = () => {
+    setIsShareModalOpen(true);
+  };
 
   const loadShoppingList = async () => {
     try {
@@ -120,9 +145,9 @@ const ShoppingList: React.FC = () => {
     }
   };
 
-  const handleAddToInventoryFromReciept = async (selectedItems: any[]) => {
+  const handleMultiAddToInventory = async (multiItems: any[]) => {
     try {
-      await addRecieptItemsToInventory(selectedItems);
+      await addMultiItemsToInventory(multiItems);
       // Refresh shopping list after adding to inventory
       await loadShoppingList();
     } catch (error) {
@@ -185,11 +210,7 @@ const ShoppingList: React.FC = () => {
     <div className="inventory-container">
       <div className="inventory-header">
         <h1>Shopping List</h1>
-        <div
-          style={{
-            display: "flex",
-            justifyContent: "flex-end",
-          }}>
+        <div className="multi-button-list">
           <input
             type="file"
             ref={fileInputRef}
@@ -215,8 +236,15 @@ const ShoppingList: React.FC = () => {
           </button>
           <button
             onClick={() => setIsFormOpen(true)}
-            className="add-item-button-list">
+            className="scan-receipt-button"
+            style={{ backgroundColor: "var(--primary-color)" }}>
             <FaPlus /> Add Item
+          </button>
+          <button
+            onClick={handleShareList}
+            className="scan-receipt-button"
+            style={{ backgroundColor: "var(--primary-color)" }}>
+            <FaShare /> Share List
           </button>
         </div>
       </div>
@@ -227,7 +255,17 @@ const ShoppingList: React.FC = () => {
         {items.map((item) => (
           <div key={item.id} className="list-card">
             <div className="card-header">
-              <h3 className="card-title">{item.item_name}</h3>
+              <div className="card-header-content">
+                <div className="checkbox-container">
+                  <input
+                    type="checkbox"
+                    checked={selectedItems.has(item.id)}
+                    onChange={() => handleToggleSelect(item.id)}
+                    className="item-checkbox"
+                  />
+                  <h3 className="card-title">{item.item_name}</h3>
+                </div>
+              </div>
               <div className="card-actions">
                 <button
                   onClick={() => setEditingItem(item)}
@@ -290,9 +328,19 @@ const ShoppingList: React.FC = () => {
         <ReceiptMatchesModal
           matches={receiptMatches}
           onClose={() => setReceiptMatches(null)}
-          onAddToInventory={handleAddToInventoryFromReciept}
+          onAddToInventory={handleMultiAddToInventory}
         />
       )}
+
+      <ShareableListModal
+        isOpen={isShareModalOpen}
+        onClose={() => setIsShareModalOpen(false)}
+        items={items.map((item) => ({
+          ...item,
+          isSelected: selectedItems.has(item.id),
+        }))}
+        onMoveToInventory={handleMultiAddToInventory}
+      />
     </div>
   );
 };

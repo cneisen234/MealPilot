@@ -4,7 +4,6 @@ import {
   Routes,
   Route,
   Navigate,
-  useLocation,
 } from "react-router-dom";
 import Home from "./pages/Home";
 import Login from "./pages/Login";
@@ -26,6 +25,7 @@ import CreateRecipe from "./components/myrecipes/CreateRecipe";
 import MealPlan from "./pages/MealPlan";
 import Inventory from "./pages/Inventory";
 import ShoppingList from "./pages/shoppingList";
+import ShareableListPage from "./components/shoppingList/SharableListPage";
 
 const AppContent: React.FC = () => {
   const { isAuthenticated, checkAuthStatus } = useAuth();
@@ -95,6 +95,10 @@ const AppContent: React.FC = () => {
               element={<PrivateRoute element={<ShoppingList />} />}
             />
             <Route path="/coming-soon" element={<ComingSoon />} />
+            <Route
+              path="/share/shopping-list/:id"
+              element={<ShareableListPage />}
+            />
           </Routes>
         </main>
       </div>

@@ -51,7 +51,7 @@ CREATE TABLE recipes
         id SERIAL PRIMARY KEY,
         user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
         item_name VARCHAR(255) NOT NULL,
-        quantity INTEGER NOT NULL,
+        quantity DECIMAL NOT NULL,
         unit VARCHAR(50),
         created_at TIMESTAMP DEFAULT NOW(),
         updated_at TIMESTAMP DEFAULT NOW(),
@@ -63,7 +63,7 @@ CREATE TABLE recipes
         id SERIAL PRIMARY KEY,
         user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
         item_name VARCHAR(255) NOT NULL,
-        quantity INTEGER NOT NULL,
+        quantity DECIMAL NOT NULL,
         unit VARCHAR(50),
         created_at TIMESTAMP DEFAULT NOW(),
         updated_at TIMESTAMP DEFAULT NOW()
@@ -76,3 +76,15 @@ CREATE TABLE recipes
         recipe_id INTEGER REFERENCES recipes(id) ON DELETE CASCADE,
         UNIQUE(shopping_list_item_id, recipe_id)
     );
+
+    CREATE TABLE shared_lists
+    (
+        share_id VARCHAR(255) PRIMARY KEY,
+        items JSONB
+        [] NOT NULL,
+        created_at TIMESTAMP DEFAULT NOW
+        (),
+        expires_at TIMESTAMP NOT NULL
+    );
+
+        CREATE INDEX idx_shared_lists_expires_at ON shared_lists(expires_at);

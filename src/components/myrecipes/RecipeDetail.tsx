@@ -1,9 +1,44 @@
 import React, { useState, useEffect } from "react";
 import { useParams, useNavigate, useLocation } from "react-router-dom";
-import { getRecipe, updateRecipe, deleteRecipe } from "../../utils/api";
+import {
+  getRecipe,
+  updateRecipe,
+  deleteRecipe,
+  addShoppingListItem,
+  addInventoryItem,
+} from "../../utils/api";
 import AnimatedTechIcon from "../common/AnimatedTechIcon";
-import { FaEdit, FaTrash, FaTimes, FaSave } from "react-icons/fa";
+import {
+  FaEdit,
+  FaTrash,
+  FaTimes,
+  FaSave,
+  FaShoppingCart,
+  FaBoxOpen,
+  FaCheck,
+} from "react-icons/fa";
 import ConfirmDeleteModal from "../common/ConfirmDeleteModal";
+
+interface IngredientAnalysis {
+  original: string;
+  parsed?: {
+    quantity: number;
+    unit: string;
+    name: string;
+  };
+  status: {
+    type: "in-inventory" | "in-shopping-list" | "missing" | "unparseable";
+    hasEnough?: boolean;
+    available?: {
+      quantity: number;
+      unit: string;
+      id: number;
+    };
+    quantity?: number;
+    unit?: string;
+    id?: number;
+  };
+}
 
 interface Recipe {
   id: number;
@@ -11,7 +46,7 @@ interface Recipe {
   prep_time: string;
   cook_time: string;
   servings: string;
-  ingredients: string[];
+  ingredients: IngredientAnalysis[];
   instructions: string[];
   nutritional_info: string[];
 }
@@ -33,6 +68,8 @@ const RecipeDetail: React.FC = () => {
     loadRecipe();
   }, [id]);
 
+  console.log(recipe);
+
   const loadRecipe = async () => {
     if (!id) return;
 
@@ -44,6 +81,59 @@ const RecipeDetail: React.FC = () => {
       console.error("Error loading recipe:", error);
     } finally {
       setIsLoading(false);
+    }
+  };
+
+  const handleAddToShoppingList = async (
+    ingredient: IngredientAnalysis,
+    index: number
+  ) => {
+    if (!ingredient.parsed) return;
+
+    try {
+      await addShoppingListItem({
+        item_name: ingredient.parsed.name,
+        quantity: ingredient.parsed.quantity,
+        unit: ingredient.parsed.unit,
+        recipe_ids: recipe ? [recipe.id] : [],
+      });
+      let ingredients = recipe?.ingredients;
+      ingredient.status.type = "in-shopping-list";
+      //@ts-ignore
+      ingredients[index] = ingredient;
+      //@ts-ignore
+      const newRecipe = { ...recipe, ingredient: [...ingredients] };
+      //@ts-ignore
+      setRecipe(newRecipe);
+    } catch (error) {
+      console.error("Error adding to shopping list:", error);
+    }
+  };
+
+  const handleAddToInventory = async (
+    ingredient: IngredientAnalysis,
+    index: number
+  ) => {
+    if (!ingredient.parsed) return;
+
+    try {
+      await addInventoryItem({
+        item_name: ingredient.parsed.name,
+        quantity: ingredient.parsed.quantity,
+        unit: ingredient.parsed.unit,
+        expiration_date: "",
+      });
+
+      let ingredients = recipe?.ingredients;
+      ingredient.status.type = "in-inventory";
+      //@ts-ignore
+      ingredients[index] = ingredient;
+      //@ts-ignore
+      const newRecipe = { ...recipe, ingredient: [...ingredients] };
+      //@ts-ignore
+      setRecipe(newRecipe);
+    } catch (error) {
+      console.error("Error adding to inventory:", error);
     }
   };
 
@@ -98,28 +188,29 @@ const RecipeDetail: React.FC = () => {
 
     setEditedRecipe((prev) => ({
       ...prev!,
+      //@ts-ignore
       [field]: prev![field].filter((_, i) => i !== index),
     }));
   };
 
   const handleSave = async () => {
     if (!editedRecipe || !id) return;
-
+    const ingredentsTitle = editedRecipe.ingredients.map((i) => i.original);
     setIsSaving(true);
     try {
-      const response = await updateRecipe(id, {
+      await updateRecipe(id, {
         title: editedRecipe.title,
         prepTime: editedRecipe.prep_time,
         cookTime: editedRecipe.cook_time,
         servings: editedRecipe.servings,
-        ingredients: editedRecipe.ingredients.filter((item) => item.trim()),
+        //@ts-ignore
+        ingredients: ingredentsTitle.filter((item) => item.trim()),
         instructions: editedRecipe.instructions.filter((item) => item.trim()),
         nutritionalInfo: editedRecipe.nutritional_info.filter((item) =>
           item.trim()
         ),
       });
-
-      setRecipe(response.data);
+      await loadRecipe();
       setIsEditing(false);
     } catch (error) {
       console.error("Error updating recipe:", error);
@@ -155,7 +246,7 @@ const RecipeDetail: React.FC = () => {
     }
   };
 
-  if (isLoading) {
+  if (isLoading || isSaving) {
     return (
       <div className="loading-container">
         <AnimatedTechIcon size={100} speed={4} />
@@ -235,7 +326,7 @@ const RecipeDetail: React.FC = () => {
               <div key={index} className="array-input-row">
                 <input
                   type="text"
-                  value={ingredient}
+                  value={ingredient.original}
                   onChange={(e) =>
                     handleArrayInputChange(index, e.target.value, "ingredients")
                   }
@@ -252,7 +343,7 @@ const RecipeDetail: React.FC = () => {
             <button
               type="button"
               onClick={() => addArrayItem("ingredients")}
-              className="add-item-button-list">
+              className="add-item-button">
               Add Ingredient
             </button>
           </div>
@@ -360,9 +451,7 @@ const RecipeDetail: React.FC = () => {
           <FaTrash />
         </button>
       </div>
-
       <h1 className="recipe-title">{recipe.title}</h1>
-
       <div className="recipe-meta">
         {recipe.prep_time && (
           <div className="recipe-meta-item">
@@ -383,18 +472,39 @@ const RecipeDetail: React.FC = () => {
           </div>
         )}
       </div>
-
       <div className="recipe-section">
         <h2>Ingredients</h2>
         <ul className="recipe-list">
           {recipe.ingredients.map((ingredient, index) => (
             <li key={`ingredient-${index}`} className="recipe-list-item">
-              {ingredient}
+              <span className="ingredient-text">{ingredient.original}</span>
+              {ingredient.status.type === "in-inventory" && (
+                <div
+                  className={`ingredient-status ${
+                    ingredient.status.hasEnough ? "sufficient" : "insufficient"
+                  }`}>
+                  <FaCheck />
+                  <span>In Stock</span>
+                </div>
+              )}
+              {ingredient.status.type === "in-shopping-list" && (
+                <button
+                  onClick={() => handleAddToInventory(ingredient, index)}
+                  className="add-to-inventory-btn">
+                  + Inventory
+                </button>
+              )}
+              {ingredient.status.type === "missing" && ingredient.parsed && (
+                <button
+                  onClick={() => handleAddToShoppingList(ingredient, index)}
+                  className="add-to-shopping-btn">
+                  + Shopping List
+                </button>
+              )}
             </li>
           ))}
         </ul>
       </div>
-
       <div className="recipe-section">
         <h2>Instructions</h2>
         <div className="recipe-list">
@@ -420,7 +530,6 @@ const RecipeDetail: React.FC = () => {
           })}
         </div>
       </div>
-
       <div className="recipe-section">
         <h2>Nutritional Information</h2>
         <ul className="recipe-list nutrition-list">
