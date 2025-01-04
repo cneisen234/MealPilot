@@ -6,7 +6,6 @@ const openai = require("../openai");
 const axios = require("axios");
 const cheerio = require("cheerio");
 const cleanAIResponse = require("../cleanAiResponse");
-const { createWorker } = require("tesseract.js");
 
 router.post("/create-recipe", authMiddleware, async (req, res) => {
   try {
