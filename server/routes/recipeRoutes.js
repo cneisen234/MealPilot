@@ -238,6 +238,30 @@ router.get("/myrecipes/:id", authMiddleware, async (req, res) => {
     const userId = req.user.id;
     const recipeId = req.params.id;
 
+    const result = await pool.query(
+      `SELECT * FROM recipes 
+       WHERE id = $1 AND user_id = $2`,
+      [recipeId, userId]
+    );
+
+    if (result.rows.length === 0) {
+      return res.status(404).json({ message: "Recipe not found" });
+    }
+
+    res.json(result.rows[0]);
+  } catch (error) {
+    console.error("Error fetching recipe:", error);
+    res
+      .status(500)
+      .json({ error: "An error occurred while fetching the recipe" });
+  }
+});
+
+router.get("/myrecipesinventory/:id", authMiddleware, async (req, res) => {
+  try {
+    const userId = req.user.id;
+    const recipeId = req.params.id;
+
     // Get recipe, inventory, and shopping list data in parallel
     const [recipeResult, inventoryResult, shoppingListResult] =
       await Promise.all([
@@ -339,15 +363,21 @@ Your response should look like:
 [
   {
     "original": "2 cups flour",
-    ...analysis for flour...
-  },
-  {
-    "original": "1/2 cup sugar",
-    ...analysis for sugar...
-  },
-  {
-    "original": "3 eggs",
-    ...analysis for eggs...
+    "parsed": {
+      "quantity": 2,
+      "unit": "cups",
+      "name": "flour"
+    },
+    "status": {
+      "type": "in-shopping-list",
+      "hasEnough": true,
+      "available": {
+        "quantity": 2,
+        "unit": "cups",
+        "id": 123
+      },
+      "notes": "Found in shopping list"
+    }
   }
 ]`,
         },

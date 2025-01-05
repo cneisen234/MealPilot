@@ -2,10 +2,12 @@ import React, { useState, useEffect } from "react";
 import { useParams, useNavigate, useLocation } from "react-router-dom";
 import {
   getRecipe,
+  getRecipeInventory,
   updateRecipe,
   deleteRecipe,
   addShoppingListItem,
   addInventoryItem,
+  moveToInventoryByName,
 } from "../../utils/api";
 import AnimatedTechIcon from "../common/AnimatedTechIcon";
 import {
@@ -13,9 +15,8 @@ import {
   FaTrash,
   FaTimes,
   FaSave,
-  FaShoppingCart,
-  FaBoxOpen,
   FaCheck,
+  FaSync,
 } from "react-icons/fa";
 import ConfirmDeleteModal from "../common/ConfirmDeleteModal";
 
@@ -36,7 +37,7 @@ interface IngredientAnalysis {
     };
     quantity?: number;
     unit?: string;
-    id?: number;
+    shopping_id?: number;
   };
 }
 
@@ -54,6 +55,7 @@ interface Recipe {
 const RecipeDetail: React.FC = () => {
   const [recipe, setRecipe] = useState<Recipe | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [editedRecipe, setEditedRecipe] = useState<Recipe | null>(null);
@@ -64,23 +66,58 @@ const RecipeDetail: React.FC = () => {
   const fromMealPlan = routeLocation.state?.fromMealPlan;
   let currentStep = 1;
 
+  const createPlaceholderAnalysis = (
+    ingredient: string
+  ): IngredientAnalysis => ({
+    original: ingredient,
+    parsed: undefined,
+    status: {
+      type: "unparseable",
+      hasEnough: false,
+    },
+  });
+
   useEffect(() => {
     loadRecipe();
   }, [id]);
-
-  console.log(recipe);
 
   const loadRecipe = async () => {
     if (!id) return;
 
     try {
       const response = await getRecipe(id);
-      setRecipe(response.data);
-      setEditedRecipe(response.data);
+      // Transform the ingredients into the consistent format
+      const formattedRecipe = {
+        ...response.data,
+        ingredients: response.data.ingredients.map(
+          (ing: string | IngredientAnalysis) => {
+            if (typeof ing === "string") {
+              return createPlaceholderAnalysis(ing);
+            }
+            return ing;
+          }
+        ),
+      };
+      setRecipe(formattedRecipe);
+      setEditedRecipe(formattedRecipe);
     } catch (error) {
       console.error("Error loading recipe:", error);
     } finally {
       setIsLoading(false);
+    }
+  };
+
+  const handleAnalyzeIngredients = async () => {
+    if (!id || !recipe) return;
+
+    setIsAnalyzing(true);
+    try {
+      const response = await getRecipeInventory(id);
+      setRecipe(response.data);
+    } catch (error) {
+      console.error("Error analyzing ingredients:", error);
+    } finally {
+      setIsAnalyzing(false);
     }
   };
 
@@ -117,13 +154,21 @@ const RecipeDetail: React.FC = () => {
     if (!ingredient.parsed) return;
 
     try {
-      await addInventoryItem({
-        item_name: ingredient.parsed.name,
-        quantity: ingredient.parsed.quantity,
-        unit: ingredient.parsed.unit,
-        expiration_date: "",
-      });
-
+      if (
+        ingredient.status.type === "in-shopping-list" &&
+        ingredient.parsed.name
+      ) {
+        // If item is in shopping list, use moveToInventory
+        await moveToInventoryByName(ingredient.parsed.name, "");
+      } else {
+        // Otherwise just add to inventory
+        await addInventoryItem({
+          item_name: ingredient.parsed.name,
+          quantity: ingredient.parsed.quantity,
+          unit: ingredient.parsed.unit,
+          expiration_date: "",
+        });
+      }
       let ingredients = recipe?.ingredients;
       ingredient.status.type = "in-inventory";
       //@ts-ignore
@@ -133,7 +178,7 @@ const RecipeDetail: React.FC = () => {
       //@ts-ignore
       setRecipe(newRecipe);
     } catch (error) {
-      console.error("Error adding to inventory:", error);
+      console.error("Error managing inventory:", error);
     }
   };
 
@@ -145,6 +190,8 @@ const RecipeDetail: React.FC = () => {
     setEditedRecipe(recipe);
     setIsEditing(false);
   };
+
+  console.log(recipe);
 
   const handleBasicInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (!editedRecipe) return;
@@ -473,7 +520,16 @@ const RecipeDetail: React.FC = () => {
         )}
       </div>
       <div className="recipe-section">
-        <h2>Ingredients</h2>
+        <div>
+          <h2>Ingredients</h2>
+          <button
+            onClick={handleAnalyzeIngredients}
+            className="analyze-button"
+            disabled={isAnalyzing}>
+            {isAnalyzing && <AnimatedTechIcon size={20} speed={4} />}
+            {isAnalyzing ? "Analyzing..." : "Check Stock"}
+          </button>
+        </div>
         <ul className="recipe-list">
           {recipe.ingredients.map((ingredient, index) => (
             <li key={`ingredient-${index}`} className="recipe-list-item">

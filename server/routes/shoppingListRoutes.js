@@ -198,7 +198,11 @@ router.post("/:id/move-to-inventory", authMiddleware, async (req, res) => {
   try {
     const userId = req.user.id;
     const itemId = req.params.id;
-    const { expiration_date } = req.body;
+    let { expiration_date } = req.body;
+
+    if (expiration_date === "") {
+      expiration_date = null;
+    }
 
     await pool.query("BEGIN");
 
@@ -234,6 +238,57 @@ router.post("/:id/move-to-inventory", authMiddleware, async (req, res) => {
     res.status(500).json({ message: "Server error" });
   }
 });
+
+router.post(
+  "/:item_name/move-to-inventory-by-name",
+  authMiddleware,
+  async (req, res) => {
+    try {
+      const userId = req.user.id;
+      const item_name = req.params.item_name;
+      let { expiration_date } = req.body;
+
+      if (expiration_date === "") {
+        expiration_date = null;
+      }
+
+      await pool.query("BEGIN");
+
+      // Get shopping list item
+      const shoppingItem = await pool.query(
+        "SELECT * FROM shopping_list WHERE item_name = $1 AND user_id = $2",
+        [item_name, userId]
+      );
+
+      if (shoppingItem.rows.length === 0) {
+        await pool.query("ROLLBACK");
+        return res.status(404).json({ message: "Item not found" });
+      }
+
+      const item = shoppingItem.rows[0];
+
+      // Add to inventory
+      await pool.query(
+        `INSERT INTO inventory (user_id, item_name, quantity, unit, expiration_date) 
+       VALUES ($1, $2, $3, $4, $5)`,
+        [userId, item.item_name, item.quantity, item.unit, expiration_date]
+      );
+
+      // Delete from shopping list
+      await pool.query("DELETE FROM shopping_list WHERE item_name = $1", [
+        item_name,
+      ]);
+
+      await pool.query("COMMIT");
+
+      res.json({ message: "Item moved to inventory successfully" });
+    } catch (error) {
+      await pool.query("ROLLBACK");
+      console.error("Error moving item to inventory:", error);
+      res.status(500).json({ message: "Server error" });
+    }
+  }
+);
 
 // Add to shoppingListRoutes.js
 

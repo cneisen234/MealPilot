@@ -155,6 +155,10 @@ export const getRecipe = (id: string) => {
   return api.get(`/recipe/myrecipes/${id}`);
 };
 
+export const getRecipeInventory = (id: string) => {
+  return api.get(`/recipe/myrecipesinventory/${id}`);
+};
+
 export const updateRecipe = (id: string, recipeData: {
   title: string;
   prepTime: string;
@@ -259,6 +263,10 @@ export const deleteShoppingListItem = (id: number) => {
 
 export const moveToInventory = (id: number, expiration_date: string) => {
   return api.post(`/shopping-list/${id}/move-to-inventory`, { expiration_date });
+};
+
+export const moveToInventoryByName = (item_name: string, expiration_date: string) => {
+  return api.post(`/shopping-list/${item_name}/move-to-inventory-by-name`, { expiration_date });
 };
 
 export const processReceipt = (imageData: string) => {
