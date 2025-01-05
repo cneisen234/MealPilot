@@ -38,7 +38,7 @@ const COMMON_UNITS = [
   "kg",
   "gal",
   "quart",
-  "mililiter",
+  "milliliter",
   "liter",
   "cups",
   "tbsp",

@@ -2,6 +2,7 @@ const express = require("express");
 const router = express.Router();
 const authMiddleware = require("../middleware/auth");
 const pool = require("../db");
+const { convertToStandardUnit } = require("../utils/measurementUtils");
 
 // Get all inventory items for the logged-in user
 router.get("/", authMiddleware, async (req, res) => {
@@ -35,17 +36,25 @@ router.post("/", authMiddleware, async (req, res) => {
         .json({ message: "Item name and quantity are required" });
     }
 
+    const standardized = convertToStandardUnit(quantity, unit);
+
     const result = await pool.query(
       `INSERT INTO inventory (user_id, item_name, quantity, unit, expiration_date) 
        VALUES ($1, $2, $3, $4, $5) 
        RETURNING *`,
-      [userId, item_name.trim(), quantity, unit, expiration_date]
+      [
+        userId,
+        item_name.trim(),
+        standardized.value,
+        standardized.unit,
+        expiration_date,
+      ]
     );
 
     res.status(201).json(result.rows[0]);
   } catch (error) {
     console.error("Error adding inventory item:", error);
-    res.status(500).json({ message: "Server error" });
+    res.status(500).json({ message: "Server error", error: error.message });
   }
 });
 
@@ -57,7 +66,7 @@ router.put("/:id", authMiddleware, async (req, res) => {
     const { item_name, quantity, unit } = req.body;
     let expiration_date = req.body.expiration_date;
 
-    if (expiration_date === "") {
+    if (expiration_date === "" || expiration_date === "NaN-NaN-NaN") {
       expiration_date = null;
     }
 
@@ -67,6 +76,8 @@ router.put("/:id", authMiddleware, async (req, res) => {
         .json({ message: "Item name and quantity are required" });
     }
 
+    const standardized = convertToStandardUnit(quantity, unit);
+
     const result = await pool.query(
       `UPDATE inventory 
        SET item_name = $1, quantity = $2, unit = $3, expiration_date = $4, updated_at = NOW()
@@ -74,8 +85,8 @@ router.put("/:id", authMiddleware, async (req, res) => {
        RETURNING *`,
       [
         item_name.trim(),
-        Number(quantity),
-        unit,
+        standardized.value,
+        standardized.unit,
         expiration_date,
         itemId,
         userId,
@@ -89,7 +100,7 @@ router.put("/:id", authMiddleware, async (req, res) => {
     res.json(result.rows[0]);
   } catch (error) {
     console.error("Error updating inventory item:", error);
-    res.status(500).json({ message: "Server error" });
+    res.status(500).json({ message: "Server error", error: error.message });
   }
 });
 
