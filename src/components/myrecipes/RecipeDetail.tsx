@@ -10,15 +10,9 @@ import {
   moveToInventoryByName,
 } from "../../utils/api";
 import AnimatedTechIcon from "../common/AnimatedTechIcon";
-import {
-  FaEdit,
-  FaTrash,
-  FaTimes,
-  FaSave,
-  FaCheck,
-  FaSync,
-} from "react-icons/fa";
+import { FaEdit, FaTrash, FaTimes, FaSave, FaCheck } from "react-icons/fa";
 import ConfirmDeleteModal from "../common/ConfirmDeleteModal";
+import decimalHelper from "../../helpers/decimalHelper";
 
 interface IngredientAnalysis {
   original: string;
@@ -52,6 +46,25 @@ interface Recipe {
   nutritional_info: string[];
 }
 
+interface IngredientQuantities {
+  [key: number]: number;
+}
+
+const COMMON_UNITS = [
+  "units",
+  "grams",
+  "kilograms",
+  "gal",
+  "quart",
+  "milliliter",
+  "liters",
+  "cups",
+  "tbsp",
+  "tsp",
+  "oz",
+  "pounds",
+];
+
 const RecipeDetail: React.FC = () => {
   const [recipe, setRecipe] = useState<Recipe | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -64,7 +77,27 @@ const RecipeDetail: React.FC = () => {
   const navigate = useNavigate();
   const routeLocation = useLocation();
   const fromMealPlan = routeLocation.state?.fromMealPlan;
+  const [ingredientQuantities, setIngredientQuantities] =
+    useState<IngredientQuantities>({});
+  const [ingredientUnits, setIngredientUnits] = useState<{
+    [key: number]: string;
+  }>({});
   let currentStep = 1;
+
+  useEffect(() => {
+    if (recipe?.ingredients) {
+      const initialUnits = recipe.ingredients.reduce(
+        (acc, ingredient, index) => {
+          if (ingredient.parsed?.unit) {
+            acc[index] = ingredient.parsed.unit;
+          }
+          return acc;
+        },
+        {} as { [key: number]: string }
+      );
+      setIngredientUnits(initialUnits);
+    }
+  }, [recipe]);
 
   const createPlaceholderAnalysis = (
     ingredient: string
@@ -130,10 +163,11 @@ const RecipeDetail: React.FC = () => {
     try {
       await addShoppingListItem({
         item_name: ingredient.parsed.name,
-        quantity: ingredient.parsed.quantity,
-        unit: ingredient.parsed.unit,
+        quantity: ingredientQuantities[index] || ingredient.parsed.quantity,
+        unit: ingredientUnits[index] || ingredient.parsed.unit,
         recipe_ids: recipe ? [recipe.id] : [],
       });
+
       let ingredients = recipe?.ingredients;
       ingredient.status.type = "in-shopping-list";
       //@ts-ignore
@@ -158,14 +192,12 @@ const RecipeDetail: React.FC = () => {
         ingredient.status.type === "in-shopping-list" &&
         ingredient.parsed.name
       ) {
-        // If item is in shopping list, use moveToInventory
         await moveToInventoryByName(ingredient.parsed.name, "");
       } else {
-        // Otherwise just add to inventory
         await addInventoryItem({
           item_name: ingredient.parsed.name,
-          quantity: ingredient.parsed.quantity,
-          unit: ingredient.parsed.unit,
+          quantity: ingredientQuantities[index] || ingredient.parsed.quantity,
+          unit: ingredientUnits[index] || ingredient.parsed.unit,
           expiration_date: "",
         });
       }
@@ -533,30 +565,92 @@ const RecipeDetail: React.FC = () => {
         <ul className="recipe-list">
           {recipe.ingredients.map((ingredient, index) => (
             <li key={`ingredient-${index}`} className="recipe-list-item">
-              <span className="ingredient-text">{ingredient.original}</span>
-              {ingredient.status.type === "in-inventory" && (
-                <div
-                  className={`ingredient-status ${
-                    ingredient.status.hasEnough ? "sufficient" : "insufficient"
-                  }`}>
-                  <FaCheck />
-                  <span>In Stock</span>
-                </div>
-              )}
-              {ingredient.status.type === "in-shopping-list" && (
-                <button
-                  onClick={() => handleAddToInventory(ingredient, index)}
-                  className="add-to-inventory-btn">
-                  + Inventory
-                </button>
-              )}
-              {ingredient.status.type === "missing" && ingredient.parsed && (
-                <button
-                  onClick={() => handleAddToShoppingList(ingredient, index)}
-                  className="add-to-shopping-btn">
-                  + Shopping List
-                </button>
-              )}
+              <div className="ingredient-content">
+                <span className="ingredient-text">{ingredient.original}</span>
+                <br />
+                {ingredient.status.type === "in-inventory" && (
+                  <div
+                    className="ingredient-status-wrapper"
+                    style={{ width: 165 }}>
+                    <div
+                      className={`ingredient-status ${
+                        ingredient.status.hasEnough
+                          ? "sufficient"
+                          : "insufficient"
+                      }`}>
+                      <FaCheck />
+                      <span>In Stock</span>
+                    </div>
+                  </div>
+                )}
+                {(ingredient.status.type === "in-shopping-list" ||
+                  (ingredient.status.type === "missing" &&
+                    ingredient.parsed)) && (
+                  <div className="ingredient-actions">
+                    <div className="quantity-wrapper">
+                      <input
+                        type="text"
+                        value={
+                          ingredientQuantities[index] !== undefined
+                            ? ingredientQuantities[index]
+                            : ingredient.parsed?.quantity ?? ""
+                        }
+                        onChange={(e) =>
+                          decimalHelper(
+                            (value: any) =>
+                              setIngredientQuantities((prev) => ({
+                                ...prev,
+                                [index]: value,
+                              })),
+                            e
+                          )
+                        }
+                        className="quantity-input"
+                        style={{ width: 40, marginRight: 10 }}
+                        min="0"
+                        step="1"
+                        placeholder="Enter quantity"
+                      />
+                      <select
+                        value={
+                          ingredientUnits[index] ||
+                          ingredient.parsed?.unit ||
+                          ""
+                        }
+                        onChange={(e) =>
+                          setIngredientUnits((prev) => ({
+                            ...prev,
+                            [index]: e.target.value,
+                          }))
+                        }
+                        className="unit-select"
+                        style={{ width: 100, marginRight: 10 }}>
+                        {COMMON_UNITS.map((unit) => (
+                          <option key={unit} value={unit}>
+                            {unit}
+                          </option>
+                        ))}
+                      </select>
+                      <button
+                        onClick={() =>
+                          ingredient.status.type === "in-shopping-list"
+                            ? handleAddToInventory(ingredient, index)
+                            : handleAddToShoppingList(ingredient, index)
+                        }
+                        style={{ width: 165 }}
+                        className={
+                          ingredient.status.type === "in-shopping-list"
+                            ? "add-to-inventory-btn"
+                            : "add-to-shopping-btn"
+                        }>
+                        {ingredient.status.type === "in-shopping-list"
+                          ? "+ Inventory"
+                          : "+ Shopping List"}
+                      </button>
+                    </div>
+                  </div>
+                )}
+              </div>
             </li>
           ))}
         </ul>

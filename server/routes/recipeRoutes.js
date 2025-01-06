@@ -384,55 +384,40 @@ Critical Requirements:
         {
           role: "system",
           content:
-            "You are an expert chef and ingredient analyst specializing in standardized measurements (kilograms, liters, units). For each recipe ingredient, analyze and convert to standard units before comparison.",
+            "You are an expert chef and ingredient analyst. Return a JSON object with a key 'ingredients' containing the array of analyzed ingredients.",
         },
         {
           role: "user",
-          content: `Analyze all of these recipe ingredients and return an array of analyses in JSON format:
-
-${analysisPrompt}
-
-Return each ingredient analysis as an array entry. Your response MUST include analysis for ALL provided ingredients, not just one.
-
-For example, if given:
-2 cups flour
-1/2 cup sugar
-3 eggs
-
-Your response should look like:
-[
-  {
-    "original": "2 cups flour",
-    "parsed": {
-      "quantity": 2,
-      "unit": "cups",
-      "name": "flour"
-    },
-    "status": {
-      "type": "in-shopping-list",
-      "hasEnough": true,
-      "available": {
-        "quantity": 2,
-        "unit": "cups",
-        "id": 123
-      },
-      "notes": "Found in shopping list"
-    }
-  }
-]`,
+          content: `${analysisPrompt}
+          
+          Return the response in this exact format:
+          {
+            "ingredients": [
+              // array of ingredient analyses
+            ]
+          }`,
         },
       ],
       max_tokens: 1500,
       temperature: 0.2,
+      response_format: { type: "json_object" },
     });
 
     const cleanGPTResponse = (response) => {
-      const jsonContent = response.replace(/```json\n|\n```/g, "");
       try {
-        const parsed = JSON.parse(jsonContent);
+        // Parse the response if it's a string
+        const parsed =
+          typeof response === "string" ? JSON.parse(response) : response;
 
-        // Validate and ensure standardized units
-        return parsed.map((ingredient) => {
+        // Extract the ingredients array from the response object
+        const ingredientsArray = parsed.ingredients || [];
+
+        if (!Array.isArray(ingredientsArray)) {
+          throw new Error("Ingredients is not an array");
+        }
+
+        // Process each ingredient
+        return ingredientsArray.map((ingredient) => {
           if (!ingredient.parsed) return ingredient;
 
           try {
@@ -466,12 +451,42 @@ Your response should look like:
           }
         });
       } catch (e) {
-        console.error("Error parsing cleaned response:", e);
-        throw e;
+        console.error("Error parsing response:", e);
+        console.error("Raw response:", response);
+        // Return a safe default for unparseable responses
+        return recipe.ingredients.map((ing) => ({
+          original: typeof ing === "string" ? ing : ing.original,
+          status: {
+            type: "unparseable",
+            hasEnough: false,
+            notes: "Failed to parse ingredient analysis",
+          },
+        }));
       }
     };
 
-    const ingredients = cleanGPTResponse(completion.choices[0].message.content);
+    let ingredients;
+    try {
+      const content = completion.choices[0].message.content;
+      ingredients = cleanGPTResponse(content);
+
+      if (!Array.isArray(ingredients)) {
+        throw new Error("Failed to get valid ingredients array");
+      }
+    } catch (error) {
+      console.error("Error processing GPT response:", error);
+      // Log the raw response for debugging
+      console.error("Raw GPT response:", completion.choices[0].message.content);
+      // Provide a fallback response
+      ingredients = recipe.ingredients.map((ing) => ({
+        original: typeof ing === "string" ? ing : ing.original,
+        status: {
+          type: "unparseable",
+          hasEnough: false,
+          notes: "Analysis failed",
+        },
+      }));
+    }
 
     res.json({
       ...recipe,

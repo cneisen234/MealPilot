@@ -628,35 +628,49 @@ router.post("/bulk-add", authMiddleware, async (req, res) => {
           throw new Error("Invalid item data provided");
         }
 
-        // First verify the shopping list item belongs to the user
-        const verifyResult = await pool.query(
-          "SELECT id FROM shopping_list WHERE id = $1 AND user_id = $2",
+        // First verify the shopping list item and get its current quantity
+        const shoppingItemResult = await pool.query(
+          "SELECT id, quantity FROM shopping_list WHERE id = $1 AND user_id = $2",
           [item.shopping_list_id, userId]
         );
 
-        if (verifyResult.rows.length === 0) {
+        if (shoppingItemResult.rows.length === 0) {
           throw new Error("Unauthorized access to shopping list item");
         }
+
+        const currentQuantity = shoppingItemResult.rows[0].quantity;
+        const requestedQuantity = item.quantity;
 
         // Add to inventory
         await pool.query(
           `INSERT INTO inventory 
            (user_id, item_name, quantity, unit) 
            VALUES ($1, $2, $3, $4)`,
-          [userId, item.shopping_list_item, item.quantity, item.unit]
+          [userId, item.shopping_list_item, requestedQuantity, item.unit]
         );
 
-        // Remove from shopping list
-        await pool.query(
-          "DELETE FROM shopping_list WHERE id = $1 AND user_id = $2",
-          [item.shopping_list_id, userId]
-        );
+        // If requested quantity is less than current quantity, update shopping list
+        // Otherwise, remove the item entirely
+        if (requestedQuantity < currentQuantity) {
+          const remainingQuantity = currentQuantity - requestedQuantity;
+          await pool.query(
+            `UPDATE shopping_list 
+             SET quantity = $1, updated_at = NOW()
+             WHERE id = $2 AND user_id = $3`,
+            [remainingQuantity, item.shopping_list_id, userId]
+          );
+        } else {
+          await pool.query(
+            "DELETE FROM shopping_list WHERE id = $1 AND user_id = $2",
+            [item.shopping_list_id, userId]
+          );
+        }
       }
 
       await pool.query("COMMIT");
 
       res.json({
-        message: `Successfully added ${items.length} items to inventory`,
+        message: `Successfully processed ${items.length} items`,
         itemsProcessed: items.length,
       });
     } catch (error) {
@@ -664,7 +678,7 @@ router.post("/bulk-add", authMiddleware, async (req, res) => {
       throw error;
     }
   } catch (error) {
-    console.error("Error adding items to inventory:", error);
+    console.error("Error processing inventory update:", error);
     res.status(500).json({
       message: "Error processing inventory update",
       error: error.message,
