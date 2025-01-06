@@ -104,63 +104,42 @@ router.put("/:id", authMiddleware, async (req, res) => {
     const { item_name, quantity, unit, recipe_ids = [] } = req.body;
 
     if (!item_name || quantity === undefined) {
-      return res
-        .status(400)
-        .json({ message: "Item name and quantity are required" });
+      return res.status(400).json({
+        message: "Item name and quantity are required",
+      });
     }
 
     await pool.query("BEGIN");
 
-    // First get current item to compare quantities
-    const currentItem = await pool.query(
-      "SELECT quantity, unit FROM shopping_list WHERE id = $1 AND user_id = $2",
-      [itemId, userId]
-    );
+    // Standardize the quantity first
+    const standardized = convertToStandardUnit(quantity, unit);
 
-    if (currentItem.rows.length === 0) {
-      await pool.query("ROLLBACK");
-      return res.status(404).json({ message: "Item not found" });
-    }
+    // If quantity is 0 or less, delete the item
+    if (standardized.value <= 0) {
+      await pool.query(
+        "DELETE FROM shopping_list WHERE id = $1 AND user_id = $2",
+        [itemId, userId]
+      );
 
-    // Convert both quantities to standard units for comparison
-    const standardizedNew = convertToStandardUnit(quantity, unit);
-    const standardizedCurrent = convertToStandardUnit(
-      currentItem.rows[0].quantity,
-      currentItem.rows[0].unit
-    );
-
-    // Only proceed if units are compatible (they should be after conversion)
-    if (standardizedNew.unit !== standardizedCurrent.unit) {
-      await pool.query("ROLLBACK");
-      return res.status(400).json({
-        message: "Incompatible unit types for comparison",
+      await pool.query("COMMIT");
+      return res.json({
+        message: "Item removed due to zero or negative quantity",
       });
     }
 
-    // If new quantity is >= current, delete the item
-    if (standardizedNew.value >= standardizedCurrent.value) {
-      await pool.query("DELETE FROM shopping_list WHERE id = $1", [itemId]);
-      await pool.query("COMMIT");
-      return res.json({ message: "Item removed from shopping list" });
-    }
-
-    // Otherwise, update with the difference
-    const remainingQuantity = standardizedCurrent.value - standardizedNew.value;
-
-    // Update item with remaining quantity in standard units
-    await pool.query(
+    // Update item with standardized quantity
+    const result = await pool.query(
       `UPDATE shopping_list 
        SET item_name = $1, quantity = $2, unit = $3, updated_at = NOW()
        WHERE id = $4 AND user_id = $5
        RETURNING *`,
-      [
-        item_name.trim(),
-        remainingQuantity,
-        standardizedNew.unit, // Use standardized unit
-        itemId,
-        userId,
-      ]
+      [item_name.trim(), standardized.value, standardized.unit, itemId, userId]
     );
+
+    if (result.rows.length === 0) {
+      await pool.query("ROLLBACK");
+      return res.status(404).json({ message: "Item not found" });
+    }
 
     // Update recipe associations
     await pool.query(
@@ -211,26 +190,82 @@ router.put("/:id", authMiddleware, async (req, res) => {
 });
 
 // Delete a shopping list item
-router.delete("/:id", authMiddleware, async (req, res) => {
+router.put("/delete/:id", authMiddleware, async (req, res) => {
   try {
     const userId = req.user.id;
     const itemId = req.params.id;
+    const { quantity, unit } = req.body; // Get incoming quantity and unit
 
-    const result = await pool.query(
-      "DELETE FROM shopping_list WHERE id = $1 AND user_id = $2 RETURNING id",
+    await pool.query("BEGIN");
+
+    // Get current item
+    const currentItem = await pool.query(
+      "SELECT quantity, unit FROM shopping_list WHERE id = $1 AND user_id = $2",
       [itemId, userId]
     );
 
-    if (result.rows.length === 0) {
+    if (currentItem.rows.length === 0) {
+      await pool.query("ROLLBACK");
       return res.status(404).json({ message: "Item not found" });
     }
 
+    // Standardize both quantities for comparison
+    const incomingStandard = convertToStandardUnit(quantity, unit);
+    const currentStandard = convertToStandardUnit(
+      currentItem.rows[0].quantity,
+      currentItem.rows[0].unit
+    );
+
+    // Verify units are compatible
+    if (incomingStandard.unit !== currentStandard.unit) {
+      await pool.query("ROLLBACK");
+      return res.status(400).json({
+        message: "Incompatible unit types for comparison",
+      });
+    }
+
+    // If incoming quantity is less than current, update instead of delete
+    if (incomingStandard.value < currentStandard.value) {
+      const remainingQty = currentStandard.value - incomingStandard.value;
+
+      const result = await pool.query(
+        `UPDATE shopping_list 
+         SET quantity = $1, unit = $2, updated_at = NOW()
+         WHERE id = $3 AND user_id = $4
+         RETURNING *`,
+        [remainingQty, currentStandard.unit, itemId, userId]
+      );
+
+      await pool.query("COMMIT");
+      return res.json({
+        message: "Item quantity updated",
+        item: result.rows[0],
+      });
+    }
+
+    // If incoming quantity is >= current quantity, delete the item
+    await pool.query(
+      "DELETE FROM shopping_list WHERE id = $1 AND user_id = $2",
+      [itemId, userId]
+    );
+
+    await pool.query("COMMIT");
     res.json({ message: "Item deleted successfully" });
   } catch (error) {
+    await pool.query("ROLLBACK");
     console.error("Error deleting shopping list item:", error);
     res.status(500).json({ message: "Server error" });
   }
 });
+
+const determineExpirationDate = (existingDate, newDate) => {
+  if (existingDate && newDate) {
+    // If both have dates, use the earlier one
+    return new Date(existingDate) < new Date(newDate) ? existingDate : newDate;
+  }
+  // If only one has a date, use that one
+  return existingDate || newDate || null;
+};
 
 // Add item to inventory and delete from shopping list
 router.post("/:id/move-to-inventory", authMiddleware, async (req, res) => {
@@ -258,18 +293,56 @@ router.post("/:id/move-to-inventory", authMiddleware, async (req, res) => {
 
     const item = shoppingItem.rows[0];
 
-    // Item is already in standardized units from previous conversion
-    await pool.query(
-      `INSERT INTO inventory (user_id, item_name, quantity, unit, expiration_date) 
-       VALUES ($1, $2, $3, $4, $5)`,
-      [userId, item.item_name, item.quantity, item.unit, expiration_date]
+    // Check for existing inventory item
+    const existingItem = await pool.query(
+      "SELECT id, quantity, unit, expiration_date FROM inventory WHERE user_id = $1 AND LOWER(item_name) = LOWER($2)",
+      [userId, item.item_name]
     );
+
+    if (existingItem.rows.length > 0) {
+      const currentItem = existingItem.rows[0];
+      const shoppingStandard = convertToStandardUnit(item.quantity, item.unit);
+      const inventoryStandard = convertToStandardUnit(
+        currentItem.quantity,
+        currentItem.unit
+      );
+
+      if (shoppingStandard.unit !== inventoryStandard.unit) {
+        await pool.query("ROLLBACK");
+        return res.status(400).json({
+          message: "Cannot combine items with different unit types",
+        });
+      }
+
+      // Determine which expiration date to use
+      const finalExpirationDate = determineExpirationDate(
+        currentItem.expiration_date,
+        expiration_date
+      );
+
+      // Add quantities
+      const newQuantity = shoppingStandard.value + inventoryStandard.value;
+
+      // Update existing inventory item
+      await pool.query(
+        `UPDATE inventory 
+         SET quantity = $1, expiration_date = $2, updated_at = NOW()
+         WHERE id = $3`,
+        [newQuantity, finalExpirationDate, currentItem.id]
+      );
+    } else {
+      // Add new inventory item
+      await pool.query(
+        `INSERT INTO inventory (user_id, item_name, quantity, unit, expiration_date) 
+         VALUES ($1, $2, $3, $4, $5)`,
+        [userId, item.item_name, item.quantity, item.unit, expiration_date]
+      );
+    }
 
     // Delete from shopping list
     await pool.query("DELETE FROM shopping_list WHERE id = $1", [itemId]);
 
     await pool.query("COMMIT");
-
     res.json({ message: "Item moved to inventory successfully" });
   } catch (error) {
     await pool.query("ROLLBACK");
@@ -295,7 +368,7 @@ router.post(
 
       // Get shopping list item
       const shoppingItem = await pool.query(
-        "SELECT * FROM shopping_list WHERE item_name = $1 AND user_id = $2",
+        "SELECT * FROM shopping_list WHERE LOWER(item_name) = LOWER($1) AND user_id = $2",
         [item_name, userId]
       );
 
@@ -306,62 +379,178 @@ router.post(
 
       const item = shoppingItem.rows[0];
 
-      // Item is already in standardized units as it was converted when added to shopping list
-      await pool.query(
-        `INSERT INTO inventory (user_id, item_name, quantity, unit, expiration_date) 
-         VALUES ($1, $2, $3, $4, $5)`,
-        [userId, item.item_name, item.quantity, item.unit, expiration_date]
+      // Check for existing inventory item - now including expiration_date
+      const existingItem = await pool.query(
+        "SELECT id, quantity, unit, expiration_date FROM inventory WHERE user_id = $1 AND LOWER(item_name) = LOWER($2)",
+        [userId, item_name]
       );
+
+      if (existingItem.rows.length > 0) {
+        // Item exists in inventory, add quantities
+        const currentItem = existingItem.rows[0];
+
+        // Both items should already be in standardized units, but let's verify
+        const shoppingStandard = convertToStandardUnit(
+          item.quantity,
+          item.unit
+        );
+        const inventoryStandard = convertToStandardUnit(
+          currentItem.quantity,
+          currentItem.unit
+        );
+
+        // Verify units are compatible
+        if (shoppingStandard.unit !== inventoryStandard.unit) {
+          await pool.query("ROLLBACK");
+          return res.status(400).json({
+            message: "Cannot combine items with different unit types",
+          });
+        }
+
+        // Determine which expiration date to use
+        const finalExpirationDate = determineExpirationDate(
+          currentItem.expiration_date,
+          expiration_date
+        );
+
+        // Add quantities
+        const newQuantity = shoppingStandard.value + inventoryStandard.value;
+
+        // Update existing inventory item with expiration date logic
+        await pool.query(
+          `UPDATE inventory 
+           SET quantity = $1, expiration_date = $2, updated_at = NOW()
+           WHERE id = $3`,
+          [newQuantity, finalExpirationDate, currentItem.id]
+        );
+      } else {
+        // Add new inventory item
+        await pool.query(
+          `INSERT INTO inventory (user_id, item_name, quantity, unit, expiration_date) 
+           VALUES ($1, $2, $3, $4, $5)`,
+          [userId, item.item_name, item.quantity, item.unit, expiration_date]
+        );
+      }
 
       // Delete from shopping list
-      await pool.query(
-        "DELETE FROM shopping_list WHERE item_name = $1 AND user_id = $2",
-        [item_name, userId]
-      );
+      await pool.query("DELETE FROM shopping_list WHERE id = $1", [item.id]);
 
       await pool.query("COMMIT");
-
       res.json({ message: "Item moved to inventory successfully" });
     } catch (error) {
       await pool.query("ROLLBACK");
       console.error("Error moving item to inventory:", error);
-      res.status(500).json({ message: "Server error", error: error.message });
+      res.status(500).json({ message: "Server error" });
     }
   }
 );
+
+router.post("/add-from-receipt", authMiddleware, async (req, res) => {
+  try {
+    const userId = req.user.id;
+    const { items } = req.body;
+
+    await pool.query("BEGIN");
+
+    let processedItems = 0;
+
+    for (const item of items) {
+      const existingItem = await pool.query(
+        "SELECT id, quantity, unit, expiration_date FROM inventory WHERE user_id = $1 AND LOWER(item_name) = LOWER($2)",
+        [userId, item.shopping_list_item]
+      );
+
+      const standardized = convertToStandardUnit(item.quantity, item.unit);
+
+      if (existingItem.rows.length > 0) {
+        const currentItem = existingItem.rows[0];
+        const currentStandard = convertToStandardUnit(
+          currentItem.quantity,
+          currentItem.unit
+        );
+
+        if (standardized.unit !== currentStandard.unit) {
+          console.warn(
+            `Skipping item ${item.shopping_list_item} due to incompatible units`
+          );
+          continue;
+        }
+
+        // For receipt items, we might want to use the existing expiration date if present
+        const finalExpirationDate = currentItem.expiration_date || null;
+
+        const newQuantity = standardized.value + currentStandard.value;
+
+        await pool.query(
+          `UPDATE inventory 
+           SET quantity = $1, expiration_date = $2, updated_at = NOW()
+           WHERE id = $3`,
+          [newQuantity, finalExpirationDate, currentItem.id]
+        );
+      } else {
+        // Add new inventory item (receipt items typically won't have expiration dates)
+        await pool.query(
+          `INSERT INTO inventory 
+           (user_id, item_name, quantity, unit) 
+           VALUES ($1, $2, $3, $4)`,
+          [
+            userId,
+            item.shopping_list_item,
+            standardized.value,
+            standardized.unit,
+          ]
+        );
+      }
+
+      await pool.query(
+        "DELETE FROM shopping_list WHERE id = $1 AND user_id = $2",
+        [item.shopping_list_id, userId]
+      );
+
+      processedItems++;
+    }
+
+    await pool.query("COMMIT");
+
+    res.json({
+      message: `Successfully added ${processedItems} items to inventory`,
+      itemsProcessed: processedItems,
+    });
+  } catch (error) {
+    await pool.query("ROLLBACK");
+    console.error("Error adding items to inventory:", error);
+    res.status(500).json({
+      message: "Error processing inventory update",
+      error: error.message,
+    });
+  }
+});
 
 router.post("/process-receipt", authMiddleware, async (req, res) => {
   try {
     const userId = req.user.id;
     const { imageData } = req.body;
 
-    // Get shopping list items with standardized units
+    // First get user's shopping list items
     const shoppingListResult = await pool.query(
       `SELECT id, item_name, quantity, unit FROM shopping_list WHERE user_id = $1`,
       [userId]
     );
     const shoppingList = shoppingListResult.rows;
 
-    // Prepare items for AI with standardized units
+    // Convert shopping list to a format that's easy for the AI to reference
     const shoppingListItems = shoppingList.map((item) => ({
       id: item.id,
       name: item.item_name,
       quantity: item.quantity,
-      unit: item.unit, // Units are already standardized in database
+      unit: item.unit,
     }));
 
-    // Modify prompt to specify standardized units
+    // Prepare prompt for GPT-4
     const prompt = `Analyze this receipt image and identify any items that match or closely match these shopping list items:
     ${JSON.stringify(shoppingListItems)}
     
     For example, if the shopping list has "milk" and the receipt shows "2% MILK", that's a match.
-    
-    The shopping list quantities are in standardized units:
-    - Mass is in kilograms
-    - Volume is in liters
-    - Count is in units
-    
-    Please convert any receipt quantities to match these standardized units in your response.
     
     Return a JSON array of matched items in this format:
     {
@@ -370,8 +559,8 @@ router.post("/process-receipt", authMiddleware, async (req, res) => {
           "shopping_list_id": [id from shopping list],
           "shopping_list_item": "original item name",
           "receipt_match": "text as shown on receipt",
-          "quantity": [quantity in standardized units],
-          "unit": [standardized unit (kilograms, liters, or units)]
+          "quantity": [quantity from shopping list],
+          "unit": [unit from shopping list]
         }
       ]
     }
@@ -384,7 +573,7 @@ router.post("/process-receipt", authMiddleware, async (req, res) => {
         {
           role: "system",
           content:
-            "You are a receipt analysis expert that identifies shopping list items in receipt images and converts quantities to standardized units (kilograms, liters, units).",
+            "You are a receipt analysis expert that identifies shopping list items in receipt images.",
         },
         {
           role: "user",
@@ -392,7 +581,9 @@ router.post("/process-receipt", authMiddleware, async (req, res) => {
             { type: "text", text: prompt },
             {
               type: "image_url",
-              image_url: { url: imageData },
+              image_url: {
+                url: imageData,
+              },
             },
           ],
         },
@@ -403,31 +594,7 @@ router.post("/process-receipt", authMiddleware, async (req, res) => {
     });
 
     const matches = JSON.parse(completion.choices[0].message.content);
-
-    // Validate and standardize any units that AI might have missed
-    const validatedMatches = {
-      matches: matches.matches.map((match) => {
-        try {
-          const standardized = convertToStandardUnit(
-            match.quantity,
-            match.unit
-          );
-          return {
-            ...match,
-            quantity: standardized.value,
-            unit: standardized.unit,
-          };
-        } catch (error) {
-          console.error(
-            `Unit conversion error for item ${match.shopping_list_item}:`,
-            error
-          );
-          return match; // Keep original if conversion fails
-        }
-      }),
-    };
-
-    res.json(validatedMatches);
+    res.json(matches);
   } catch (error) {
     console.error("Error processing receipt:", error);
     res.status(500).json({
@@ -437,30 +604,46 @@ router.post("/process-receipt", authMiddleware, async (req, res) => {
   }
 });
 
-router.post("/add-from-reciept", authMiddleware, async (req, res) => {
+router.post("/bulk-add", authMiddleware, async (req, res) => {
   try {
     const userId = req.user.id;
     const { items } = req.body;
 
+    if (!Array.isArray(items) || items.length === 0) {
+      return res.status(400).json({ message: "No items provided" });
+    }
+
     await pool.query("BEGIN");
 
     try {
-      // Items should already be in standardized units from process-receipt
+      // Add each item to inventory
       for (const item of items) {
-        // Double-check standardization
-        const standardized = convertToStandardUnit(item.quantity, item.unit);
+        // Validate required fields
+        if (
+          !item.shopping_list_item ||
+          !item.quantity ||
+          !item.unit ||
+          !item.shopping_list_id
+        ) {
+          throw new Error("Invalid item data provided");
+        }
 
-        // Add to inventory with standardized units
+        // First verify the shopping list item belongs to the user
+        const verifyResult = await pool.query(
+          "SELECT id FROM shopping_list WHERE id = $1 AND user_id = $2",
+          [item.shopping_list_id, userId]
+        );
+
+        if (verifyResult.rows.length === 0) {
+          throw new Error("Unauthorized access to shopping list item");
+        }
+
+        // Add to inventory
         await pool.query(
           `INSERT INTO inventory 
            (user_id, item_name, quantity, unit) 
            VALUES ($1, $2, $3, $4)`,
-          [
-            userId,
-            item.shopping_list_item,
-            standardized.value,
-            standardized.unit,
-          ]
+          [userId, item.shopping_list_item, item.quantity, item.unit]
         );
 
         // Remove from shopping list

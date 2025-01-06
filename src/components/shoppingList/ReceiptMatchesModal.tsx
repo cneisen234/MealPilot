@@ -1,6 +1,7 @@
 import React, { useState } from "react";
 import { FaCheckSquare, FaRegSquare } from "react-icons/fa";
 import AnimatedTechIcon from "../common/AnimatedTechIcon";
+import decimalHelper from "../../helpers/decimalHelper";
 
 interface MatchedItem {
   shopping_list_id: number;
@@ -25,6 +26,11 @@ const ReceiptMatchesModal: React.FC<ReceiptMatchesModalProps> = ({
     new Set(matches.map((m) => m.shopping_list_id))
   );
   const [isProcessing, setIsProcessing] = useState(false);
+  const [quantities, setQuantities] = useState<{ [key: number]: number }>(
+    Object.fromEntries(
+      matches.map((match) => [match.shopping_list_id, match.quantity])
+    )
+  );
 
   const toggleItem = (id: number) => {
     const newSelected = new Set(selectedItems);
@@ -39,9 +45,12 @@ const ReceiptMatchesModal: React.FC<ReceiptMatchesModalProps> = ({
   const handleAddToInventory = async () => {
     setIsProcessing(true);
     try {
-      const selectedMatches = matches.filter((match) =>
-        selectedItems.has(match.shopping_list_id)
-      );
+      const selectedMatches = matches
+        .filter((match) => selectedItems.has(match.shopping_list_id))
+        .map((match) => ({
+          ...match,
+          quantity: quantities[match.shopping_list_id],
+        }));
       await onAddToInventory(selectedMatches);
       onClose();
     } catch (error) {
@@ -70,15 +79,36 @@ const ReceiptMatchesModal: React.FC<ReceiptMatchesModalProps> = ({
           </div>
 
           {matches.map((match) => (
-            <div
-              key={match.shopping_list_id}
-              className="matches-row"
-              onClick={() => toggleItem(match.shopping_list_id)}>
-              <div className="matches-item">{match.shopping_list_item}</div>
-              <div className="matches-qty" style={{ paddingRight: 10 }}>
-                {match.quantity} {match.unit}
+            <div key={match.shopping_list_id} className="matches-row">
+              <div
+                className="matches-item"
+                onClick={() => toggleItem(match.shopping_list_id)}>
+                {match.shopping_list_item}
               </div>
-              <div className="matches-check">
+              <div className="matches-qty-input">
+                <input
+                  type="text"
+                  value={quantities[match.shopping_list_id]}
+                  onChange={(e) =>
+                    decimalHelper(
+                      (value: any) =>
+                        setQuantities((prev) => ({
+                          ...prev,
+                          [match.shopping_list_id]: value,
+                        })),
+                      e
+                    )
+                  }
+                  className="quantity-input"
+                  min="0"
+                  step="1"
+                  placeholder="Enter quantity"
+                />
+                <span className="unit-label">{match.unit}</span>
+              </div>
+              <div
+                className="matches-check"
+                onClick={() => toggleItem(match.shopping_list_id)}>
                 {selectedItems.has(match.shopping_list_id) ? (
                   <FaCheckSquare className="check-icon" />
                 ) : (

@@ -217,8 +217,8 @@ export const updateInventoryItem = (
   return api.put(`/inventory/${id}`, itemData);
 };
 
-export const deleteInventoryItem = (id: number) => {
-  return api.delete(`/inventory/${id}`);
+export const deleteInventoryItem = (id: number, quantity: number, unit: string) => {
+  return api.put(`/inventory/delete/${id}`, {quantity, unit});
 };
 
 export interface ShoppingListItem {
@@ -257,8 +257,8 @@ export const updateShoppingListItem = (
   return api.put(`/shopping-list/${id}`, itemData);
 };
 
-export const deleteShoppingListItem = (id: number) => {
-  return api.delete(`/shopping-list/${id}`);
+export const deleteShoppingListItem = (id: number, quantity: number, unit: string) => {
+  return api.put(`/shopping-list/delete/${id}`, {quantity, unit});
 };
 
 export const moveToInventory = (id: number, expiration_date: string) => {

@@ -432,6 +432,50 @@
     border-radius: 8px;
     margin-bottom: 20px;
 }
+.inventory-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 40px;
+}
+
+.header-actions {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    /* Space between dropdown and button */
+}
+
+.unit-preference-select {
+    height: 40px;
+    margin-top: 5px;
+    padding: 0 12px;
+    border: 2px solid var(--primary-color);
+    border-radius: 8px;
+    background-color: white;
+    color: var(--primary-color);
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    appearance: none;
+    -webkit-appearance: none;
+    -moz-appearance: none;
+    background-image: url("data:image/svg+xml;charset=UTF-8,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3e%3cpolyline points='6 9 12 15 18 9'%3e%3c/polyline%3e%3c/svg%3e");
+    background-repeat: no-repeat;
+    background-position: right 8px center;
+    background-size: 16px;
+    padding-right: 32px;
+}
+
+.unit-preference-select:hover {
+    border-color: var(--secondary-color);
+    color: var(--secondary-color);
+}
+
+.unit-preference-select:focus {
+    outline: none;
+    box-shadow: 0 0 0 2px rgba(var(--primary-color-rgb), 0.2);
+}
 
 @media (max-width: 768px) {
     .inventory-header {
@@ -451,6 +495,14 @@
     
           .multi-button-list .scan-receipt-button {
               width: 100%;
+          }
+
+          .multi-button-list .unit-preference-select {
+            width: 100%;
+          }
+
+          .multi-button-list .add-item-button-list {
+            width: 100%;
           }
 
     .form-row {

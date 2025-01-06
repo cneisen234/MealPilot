@@ -51,7 +51,7 @@ CREATE TABLE recipes
         id SERIAL PRIMARY KEY,
         user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
         item_name VARCHAR(255) NOT NULL,
-        quantity DECIMAL NOT NULL,
+        quantity DECIMAL(20,2) NOT NULL,
         unit VARCHAR(50),
         created_at TIMESTAMP DEFAULT NOW(),
         updated_at TIMESTAMP DEFAULT NOW(),
@@ -63,7 +63,7 @@ CREATE TABLE recipes
         id SERIAL PRIMARY KEY,
         user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
         item_name VARCHAR(255) NOT NULL,
-        quantity DECIMAL NOT NULL,
+        quantity DECIMAL(20,2) NOT NULL,
         unit VARCHAR(50),
         created_at TIMESTAMP DEFAULT NOW(),
         updated_at TIMESTAMP DEFAULT NOW()

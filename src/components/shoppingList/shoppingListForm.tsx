@@ -35,16 +35,16 @@ interface ShoppingListFormProps {
 const COMMON_UNITS = [
   "units",
   "grams",
-  "kg",
+  "kilograms",
   "gal",
   "quart",
   "milliliter",
-  "liter",
+  "liters",
   "cups",
   "tbsp",
   "tsp",
   "oz",
-  "lb",
+  "pounds",
 ];
 
 const ShoppingListForm: React.FC<ShoppingListFormProps> = ({
@@ -63,8 +63,8 @@ const ShoppingListForm: React.FC<ShoppingListFormProps> = ({
 
   // Error states
   const [itemNameError, setItemNameError] = useState("");
-  const [quantityError, setQuantityError] = useState("");
-  const [expirationDateError, setExpirationDateError] = useState("");
+  const [quantityError] = useState("");
+  const [expirationDateError] = useState("");
 
   useEffect(() => {
     loadRecipes();
@@ -93,20 +93,6 @@ const ShoppingListForm: React.FC<ShoppingListFormProps> = ({
       isValid = false;
     } else {
       setItemNameError("");
-    }
-
-    if (quantity <= 0) {
-      setQuantityError("Quantity must be greater than 0");
-      isValid = false;
-    } else {
-      setQuantityError("");
-    }
-
-    if (showInventoryTransfer && !expirationDate) {
-      setExpirationDateError("Expiration date is required for inventory items");
-      isValid = false;
-    } else {
-      setExpirationDateError("");
     }
 
     return isValid;

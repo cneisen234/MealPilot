@@ -26,16 +26,16 @@ interface InventoryFormProps {
 const COMMON_UNITS = [
   "units",
   "grams",
-  "kg",
+  "kilograms",
   "gal",
   "quart",
   "milliliter",
-  "liter",
+  "liters",
   "cups",
   "tbsp",
   "tsp",
   "oz",
-  "lb",
+  "pounds",
 ];
 
 const InventoryForm: React.FC<InventoryFormProps> = ({
@@ -49,8 +49,8 @@ const InventoryForm: React.FC<InventoryFormProps> = ({
   const [expirationDate, setExpirationDate] = useState("");
 
   const [itemNameError, setItemNameError] = useState("");
-  const [quantityError, setQuantityError] = useState("");
-  const [expirationDateError, setExpirationDateError] = useState("");
+  const [quantityError] = useState("");
+  const [expirationDateError] = useState("");
 
   useEffect(() => {
     if (item) {
@@ -75,13 +75,6 @@ const InventoryForm: React.FC<InventoryFormProps> = ({
       isValid = false;
     } else {
       setItemNameError("");
-    }
-
-    if (quantity <= 0) {
-      setQuantityError("Quantity must be greater than 0");
-      isValid = false;
-    } else {
-      setQuantityError("");
     }
 
     return isValid;

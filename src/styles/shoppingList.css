@@ -177,53 +177,6 @@
     margin-left: 4px;
 }
 
-.matches-list {
-    max-height: 400px;
-    overflow-y: auto;
-    margin: 20px 0;
-}
-
-.match-item {
-    padding: 12px;
-    border-bottom: 1px solid rgba(0, 0, 0, 0.1);
-    transition: background-color 0.2s ease;
-}
-
-.match-item:last-child {
-    border-bottom: none;
-}
-
-.match-item:hover {
-    background-color: rgba(5, 71, 42, 0.05);
-}
-
-.scan-receipt-button {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    background-color: var(--secondary-color);
-    color: white;
-    border: none;
-    padding: 12px 24px;
-    border-radius: 8px;
-    font-weight: 600;
-    cursor: pointer;
-    transition: all 0.3s ease;
-    width: 100%;
-    min-width: 180px;
-    margin-top: 5px;
-}
-
-.scan-receipt-button:hover:not(:disabled) {
-    opacity: 0.9;
-    transform: scale(1.05);
-}
-
-.scan-receipt-button:disabled {
-    opacity: 0.7;
-    cursor: not-allowed;
-}
-
 /* Shareable list styles */
 .shareable-list {
     max-width: 800px;
@@ -358,19 +311,6 @@
     cursor: not-allowed;
 }
 
-/* Modal styles */
-.modal-overlay {
-    position: fixed;
-    top: 0;
-    left: 0;
-    right: 0;
-    bottom: 0;
-    background-color: rgba(0, 0, 0, 0.5);
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    z-index: 1000;
-}
 
 .modal-content {
     background-color: white;
@@ -519,6 +459,86 @@
 
 .list-section:nth-child(3) h2 {
     color: var(--secondary-color);
+}
+
+.matches-qty-input {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding-right: 10px;
+}
+
+.quantity-input {
+    width: 80px;
+    padding: 6px;
+    border: 2px solid rgba(5, 71, 42, 0.1);
+    border-radius: 6px;
+    font-size: 0.9rem;
+    text-align: right;
+    transition: all 0.3s ease;
+    -moz-appearance: textfield;
+}
+
+.quantity-input::-webkit-inner-spin-button,
+.quantity-input::-webkit-outer-spin-button {
+    -webkit-appearance: none;
+    margin: 0;
+}
+
+.quantity-input:focus {
+    outline: none;
+    border-color: var(--primary-color);
+    box-shadow: 0 0 0 2px rgba(5, 71, 42, 0.1);
+}
+
+.unit-label {
+    color: var(--text-color);
+    font-size: 0.9rem;
+    min-width: 40px;
+}
+
+.matches-list {
+    max-height: 400px;
+    overflow-y: auto;
+    margin: 20px 0;
+}
+
+.match-item {
+    padding: 12px;
+    border-bottom: 1px solid rgba(0, 0, 0, 0.1);
+    transition: background-color 0.2s ease;
+}
+
+.match-item:last-child {
+    border-bottom: none;
+}
+
+.match-item:hover {
+    background-color: rgba(5, 71, 42, 0.05);
+}
+
+.scan-receipt-button {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    background-color: var(--secondary-color);
+    color: white;
+    border: none;
+    padding: 12px 24px;
+    border-radius: 8px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.3s ease;
+}
+
+.scan-receipt-button:hover:not(:disabled) {
+    opacity: 0.9;
+    transform: scale(1.05);
+}
+
+.scan-receipt-button:disabled {
+    opacity: 0.7;
+    cursor: not-allowed;
 }
 
 /* Mobile responsiveness */

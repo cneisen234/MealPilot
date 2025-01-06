@@ -11,6 +11,7 @@ import {
   deleteInventoryItem,
 } from "../utils/api";
 import "../styles/inventory.css";
+import { convertToImperial } from "../utils/convertToImperial";
 
 interface InventoryItem {
   id: number;
@@ -39,6 +40,7 @@ type ExpiringItemData = {
 
 const Inventory: React.FC = () => {
   const [items, setItems] = useState<InventoryItem[]>([]);
+  const [convertedItems, setConvertedItems] = useState<InventoryItem[]>([]);
   const [alertDidShow, setAlertDidShow] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [isFormOpen, setIsFormOpen] = useState(false);
@@ -48,11 +50,16 @@ const Inventory: React.FC = () => {
   const [showExpirationAlert, setShowExpirationAlert] = useState(false);
   const [expiringItems, setExpiringItems] = useState<ExpiringItemData[]>([]);
   const threeDaysFromNow = new Date();
+  const [unitSystem, setUnitSystem] = useState<any>("metric");
   threeDaysFromNow.setDate(threeDaysFromNow.getDate() + 3);
 
   useEffect(() => {
     loadInventory();
   }, []);
+
+  useEffect(() => {
+    handleUnitSystemChange(items);
+  }, [unitSystem]);
 
   // Check for expiring items whenever items list changes
   useEffect(() => {
@@ -79,7 +86,21 @@ const Inventory: React.FC = () => {
         setAlertDidShow(true);
       }
     }
+    handleUnitSystemChange(items);
   }, [items]);
+
+  const handleUnitSystemChange = (items: any) => {
+    const converted = items.map((item: any) => {
+      const newItem = convertToImperial(item.quantity, item.unit, unitSystem);
+      return {
+        ...item,
+        quantity: newItem.value,
+        unit: newItem.unit,
+      };
+    });
+
+    setConvertedItems(converted);
+  };
 
   const loadInventory = async () => {
     try {
@@ -96,7 +117,25 @@ const Inventory: React.FC = () => {
   const handleAddItem = async (formData: InventoryFormData) => {
     try {
       const response = await addInventoryItem(formData);
-      setItems((prev) => [response.data, ...prev]);
+
+      // Check if this was an update to an existing item or a new item
+      const existingItemIndex = items.findIndex(
+        (item) =>
+          item.item_name.toLowerCase() === formData.item_name.toLowerCase()
+      );
+
+      if (existingItemIndex !== -1) {
+        // Update existing item
+        setItems((prev) =>
+          prev.map((item, index) =>
+            index === existingItemIndex ? response.data : item
+          )
+        );
+      } else {
+        // Add new item
+        setItems((prev) => [response.data, ...prev]);
+      }
+
       setIsFormOpen(false);
     } catch (error) {
       if (error instanceof Error) {
@@ -112,11 +151,20 @@ const Inventory: React.FC = () => {
     if (!editingItem) return;
     try {
       const response = await updateInventoryItem(editingItem.id, formData);
-      setItems((prev) =>
-        prev.map((item) =>
-          item.id === response.data.id ? response.data : item
-        )
-      );
+
+      // If the item was deleted (quantity was 0 or less)
+      if (response.data.message?.includes("removed")) {
+        // Remove the item from state
+        setItems((prev) => prev.filter((item) => item.id !== editingItem.id));
+      } else {
+        // Update the item in state
+        setItems((prev) =>
+          prev.map((item) =>
+            item.id === response.data.id ? response.data : item
+          )
+        );
+      }
+
       setEditingItem(null);
     } catch (error) {
       setError("Failed to update item");
@@ -127,7 +175,11 @@ const Inventory: React.FC = () => {
   const handleDeleteItem = async () => {
     if (!deleteItem) return;
     try {
-      await deleteInventoryItem(deleteItem.id);
+      await deleteInventoryItem(
+        deleteItem.id,
+        deleteItem.quantity,
+        deleteItem.unit
+      );
       setItems((prev) => prev.filter((item) => item.id !== deleteItem.id));
       setDeleteItem(null);
     } catch (error) {
@@ -148,17 +200,29 @@ const Inventory: React.FC = () => {
     <div className="inventory-container">
       <div className="inventory-header">
         <h1>My Inventory</h1>
-        <button
-          onClick={() => setIsFormOpen(true)}
-          className="add-item-button-list">
-          <FaPlus /> Add Item
-        </button>
+        <div className="multi-button-list">
+          <button
+            onClick={() => setIsFormOpen(true)}
+            className="add-item-button-list"
+            style={{ marginTop: 5 }}>
+            <FaPlus /> Add Item
+          </button>
+          <select
+            value={unitSystem}
+            onChange={(e) => {
+              setUnitSystem(e.target.value);
+            }}
+            className="unit-preference-select">
+            <option value="metric">Metric</option>
+            <option value="imperial">Imperial</option>
+          </select>
+        </div>
       </div>
 
       {error && <div className="error-message">{error}</div>}
 
       <div className="list-grid">
-        {items.map((item) => (
+        {convertedItems.map((item) => (
           <div key={item.id} className="list-card">
             <div className="card-header">
               <h3 className="card-title">{item.item_name}</h3>

@@ -22,6 +22,7 @@ import {
 import "../styles/inventory.css";
 import ReceiptMatchesModal from "../components/shoppingList/ReceiptMatchesModal";
 import ShareableListModal from "../components/shoppingList/SharableListModal";
+import { convertToImperial } from "../utils/convertToImperial";
 
 interface Recipe {
   id: number;
@@ -48,6 +49,7 @@ interface ShoppingListFormData {
 
 const ShoppingList: React.FC = () => {
   const [items, setItems] = useState<ShoppingListItem[]>([]);
+  const [convertedItems, setConvertedItems] = useState<ShoppingListItem[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [editingItem, setEditingItem] = useState<ShoppingListItem | null>(null);
@@ -56,6 +58,7 @@ const ShoppingList: React.FC = () => {
   const [receiptMatches, setReceiptMatches] = useState<any[] | null>(null);
   const [selectedItems, setSelectedItems] = useState<Set<number>>(new Set());
   const [isShareModalOpen, setIsShareModalOpen] = useState(false);
+  const [unitSystem, setUnitSystem] = useState<any>("metric");
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [error, setError] = useState("");
 
@@ -64,10 +67,30 @@ const ShoppingList: React.FC = () => {
   }, []);
 
   useEffect(() => {
+    handleUnitSystemChange(items);
+  }, [unitSystem]);
+
+  useEffect(() => {
     if (items.length > 0) {
       setSelectedItems(new Set(items.map((item) => item.id)));
+    } else {
+      setSelectedItems(new Set());
     }
+    handleUnitSystemChange(items);
   }, [items]);
+
+  const handleUnitSystemChange = (items: any) => {
+    const converted = items.map((item: any) => {
+      const newItem = convertToImperial(item.quantity, item.unit, unitSystem);
+      return {
+        ...item,
+        quantity: newItem.value,
+        unit: newItem.unit,
+      };
+    });
+
+    setConvertedItems(converted);
+  };
 
   const handleToggleSelect = (itemId: number) => {
     const newSelectedItems = new Set(selectedItems);
@@ -133,7 +156,25 @@ const ShoppingList: React.FC = () => {
   const handleAddItem = async (formData: ShoppingListFormData) => {
     try {
       const response = await addShoppingListItem(formData);
-      setItems((prev) => [response.data, ...prev]);
+
+      // Check if this was an update to an existing item or a new item
+      const existingItemIndex = items.findIndex(
+        (item) =>
+          item.item_name.toLowerCase() === formData.item_name.toLowerCase()
+      );
+
+      if (existingItemIndex !== -1) {
+        // Update existing item
+        setItems((prev) =>
+          prev.map((item, index) =>
+            index === existingItemIndex ? response.data : item
+          )
+        );
+      } else {
+        // Add new item
+        setItems((prev) => [response.data, ...prev]);
+      }
+
       setIsFormOpen(false);
     } catch (error) {
       if (error instanceof Error) {
@@ -160,11 +201,18 @@ const ShoppingList: React.FC = () => {
     if (!editingItem) return;
     try {
       const response = await updateShoppingListItem(editingItem.id, formData);
-      setItems((prev) =>
-        prev.map((item) =>
-          item.id === response.data.id ? response.data : item
-        )
-      );
+      // If the item was deleted (quantity was 0 or less)
+      if (response.data.message?.includes("removed")) {
+        // Remove the item from state
+        setItems((prev) => prev.filter((item) => item.id !== editingItem.id));
+      } else {
+        // Update the item in state
+        setItems((prev) =>
+          prev.map((item) =>
+            item.id === response.data.id ? response.data : item
+          )
+        );
+      }
       setEditingItem(null);
     } catch (error) {
       setError("Failed to update item");
@@ -175,7 +223,11 @@ const ShoppingList: React.FC = () => {
   const handleDeleteItem = async () => {
     if (!deleteItem) return;
     try {
-      await deleteShoppingListItem(deleteItem.id);
+      await deleteShoppingListItem(
+        deleteItem.id,
+        deleteItem.quantity,
+        deleteItem.unit
+      );
       setItems((prev) => prev.filter((item) => item.id !== deleteItem.id));
       setDeleteItem(null);
     } catch (error) {
@@ -246,13 +298,22 @@ const ShoppingList: React.FC = () => {
             style={{ backgroundColor: "var(--primary-color)" }}>
             <FaShare /> Share List
           </button>
+          <select
+            value={unitSystem}
+            onChange={(e) => {
+              setUnitSystem(e.target.value);
+            }}
+            className="unit-preference-select">
+            <option value="metric">Metric</option>
+            <option value="imperial">Imperial</option>
+          </select>
         </div>
       </div>
 
       {error && <div className="error-message">{error}</div>}
 
       <div className="list-grid">
-        {items.map((item) => (
+        {convertedItems.map((item) => (
           <div key={item.id} className="list-card">
             <div className="card-header">
               <div className="card-header-content">
