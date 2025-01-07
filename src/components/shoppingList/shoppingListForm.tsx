@@ -13,7 +13,6 @@ interface ShoppingListItem {
   id: number;
   item_name: string;
   quantity: number;
-  unit: string;
   tagged_recipes: Array<{
     id: number;
     title: string;
@@ -25,27 +24,11 @@ interface ShoppingListFormProps {
   onSubmit: (item: {
     item_name: string;
     quantity: number;
-    unit: string;
     recipe_ids: number[];
   }) => Promise<void>;
   onClose: () => void;
   onMoveToInventory?: (id: number, expiration_date: string) => Promise<void>;
 }
-
-const COMMON_UNITS = [
-  "units",
-  "grams",
-  "kilograms",
-  "gal",
-  "quart",
-  "milliliter",
-  "liters",
-  "cups",
-  "tbsp",
-  "tsp",
-  "oz",
-  "pounds",
-];
 
 const ShoppingListForm: React.FC<ShoppingListFormProps> = ({
   item,
@@ -55,7 +38,6 @@ const ShoppingListForm: React.FC<ShoppingListFormProps> = ({
 }) => {
   const [itemName, setItemName] = useState("");
   const [quantity, setQuantity] = useState(1);
-  const [unit, setUnit] = useState("pieces");
   const [recipeIds, setRecipeIds] = useState<number[]>([]);
   const [availableRecipes, setAvailableRecipes] = useState<Recipe[]>([]);
   const [showInventoryTransfer, setShowInventoryTransfer] = useState(false);
@@ -71,7 +53,6 @@ const ShoppingListForm: React.FC<ShoppingListFormProps> = ({
     if (item) {
       setItemName(item.item_name);
       setQuantity(item.quantity);
-      setUnit(item.unit);
       setRecipeIds(item.tagged_recipes.map((recipe) => recipe.id));
     }
   }, [item]);
@@ -109,7 +90,6 @@ const ShoppingListForm: React.FC<ShoppingListFormProps> = ({
         await onSubmit({
           item_name: itemName,
           quantity,
-          unit,
           recipe_ids: recipeIds,
         });
       }
@@ -171,20 +151,6 @@ const ShoppingListForm: React.FC<ShoppingListFormProps> = ({
                   {quantityError && (
                     <span className="error-message">{quantityError}</span>
                   )}
-                </div>
-
-                <div className="form-group">
-                  <label htmlFor="unit">Unit</label>
-                  <select
-                    id="unit"
-                    value={unit}
-                    onChange={(e) => setUnit(e.target.value)}>
-                    {COMMON_UNITS.map((unitOption) => (
-                      <option key={unitOption} value={unitOption}>
-                        {unitOption}
-                      </option>
-                    ))}
-                  </select>
                 </div>
               </div>
 

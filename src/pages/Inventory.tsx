@@ -11,13 +11,11 @@ import {
   deleteInventoryItem,
 } from "../utils/api";
 import "../styles/inventory.css";
-import { convertToImperial } from "../utils/convertToImperial";
 
 interface InventoryItem {
   id: number;
   item_name: string;
   quantity: number;
-  unit: string;
   expiration_date?: string;
   created_at: string;
   updated_at: string;
@@ -26,7 +24,6 @@ interface InventoryItem {
 interface InventoryFormData {
   item_name: string;
   quantity: number;
-  unit: string;
   expiration_date: string;
 }
 
@@ -34,13 +31,11 @@ type ExpiringItemData = {
   id: number;
   item_name: string;
   quantity: number;
-  unit: string;
   expiration_date: string;
 };
 
 const Inventory: React.FC = () => {
   const [items, setItems] = useState<InventoryItem[]>([]);
-  const [convertedItems, setConvertedItems] = useState<InventoryItem[]>([]);
   const [alertDidShow, setAlertDidShow] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [isFormOpen, setIsFormOpen] = useState(false);
@@ -50,16 +45,11 @@ const Inventory: React.FC = () => {
   const [showExpirationAlert, setShowExpirationAlert] = useState(false);
   const [expiringItems, setExpiringItems] = useState<ExpiringItemData[]>([]);
   const threeDaysFromNow = new Date();
-  const [unitSystem, setUnitSystem] = useState<any>("metric");
   threeDaysFromNow.setDate(threeDaysFromNow.getDate() + 3);
 
   useEffect(() => {
     loadInventory();
   }, []);
-
-  useEffect(() => {
-    handleUnitSystemChange(items);
-  }, [unitSystem]);
 
   // Check for expiring items whenever items list changes
   useEffect(() => {
@@ -76,7 +66,6 @@ const Inventory: React.FC = () => {
           id: item.id,
           item_name: item.item_name,
           quantity: item.quantity,
-          unit: item.unit,
           expiration_date: item.expiration_date,
         }));
 
@@ -86,21 +75,7 @@ const Inventory: React.FC = () => {
         setAlertDidShow(true);
       }
     }
-    handleUnitSystemChange(items);
   }, [items]);
-
-  const handleUnitSystemChange = (items: any) => {
-    const converted = items.map((item: any) => {
-      const newItem = convertToImperial(item.quantity, item.unit, unitSystem);
-      return {
-        ...item,
-        quantity: newItem.value,
-        unit: newItem.unit,
-      };
-    });
-
-    setConvertedItems(converted);
-  };
 
   const loadInventory = async () => {
     try {
@@ -175,11 +150,7 @@ const Inventory: React.FC = () => {
   const handleDeleteItem = async () => {
     if (!deleteItem) return;
     try {
-      await deleteInventoryItem(
-        deleteItem.id,
-        deleteItem.quantity,
-        deleteItem.unit
-      );
+      await deleteInventoryItem(deleteItem.id, deleteItem.quantity);
       setItems((prev) => prev.filter((item) => item.id !== deleteItem.id));
       setDeleteItem(null);
     } catch (error) {
@@ -207,22 +178,13 @@ const Inventory: React.FC = () => {
             style={{ marginTop: 5 }}>
             <FaPlus /> Add Item
           </button>
-          <select
-            value={unitSystem}
-            onChange={(e) => {
-              setUnitSystem(e.target.value);
-            }}
-            className="unit-preference-select">
-            <option value="metric">Metric</option>
-            <option value="imperial">Imperial</option>
-          </select>
         </div>
       </div>
 
       {error && <div className="error-message">{error}</div>}
 
       <div className="list-grid">
-        {convertedItems.map((item) => (
+        {items.map((item) => (
           <div key={item.id} className="list-card">
             <div className="card-header">
               <h3 className="card-title">{item.item_name}</h3>
@@ -243,9 +205,7 @@ const Inventory: React.FC = () => {
             </div>
 
             <div className="card-content">
-              <div className="quantity-info">
-                {item.quantity} {item.unit}
-              </div>
+              <div className="quantity-info">QTY: {item.quantity}</div>
 
               {item.expiration_date && (
                 <div

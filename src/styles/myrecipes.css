@@ -211,6 +211,57 @@
     box-shadow: 0 0 0 2px rgba(5, 71, 42, 0.1);
 }
 
+.instruction-nav {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 1.5rem;
+}
+
+.button-icon {
+    margin: 0 0.5rem;
+}
+
+.step-counter {
+    text-align: center;
+    font-weight: 500;
+}
+
+.instruction-text {
+    font-size: 1.25rem;
+    margin-bottom: 1.5rem;
+}
+
+.timer-container {
+    background-color: var(--surface-color);
+    border-radius: 0.5rem;
+    padding: 1.5rem;
+    margin-top: 1rem;
+}
+
+.timer-content {
+    text-align: center;
+}
+
+.timer-display {
+    font-size: 2.25rem;
+    font-weight: bold;
+    margin-bottom: 1rem;
+}
+
+.timer-controls {
+    display: flex;
+    justify-content: center;
+    gap: 1rem;
+}
+
+.timer-additional-info {
+    font-size: 0.875rem;
+    color: var(--text-color);
+    margin-top: 0.5rem;
+    opacity: 0.8;
+}
+
 @media (max-width: 768px) {
     .my-recipes-container {
         padding: 20px;

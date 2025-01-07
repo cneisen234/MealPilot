@@ -6,7 +6,6 @@ interface InventoryItem {
   id: number;
   item_name: string;
   quantity: number;
-  unit: string;
   created_at?: string;
   updated_at?: string;
   expiration_date?: string;
@@ -17,26 +16,10 @@ interface InventoryFormProps {
   onSubmit: (item: {
     item_name: string;
     quantity: number;
-    unit: string;
     expiration_date: string;
   }) => Promise<void>;
   onClose: () => void;
 }
-
-const COMMON_UNITS = [
-  "units",
-  "grams",
-  "kilograms",
-  "gal",
-  "quart",
-  "milliliter",
-  "liters",
-  "cups",
-  "tbsp",
-  "tsp",
-  "oz",
-  "pounds",
-];
 
 const InventoryForm: React.FC<InventoryFormProps> = ({
   item,
@@ -45,7 +28,6 @@ const InventoryForm: React.FC<InventoryFormProps> = ({
 }) => {
   const [itemName, setItemName] = useState("");
   const [quantity, setQuantity] = useState(1);
-  const [unit, setUnit] = useState("pieces");
   const [expirationDate, setExpirationDate] = useState("");
 
   const [itemNameError, setItemNameError] = useState("");
@@ -62,7 +44,6 @@ const InventoryForm: React.FC<InventoryFormProps> = ({
 
       setItemName(item.item_name);
       setQuantity(item.quantity);
-      setUnit(item.unit);
       setExpirationDate(formattedDate);
     }
   }, [item]);
@@ -88,7 +69,6 @@ const InventoryForm: React.FC<InventoryFormProps> = ({
       await onSubmit({
         item_name: itemName,
         quantity,
-        unit,
         expiration_date: expirationDate,
       });
       onClose();
@@ -139,20 +119,6 @@ const InventoryForm: React.FC<InventoryFormProps> = ({
               {quantityError && (
                 <span className="error-message">{quantityError}</span>
               )}
-            </div>
-
-            <div className="form-group">
-              <label htmlFor="unit">Unit</label>
-              <select
-                id="unit"
-                value={unit}
-                onChange={(e) => setUnit(e.target.value)}>
-                {COMMON_UNITS.map((unitOption) => (
-                  <option key={unitOption} value={unitOption}>
-                    {unitOption}
-                  </option>
-                ))}
-              </select>
             </div>
           </div>
 

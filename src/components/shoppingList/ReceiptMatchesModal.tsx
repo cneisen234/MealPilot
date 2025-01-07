@@ -8,7 +8,6 @@ interface MatchedItem {
   shopping_list_item: string;
   receipt_match: string;
   quantity: number;
-  unit: string;
 }
 
 interface ReceiptMatchesModalProps {
@@ -104,7 +103,6 @@ const ReceiptMatchesModal: React.FC<ReceiptMatchesModalProps> = ({
                   step="1"
                   placeholder="Enter quantity"
                 />
-                <span className="unit-label">{match.unit}</span>
               </div>
               <div
                 className="matches-check"

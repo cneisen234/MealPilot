@@ -5,7 +5,6 @@ interface ShoppingListItem {
   id: number;
   item_name: string;
   quantity: number;
-  unit: string;
   isSelected?: boolean;
 }
 
@@ -46,7 +45,7 @@ const ShareableList: React.FC<ShareableListProps> = ({ items }) => {
           {items.map((item) => (
             <div key={item.id} className="sharable-list-item">
               <span className="list-item-content">
-                {item.quantity} {item.unit} {item.item_name}
+                {item.quantity} {item.item_name}
               </span>
               <button
                 onClick={() => onAction(item)}

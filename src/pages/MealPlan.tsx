@@ -135,12 +135,10 @@ const MealPlan: React.FC = () => {
       <div className="meal-plan-header">
         <div className="meal-plan-title">
           <h1>Weekly Meal Plan</h1>
-          {mealPlan && (
-            <p className="days-remaining">
-              {getDaysRemaining()} days remaining
-            </p>
-          )}
         </div>
+        {mealPlan && (
+          <p className="days-remaining">{getDaysRemaining()} days remaining</p>
+        )}
         <button onClick={handleGeneratePlan} className="regenerate-button">
           {mealPlan ? "Regenerate Plan" : "Generate New Plan"}
         </button>

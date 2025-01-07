@@ -5,7 +5,6 @@ interface ExpirationAlertProps {
   items: Array<{
     item_name: string;
     expiration_date: string;
-    unit: string;
     quantity: number;
   }>;
   onClose: () => void;
@@ -31,7 +30,7 @@ const ExpirationAlert: React.FC<ExpirationAlertProps> = ({
           {items.map((item, index) => (
             <div key={index} className="expiring-item">
               <p>
-                <strong>{item.item_name}</strong> - {item.quantity} {item.unit}
+                <strong>{item.item_name}</strong> - {item.quantity}
               </p>
               <p className="expiration-date">
                 Expires: {new Date(item.expiration_date).toLocaleDateString()}

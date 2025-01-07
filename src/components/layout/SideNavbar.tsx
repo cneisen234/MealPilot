@@ -91,9 +91,6 @@ const SideNavbar: React.FC = () => {
             onClick={closeMenu}>
             Shopping List
           </NavItem>
-          <NavItem to="/coming-soon" icon={<FaClock />} onClick={closeMenu}>
-            Coming Soon
-          </NavItem>
         </ul>
         <div className="copyright">
           &copy; {currentYear} MealPilot. All rights reserved.

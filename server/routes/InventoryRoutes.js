@@ -2,7 +2,6 @@ const express = require("express");
 const router = express.Router();
 const authMiddleware = require("../middleware/auth");
 const pool = require("../db");
-const { convertToStandardUnit } = require("../utils/measurementUtils");
 
 // Get all inventory items for the logged-in user
 router.get("/", authMiddleware, async (req, res) => {
@@ -32,7 +31,7 @@ const determineExpirationDate = (existingDate, newDate) => {
 router.post("/", authMiddleware, async (req, res) => {
   try {
     const userId = req.user.id;
-    const { item_name, quantity, unit } = req.body;
+    const { item_name, quantity } = req.body;
     let { expiration_date } = req.body;
 
     if (expiration_date === "") {
@@ -47,11 +46,9 @@ router.post("/", authMiddleware, async (req, res) => {
 
     await pool.query("BEGIN");
 
-    const standardized = convertToStandardUnit(quantity, unit);
-
     // Check for existing item with same name
     const existingItem = await pool.query(
-      "SELECT id, quantity, unit, expiration_date FROM inventory WHERE user_id = $1 AND LOWER(item_name) = LOWER($2)",
+      "SELECT id, quantity, expiration_date FROM inventory WHERE user_id = $1 AND LOWER(item_name) = LOWER($2)",
       [userId, item_name.trim()]
     );
 
@@ -59,17 +56,6 @@ router.post("/", authMiddleware, async (req, res) => {
 
     if (existingItem.rows.length > 0) {
       const currentItem = existingItem.rows[0];
-      const currentStandard = convertToStandardUnit(
-        currentItem.quantity,
-        currentItem.unit
-      );
-
-      if (standardized.unit !== currentStandard.unit) {
-        await pool.query("ROLLBACK");
-        return res.status(400).json({
-          message: "Cannot combine items with different unit types",
-        });
-      }
 
       // Determine which expiration date to use
       const finalExpirationDate = determineExpirationDate(
@@ -78,7 +64,7 @@ router.post("/", authMiddleware, async (req, res) => {
       );
 
       // Add quantities and update with appropriate expiration date
-      const newQuantity = standardized.value + currentStandard.value;
+      const newQuantity = Number(quantity) + Number(currentItem.quantity);
 
       result = await pool.query(
         `UPDATE inventory 
@@ -90,16 +76,10 @@ router.post("/", authMiddleware, async (req, res) => {
     } else {
       // New item, insert with provided expiration date
       result = await pool.query(
-        `INSERT INTO inventory (user_id, item_name, quantity, unit, expiration_date) 
-         VALUES ($1, $2, $3, $4, $5) 
+        `INSERT INTO inventory (user_id, item_name, quantity, expiration_date) 
+         VALUES ($1, $2, $3, $4) 
          RETURNING *`,
-        [
-          userId,
-          item_name.trim(),
-          standardized.value,
-          standardized.unit,
-          expiration_date,
-        ]
+        [userId, item_name.trim(), quantity, expiration_date]
       );
     }
 
@@ -117,7 +97,7 @@ router.put("/:id", authMiddleware, async (req, res) => {
   try {
     const userId = req.user.id;
     const itemId = req.params.id;
-    const { item_name, quantity, unit } = req.body;
+    const { item_name, quantity } = req.body;
     let { expiration_date } = req.body;
 
     if (expiration_date === "" || expiration_date === "NaN-NaN-NaN") {
@@ -132,11 +112,8 @@ router.put("/:id", authMiddleware, async (req, res) => {
 
     await pool.query("BEGIN");
 
-    // Standardize the quantity
-    const standardized = convertToStandardUnit(quantity, unit);
-
     // If quantity is 0 or less, delete the item
-    if (standardized.value <= 0) {
+    if (Number(quantity) <= 0) {
       await pool.query("DELETE FROM inventory WHERE id = $1 AND user_id = $2", [
         itemId,
         userId,
@@ -148,24 +125,16 @@ router.put("/:id", authMiddleware, async (req, res) => {
       });
     }
 
-    // Update item with standardized quantity
+    // Update item with quantity
     const result = await pool.query(
       `UPDATE inventory 
        SET item_name = $1, 
            quantity = $2, 
-           unit = $3, 
-           expiration_date = $4, 
+           expiration_date = $3, 
            updated_at = NOW()
-       WHERE id = $5 AND user_id = $6
+       WHERE id = $4 AND user_id = $5
        RETURNING *`,
-      [
-        item_name.trim(),
-        standardized.value,
-        standardized.unit,
-        expiration_date,
-        itemId,
-        userId,
-      ]
+      [item_name.trim(), quantity, expiration_date, itemId, userId]
     );
 
     if (result.rows.length === 0) {
@@ -190,13 +159,13 @@ router.put("/delete/:id", authMiddleware, async (req, res) => {
   try {
     const userId = req.user.id;
     const itemId = req.params.id;
-    const { quantity, unit } = req.body; // Get incoming quantity and unit
+    const { quantity } = req.body; // Get incoming quantity
 
     await pool.query("BEGIN");
 
     // Get current item
     const currentItem = await pool.query(
-      "SELECT quantity, unit FROM inventory WHERE id = $1 AND user_id = $2",
+      "SELECT quantity FROM inventory WHERE id = $1 AND user_id = $2",
       [itemId, userId]
     );
 
@@ -205,31 +174,16 @@ router.put("/delete/:id", authMiddleware, async (req, res) => {
       return res.status(404).json({ message: "Item not found" });
     }
 
-    // Standardize both quantities for comparison
-    const incomingStandard = convertToStandardUnit(quantity, unit);
-    const currentStandard = convertToStandardUnit(
-      currentItem.rows[0].quantity,
-      currentItem.rows[0].unit
-    );
-
-    // Verify units are compatible
-    if (incomingStandard.unit !== currentStandard.unit) {
-      await pool.query("ROLLBACK");
-      return res.status(400).json({
-        message: "Incompatible unit types for comparison",
-      });
-    }
-
     // If incoming quantity is less than current, update instead of delete
-    if (incomingStandard.value < currentStandard.value) {
-      const remainingQty = currentStandard.value - incomingStandard.value;
+    if (Number(quantity) < currentItem.rows[0].quantity) {
+      const remainingQty = currentItem.rows[0].quantity - Number(quantity);
 
       const result = await pool.query(
         `UPDATE inventory 
-         SET quantity = $1, unit = $2, updated_at = NOW()
-         WHERE id = $3 AND user_id = $4
+         SET quantity = $1, updated_at = NOW()
+         WHERE id = $2 AND user_id = $3
          RETURNING *`,
-        [remainingQty, currentStandard.unit, itemId, userId]
+        [remainingQty, itemId, userId]
       );
 
       await pool.query("COMMIT");
@@ -254,6 +208,55 @@ router.put("/delete/:id", authMiddleware, async (req, res) => {
       message: "Server error",
       error: error.message,
     });
+  }
+});
+
+router.put("/delete-by-name/:itemName", authMiddleware, async (req, res) => {
+  try {
+    const userId = req.user.id;
+    const itemName = req.params.itemName;
+    const { quantity } = req.body;
+
+    // Start a transaction
+    await pool.query("BEGIN");
+
+    // First get the current quantity
+    const currentItem = await pool.query(
+      "SELECT quantity FROM inventory WHERE user_id = $1 AND LOWER(item_name) = LOWER($2)",
+      [userId, itemName]
+    );
+
+    if (currentItem.rows.length === 0) {
+      await pool.query("ROLLBACK");
+      return res.status(404).json({ message: "Item not found" });
+    }
+
+    const remainingQuantity = currentItem.rows[0].quantity - quantity;
+
+    if (remainingQuantity <= 0) {
+      // Delete the item if quantity would be zero or less
+      await pool.query(
+        "DELETE FROM inventory WHERE user_id = $1 AND LOWER(item_name) = LOWER($2)",
+        [userId, itemName]
+      );
+    } else {
+      // Update the quantity if there's still some remaining
+      await pool.query(
+        "UPDATE inventory SET quantity = $1 WHERE user_id = $2 AND LOWER(item_name) = LOWER($3)",
+        [remainingQuantity, userId, itemName]
+      );
+    }
+
+    await pool.query("COMMIT");
+    res.json({
+      message:
+        remainingQuantity <= 0 ? "Item removed" : "Item quantity updated",
+      remainingQuantity: remainingQuantity > 0 ? remainingQuantity : 0,
+    });
+  } catch (error) {
+    await pool.query("ROLLBACK");
+    console.error("Error updating inventory item:", error);
+    res.status(500).json({ message: "Server error" });
   }
 });
 

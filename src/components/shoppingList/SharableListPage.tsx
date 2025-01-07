@@ -10,7 +10,6 @@ interface ShoppingListItem {
   id: number;
   item_name: string;
   quantity: number;
-  unit: string;
   isSelected?: boolean;
 }
 
@@ -114,7 +113,7 @@ const ShareableListPage: React.FC = () => {
             {uncheckedItems.map((item) => (
               <div key={item.id} className="list-item">
                 <span className="list-item-content">
-                  {item.quantity} {item.unit} {item.item_name}
+                  {item.quantity} {item.item_name}
                 </span>
                 <button
                   onClick={() => handleCheckItem(item)}
@@ -137,7 +136,7 @@ const ShareableListPage: React.FC = () => {
             {checkedItems.map((item) => (
               <div key={item.id} className="list-item checked">
                 <span className="list-item-content">
-                  {item.quantity} {item.unit} {item.item_name}
+                  {item.quantity} {item.item_name}
                 </span>
                 <button
                   onClick={() => handleUncheckItem(item)}

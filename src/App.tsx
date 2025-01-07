@@ -17,7 +17,6 @@ import { AuthProvider, useAuth } from "./context/AuthContext";
 import ForgotPassword from "./components/auth/ForgotPassword";
 import ResetPassword from "./components/auth/ResetPassword";
 import CloseAccount from "./components/profile/CloseAccount";
-import ComingSoon from "./pages/ComingSoon";
 import BubbleBackground from "./BubbleBackground";
 import MyRecipes from "./pages/MyRecipes";
 import RecipeDetail from "./components/myrecipes/RecipeDetail";
@@ -94,7 +93,6 @@ const AppContent: React.FC = () => {
               path="/shopping-list"
               element={<PrivateRoute element={<ShoppingList />} />}
             />
-            <Route path="/coming-soon" element={<ComingSoon />} />
             <Route
               path="/share/shopping-list/:id"
               element={<ShareableListPage />}

@@ -41,23 +41,33 @@ router.post("/generate", authMiddleware, async (req, res) => {
     await pool.query("DELETE FROM meal_plans WHERE user_id = $1", [userId]);
 
     // Get saved recipes and restrictions
-    const [savedRecipesResult, cantHaves, mustHaves, inventoryQuery] =
-      await Promise.all([
-        pool.query("SELECT * FROM recipes WHERE user_id = $1", [userId]),
-        pool.query("SELECT item FROM cant_haves WHERE user_id = $1", [userId]),
-        pool.query("SELECT item FROM must_haves WHERE user_id = $1", [userId]),
-        pool.query(
-          "SELECT item_name, quantity, unit FROM inventory WHERE user_id = $1",
-          [userId]
-        ),
-      ]);
+    const [
+      savedRecipesResult,
+      cantHaves,
+      mustHaves,
+      tastePreferences,
+      dietaryGoals,
+      cuisinePreferences,
+    ] = await Promise.all([
+      pool.query("SELECT * FROM recipes WHERE user_id = $1", [userId]),
+      pool.query("SELECT item FROM cant_haves WHERE user_id = $1", [userId]),
+      pool.query("SELECT item FROM must_haves WHERE user_id = $1", [userId]),
+      pool.query("SELECT item FROM taste_preferences WHERE user_id = $1", [
+        userId,
+      ]),
+      pool.query("SELECT item FROM dietary_goals WHERE user_id = $1", [userId]),
+      pool.query("SELECT item FROM cuisine_preferences WHERE user_id = $1", [
+        userId,
+      ]),
+    ]);
 
     const restrictions = {
       cantHaves: cantHaves.rows.map((row) => row.item),
       mustHaves: mustHaves.rows.map((row) => row.item),
+      tastePreferences: tastePreferences.rows.map((row) => row.item),
+      dietaryGoals: dietaryGoals.rows.map((row) => row.item),
+      cuisinePreferences: cuisinePreferences.rows.map((row) => row.item),
     };
-
-    const inventory = inventoryQuery.rows;
 
     // Generate array of next 7 days
     const days = Array.from({ length: 7 }, (_, i) => {
@@ -77,8 +87,7 @@ router.post("/generate", authMiddleware, async (req, res) => {
         date,
         existingMeals,
         savedRecipesResult.rows,
-        restrictions,
-        inventory
+        restrictions
       );
 
       // Add these meals to our tracking array
@@ -124,26 +133,14 @@ async function generateDayMeals(
   date,
   existingMeals,
   savedRecipes,
-  restrictions,
-  inventory
+  restrictions
 ) {
-  const inventoryList = inventory
-    .map((item) => `${item.quantity} ${item.unit} of ${item.item_name}`)
-    .join("\n");
   const prompt = `Generate meals for a single day (${date}) following these rules:
   - Do not duplicate any of these existing meals: ${JSON.stringify(
     existingMeals
   )}
   - Use a mix of saved recipes (${JSON.stringify(savedRecipes)}) and new ones
   - Make sure you generate a meal that fits with the meal type. For example if you generate a meal for lunch, it should be fitting for what someone would make for lunch (dont fit a desert in there!)
-  ${
-    inventoryList.length > 0 &&
-    `- Consider the following available ingredients when generating new recipes:
-     ${inventoryList}
-     Prioritize using these ingredients when possible, considering quantities available.
-     Recipes don't have to use these ingredients, but prefer ones that make good use of what's on hand.
-     If a recipe would require more of an ingredient than is available, consider alternatives.`
-  }
   ${
     (restrictions.cantHaves.length > 0 || restrictions.mustHaves.length > 0) &&
     "- IMPORTANT THESE DIETARY RESTRICTIONS MUST BE FOLLOWED UNDER ANY AND ALL CIRCUMSTANCES: "
@@ -156,6 +153,27 @@ async function generateDayMeals(
         restrictions.mustHaves.length > 0 &&
         "Must have: " + restrictions.mustHaves.join(", ")
       }
+      ${
+        (restrictions.tastePreferences.length > 0 ||
+          restrictions.dietaryGoals.length > 0 ||
+          restrictions.cuisinePreferences.length > 0) &&
+        "- Make sure the generated recipe follows these personal preference guidelines:"
+      }
+      ${
+        restrictions.tastePreferences.length > 0 &&
+        "Taste Preferences: " + restrictions.tastePreferences.join(", ")
+      }
+
+        ${
+          restrictions.dietaryGoals.length > 0 &&
+          "Dietary Goals: " + restrictions.dietaryGoals.join(", ")
+        }
+
+          ${
+            restrictions.cuisinePreferences.length > 0 &&
+            "Cuisine Preferences: " + restrictions.cuisinePreferences.join(", ")
+          }
+
 
   Return a JSON object with this exact structure:
   {

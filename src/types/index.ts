@@ -26,6 +26,9 @@ export interface DietaryItem {
 
 export interface CantHave extends DietaryItem {}
 export interface MustHave extends DietaryItem {}
+export interface TastePreference extends DietaryItem {}
+export interface DietaryGoal extends DietaryItem {}
+export interface CuisinePreference extends DietaryItem {}
 
 export interface Meal {
   title: string;

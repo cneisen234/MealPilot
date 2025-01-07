@@ -10,15 +10,23 @@ import {
   moveToInventoryByName,
 } from "../../utils/api";
 import AnimatedTechIcon from "../common/AnimatedTechIcon";
-import { FaEdit, FaTrash, FaTimes, FaSave, FaCheck } from "react-icons/fa";
+import {
+  FaEdit,
+  FaTrash,
+  FaTimes,
+  FaSave,
+  FaCheck,
+  FaExclamationTriangle,
+  FaArrowLeft,
+} from "react-icons/fa";
 import ConfirmDeleteModal from "../common/ConfirmDeleteModal";
+import CookingMode from "../cooking/CookingMode";
 import decimalHelper from "../../helpers/decimalHelper";
 
 interface IngredientAnalysis {
   original: string;
   parsed?: {
     quantity: number;
-    unit: string;
     name: string;
   };
   status: {
@@ -26,11 +34,9 @@ interface IngredientAnalysis {
     hasEnough?: boolean;
     available?: {
       quantity: number;
-      unit: string;
       id: number;
     };
     quantity?: number;
-    unit?: string;
     shopping_id?: number;
   };
 }
@@ -50,21 +56,6 @@ interface IngredientQuantities {
   [key: number]: number;
 }
 
-const COMMON_UNITS = [
-  "units",
-  "grams",
-  "kilograms",
-  "gal",
-  "quart",
-  "milliliter",
-  "liters",
-  "cups",
-  "tbsp",
-  "tsp",
-  "oz",
-  "pounds",
-];
-
 const RecipeDetail: React.FC = () => {
   const [recipe, setRecipe] = useState<Recipe | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -73,31 +64,14 @@ const RecipeDetail: React.FC = () => {
   const [isSaving, setIsSaving] = useState(false);
   const [editedRecipe, setEditedRecipe] = useState<Recipe | null>(null);
   const [isDeleteConfirmOpen, setIsDeleteConfirmOpen] = useState(false);
+  const [isCookingMode, setIsCookingMode] = useState(false);
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const routeLocation = useLocation();
   const fromMealPlan = routeLocation.state?.fromMealPlan;
   const [ingredientQuantities, setIngredientQuantities] =
     useState<IngredientQuantities>({});
-  const [ingredientUnits, setIngredientUnits] = useState<{
-    [key: number]: string;
-  }>({});
   let currentStep = 1;
-
-  useEffect(() => {
-    if (recipe?.ingredients) {
-      const initialUnits = recipe.ingredients.reduce(
-        (acc, ingredient, index) => {
-          if (ingredient.parsed?.unit) {
-            acc[index] = ingredient.parsed.unit;
-          }
-          return acc;
-        },
-        {} as { [key: number]: string }
-      );
-      setIngredientUnits(initialUnits);
-    }
-  }, [recipe]);
 
   const createPlaceholderAnalysis = (
     ingredient: string
@@ -164,7 +138,6 @@ const RecipeDetail: React.FC = () => {
       await addShoppingListItem({
         item_name: ingredient.parsed.name,
         quantity: ingredientQuantities[index] || ingredient.parsed.quantity,
-        unit: ingredientUnits[index] || ingredient.parsed.unit,
         recipe_ids: recipe ? [recipe.id] : [],
       });
 
@@ -197,7 +170,6 @@ const RecipeDetail: React.FC = () => {
         await addInventoryItem({
           item_name: ingredient.parsed.name,
           quantity: ingredientQuantities[index] || ingredient.parsed.quantity,
-          unit: ingredientUnits[index] || ingredient.parsed.unit,
           expiration_date: "",
         });
       }
@@ -339,7 +311,7 @@ const RecipeDetail: React.FC = () => {
 
   if (isEditing && editedRecipe) {
     return (
-      <div className="recipe-result">
+      <div id="recipe-details" className="recipe-result">
         <div className="recipe-actions">
           <button
             onClick={handleCancelEdit}
@@ -517,7 +489,12 @@ const RecipeDetail: React.FC = () => {
         <button
           onClick={handleBack}
           className="recipe-action-button back-button">
-          Go Back
+          <FaArrowLeft className="button-icon" />
+        </button>
+        <button
+          onClick={() => setIsCookingMode(true)}
+          className="recipe-action-button back-button">
+          Start Cooking
         </button>
         <button
           onClick={handleEditClick}
@@ -571,13 +548,8 @@ const RecipeDetail: React.FC = () => {
                 {ingredient.status.type === "in-inventory" && (
                   <div
                     className="ingredient-status-wrapper"
-                    style={{ width: 165 }}>
-                    <div
-                      className={`ingredient-status ${
-                        ingredient.status.hasEnough
-                          ? "sufficient"
-                          : "insufficient"
-                      }`}>
+                    style={{ width: 215 }}>
+                    <div className="ingredient-status sufficient">
                       <FaCheck />
                       <span>In Stock</span>
                     </div>
@@ -588,6 +560,19 @@ const RecipeDetail: React.FC = () => {
                     ingredient.parsed)) && (
                   <div className="ingredient-actions">
                     <div className="quantity-wrapper">
+                      <div
+                        className="ingredient-status-wrapper"
+                        style={{ width: 215, marginBottom: 5 }}>
+                        <div className="ingredient-status insufficient">
+                          <FaExclamationTriangle />
+                          <span>
+                            {" "}
+                            {ingredient.status.type === "in-shopping-list"
+                              ? "In Shopping List"
+                              : "Not Found"}
+                          </span>
+                        </div>
+                      </div>
                       <input
                         type="text"
                         value={
@@ -606,38 +591,18 @@ const RecipeDetail: React.FC = () => {
                           )
                         }
                         className="quantity-input"
-                        style={{ width: 40, marginRight: 10 }}
+                        style={{ width: 40, marginRight: 10, float: "left" }}
                         min="0"
                         step="1"
                         placeholder="Enter quantity"
                       />
-                      <select
-                        value={
-                          ingredientUnits[index] ||
-                          ingredient.parsed?.unit ||
-                          ""
-                        }
-                        onChange={(e) =>
-                          setIngredientUnits((prev) => ({
-                            ...prev,
-                            [index]: e.target.value,
-                          }))
-                        }
-                        className="unit-select"
-                        style={{ width: 100, marginRight: 10 }}>
-                        {COMMON_UNITS.map((unit) => (
-                          <option key={unit} value={unit}>
-                            {unit}
-                          </option>
-                        ))}
-                      </select>
                       <button
                         onClick={() =>
                           ingredient.status.type === "in-shopping-list"
                             ? handleAddToInventory(ingredient, index)
                             : handleAddToShoppingList(ingredient, index)
                         }
-                        style={{ width: 165 }}
+                        style={{ width: 150 }}
                         className={
                           ingredient.status.type === "in-shopping-list"
                             ? "add-to-inventory-btn"
@@ -697,6 +662,10 @@ const RecipeDetail: React.FC = () => {
           onConfirm={handleDelete}
           item_name={recipe.title}
         />
+      )}
+
+      {isCookingMode && (
+        <CookingMode recipe={recipe} onClose={() => setIsCookingMode(false)} />
       )}
     </div>
   );

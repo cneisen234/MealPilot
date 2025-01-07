@@ -1,5 +1,11 @@
 import React, { useState, useEffect } from "react";
-import { CantHave, MustHave } from "../types";
+import {
+  CantHave,
+  MustHave,
+  TastePreference,
+  DietaryGoal,
+  CuisinePreference,
+} from "../types";
 import AnimatedTechIcon from "../components/common/AnimatedTechIcon";
 import PreferenceInput from "../components/common/PreferenceInput";
 import {
@@ -9,6 +15,15 @@ import {
   getMustHaves,
   addMustHave,
   removeMustHave,
+  getTastePreferences,
+  addTastePreference,
+  removeTastePreference,
+  getDietaryGoals,
+  addDietaryGoal,
+  removeDietaryGoal,
+  getCuisinePreferences,
+  addCuisinePreference,
+  removeCuisinePreference,
   generateRecipe,
   saveRecipe,
 } from "../utils/api";
@@ -16,9 +31,13 @@ import { MEAL_TYPES } from "../constants/mealTypes";
 import {
   COMMON_CANT_HAVES,
   COMMON_MUST_HAVES,
+  COMMON_TASTE_PREFERENCES,
+  COMMON_DIETARY_GOALS,
+  COMMON_CUISINE_PREFERENCES,
 } from "../constants/dietaryItems";
 import "../styles/recipe.css";
 import { useLocation, useNavigate } from "react-router-dom";
+import { FaArrowLeft } from "react-icons/fa";
 
 interface Recipe {
   title: string;
@@ -35,6 +54,13 @@ const Recipe = () => {
   const routeLocation = useLocation();
   const [cantHaves, setCantHaves] = useState<CantHave[]>([]);
   const [mustHaves, setMustHaves] = useState<MustHave[]>([]);
+  const [tastePreferences, setTastePreferences] = useState<TastePreference[]>(
+    []
+  );
+  const [dietaryGoals, setDietaryGoals] = useState<DietaryGoal[]>([]);
+  const [cuisinePreferences, setCuisinePreferences] = useState<
+    CuisinePreference[]
+  >([]);
   const [selectedMealType, setSelectedMealType] =
     useState<string>("main course");
   const [isLoading, setIsLoading] = useState(true);
@@ -54,12 +80,24 @@ const Recipe = () => {
 
   const loadPreferences = async () => {
     try {
-      const [cantHavesRes, mustHavesRes] = await Promise.all([
+      const [
+        cantHavesRes,
+        mustHavesRes,
+        tastePreferencesRes,
+        dietaryGoalsRes,
+        CuisinePreferencesRes,
+      ] = await Promise.all([
         getCantHaves(),
         getMustHaves(),
+        getTastePreferences(),
+        getDietaryGoals(),
+        getCuisinePreferences(),
       ]);
       setCantHaves(cantHavesRes.data);
       setMustHaves(mustHavesRes.data);
+      setTastePreferences(tastePreferencesRes.data);
+      setDietaryGoals(dietaryGoalsRes.data);
+      setCuisinePreferences(CuisinePreferencesRes.data);
     } catch (error) {
       console.error("Error loading preferences:", error);
     } finally {
@@ -104,6 +142,66 @@ const Recipe = () => {
       setMustHaves(response.data);
     } catch (error) {
       console.error("Error removing must-have:", error);
+    }
+  };
+
+  const handleAddTastePreference = async (item: string) => {
+    try {
+      await addTastePreference(item);
+      const response = await getTastePreferences();
+      setTastePreferences(response.data);
+    } catch (error) {
+      console.error("Error adding taste-preference:", error);
+    }
+  };
+
+  const handleRemoveTastePreference = async (id: number) => {
+    try {
+      await removeTastePreference(id);
+      const response = await getTastePreferences();
+      setTastePreferences(response.data);
+    } catch (error) {
+      console.error("Error removing taste-preference:", error);
+    }
+  };
+
+  const handleAddDietaryGoal = async (item: string) => {
+    try {
+      await addDietaryGoal(item);
+      const response = await getDietaryGoals();
+      setDietaryGoals(response.data);
+    } catch (error) {
+      console.error("Error adding dietary-goal:", error);
+    }
+  };
+
+  const handleRemoveDietaryGoal = async (id: number) => {
+    try {
+      await removeDietaryGoal(id);
+      const response = await getDietaryGoals();
+      setDietaryGoals(response.data);
+    } catch (error) {
+      console.error("Error removing dietary-goal:", error);
+    }
+  };
+
+  const handleAddCuisinePreference = async (item: string) => {
+    try {
+      await addCuisinePreference(item);
+      const response = await getCuisinePreferences();
+      setCuisinePreferences(response.data);
+    } catch (error) {
+      console.error("Error adding cuisine-preference:", error);
+    }
+  };
+
+  const handleRemoveCuisinePreference = async (id: number) => {
+    try {
+      await removeCuisinePreference(id);
+      const response = await getCuisinePreferences();
+      setCuisinePreferences(response.data);
+    } catch (error) {
+      console.error("Error removing cuisine-preference:", error);
     }
   };
 
@@ -193,7 +291,7 @@ const Recipe = () => {
             <button
               onClick={handleBack}
               className="recipe-action-button back-button">
-              Go Back
+              <FaArrowLeft className="button-icon" />
             </button>
             <button
               onClick={handleSaveRecipe}
@@ -325,6 +423,39 @@ const Recipe = () => {
           onRemove={handleRemoveMustHave}
           type="combo"
           options={COMMON_MUST_HAVES}
+        />
+
+        <PreferenceInput
+          label="Taste"
+          description="How do you want the item to taste?."
+          placeholder="Enter a taste preference..."
+          items={tastePreferences}
+          onAdd={handleAddTastePreference}
+          onRemove={handleRemoveTastePreference}
+          type="combo"
+          options={COMMON_TASTE_PREFERENCES}
+        />
+
+        <PreferenceInput
+          label="Dietary Goals"
+          description="Do you have any goals for your diet?."
+          placeholder="Enter a goal..."
+          items={dietaryGoals}
+          onAdd={handleAddDietaryGoal}
+          onRemove={handleRemoveDietaryGoal}
+          type="combo"
+          options={COMMON_DIETARY_GOALS}
+        />
+
+        <PreferenceInput
+          label="Cuisine"
+          description="Do you prefer a specific cuisine style?."
+          placeholder="Enter a cuisine preference..."
+          items={cuisinePreferences}
+          onAdd={handleAddCuisinePreference}
+          onRemove={handleRemoveCuisinePreference}
+          type="combo"
+          options={COMMON_CUISINE_PREFERENCES}
         />
       </div>
 

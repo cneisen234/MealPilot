@@ -130,6 +130,45 @@ export const removeMustHave = (id: number) => {
   return api.delete(`/preference/must-haves/${id}`);
 };
 
+// Taste Preferences
+export const getTastePreferences = () => {
+  return api.get('/preference/taste');
+};
+
+export const addTastePreference = (item: string) => {
+  return api.post('/preference/taste', { item });
+};
+
+export const removeTastePreference = (id: number) => {
+  return api.delete(`/preference/taste/${id}`);
+};
+
+// Dietary Goals
+export const getDietaryGoals = () => {
+  return api.get('/preference/goal');
+};
+
+export const addDietaryGoal = (item: string) => {
+  return api.post('/preference/goal', { item });
+};
+
+export const removeDietaryGoal = (id: number) => {
+  return api.delete(`/preference/goal/${id}`);
+};
+
+// Cuisine Preferences
+export const getCuisinePreferences = () => {
+  return api.get('/preference/cuisine');
+};
+
+export const addCuisinePreference = (item: string) => {
+  return api.post('/preference/cuisine', { item });
+};
+
+export const removeCuisinePreference = (id: number) => {
+  return api.delete(`/preference/cuisine/${id}`);
+};
+
 // Recipe Generation
 export const generateRecipe = (mealType?: string) => {
   return api.post('/recipe/create-recipe', { mealType });
@@ -199,7 +238,6 @@ export const getInventoryItems = () => {
 export const addInventoryItem = (itemData: {
   item_name: string;
   quantity: number;
-  unit: string;
   expiration_date: string;
 }) => {
   return api.post('/inventory', itemData);
@@ -210,22 +248,27 @@ export const updateInventoryItem = (
   itemData: {
     item_name: string;
     quantity: number;
-    unit: string;
     expiration_date: string;
   }
 ) => {
   return api.put(`/inventory/${id}`, itemData);
 };
 
-export const deleteInventoryItem = (id: number, quantity: number, unit: string) => {
-  return api.put(`/inventory/delete/${id}`, {quantity, unit});
+export const deleteInventoryItem = (id: number, quantity: number) => {
+  return api.put(`/inventory/delete/${id}`, {quantity});
+};
+
+export const deleteInventoryItemByName = async (
+  itemName: string,
+  quantity: number
+) => {
+  return api.put(`/inventory/delete-by-name/${encodeURIComponent(itemName)}`, { quantity });
 };
 
 export interface ShoppingListItem {
   id: number;
   item_name: string;
   quantity: number;
-  unit: string;
   tagged_recipes: Array<{
     id: number;
     title: string;
@@ -239,7 +282,6 @@ export const getShoppingList = () => {
 export const addShoppingListItem = (itemData: {
   item_name: string;
   quantity: number;
-  unit: string;
   recipe_ids?: number[];
 }) => {
   return api.post('/shopping-list', itemData);
@@ -250,15 +292,14 @@ export const updateShoppingListItem = (
   itemData: {
     item_name: string;
     quantity: number;
-    unit: string;
     recipe_ids?: number[];
   }
 ) => {
   return api.put(`/shopping-list/${id}`, itemData);
 };
 
-export const deleteShoppingListItem = (id: number, quantity: number, unit: string) => {
-  return api.put(`/shopping-list/delete/${id}`, {quantity, unit});
+export const deleteShoppingListItem = (id: number, quantity: number) => {
+  return api.put(`/shopping-list/delete/${id}`, {quantity});
 };
 
 export const moveToInventory = (id: number, expiration_date: string) => {
@@ -277,7 +318,6 @@ export const addMultiItemsToInventory = (items: Array<{
   shopping_list_id: number;
   shopping_list_item: string;
   quantity: number;
-  unit: string;
 }>) => {
   return api.post('/shopping-list/bulk-add', { items });
 };

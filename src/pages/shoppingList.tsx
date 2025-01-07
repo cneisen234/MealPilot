@@ -22,7 +22,6 @@ import {
 import "../styles/inventory.css";
 import ReceiptMatchesModal from "../components/shoppingList/ReceiptMatchesModal";
 import ShareableListModal from "../components/shoppingList/SharableListModal";
-import { convertToImperial } from "../utils/convertToImperial";
 
 interface Recipe {
   id: number;
@@ -33,7 +32,6 @@ interface ShoppingListItem {
   id: number;
   item_name: string;
   quantity: number;
-  unit: string;
   created_at: string;
   updated_at: string;
   tagged_recipes: Recipe[];
@@ -43,13 +41,11 @@ interface ShoppingListItem {
 interface ShoppingListFormData {
   item_name: string;
   quantity: number;
-  unit: string;
   recipe_ids: number[];
 }
 
 const ShoppingList: React.FC = () => {
   const [items, setItems] = useState<ShoppingListItem[]>([]);
-  const [convertedItems, setConvertedItems] = useState<ShoppingListItem[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [editingItem, setEditingItem] = useState<ShoppingListItem | null>(null);
@@ -58,7 +54,6 @@ const ShoppingList: React.FC = () => {
   const [receiptMatches, setReceiptMatches] = useState<any[] | null>(null);
   const [selectedItems, setSelectedItems] = useState<Set<number>>(new Set());
   const [isShareModalOpen, setIsShareModalOpen] = useState(false);
-  const [unitSystem, setUnitSystem] = useState<any>("metric");
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [error, setError] = useState("");
 
@@ -67,30 +62,12 @@ const ShoppingList: React.FC = () => {
   }, []);
 
   useEffect(() => {
-    handleUnitSystemChange(items);
-  }, [unitSystem]);
-
-  useEffect(() => {
     if (items.length > 0) {
       setSelectedItems(new Set(items.map((item) => item.id)));
     } else {
       setSelectedItems(new Set());
     }
-    handleUnitSystemChange(items);
   }, [items]);
-
-  const handleUnitSystemChange = (items: any) => {
-    const converted = items.map((item: any) => {
-      const newItem = convertToImperial(item.quantity, item.unit, unitSystem);
-      return {
-        ...item,
-        quantity: newItem.value,
-        unit: newItem.unit,
-      };
-    });
-
-    setConvertedItems(converted);
-  };
 
   const handleToggleSelect = (itemId: number) => {
     const newSelectedItems = new Set(selectedItems);
@@ -223,11 +200,7 @@ const ShoppingList: React.FC = () => {
   const handleDeleteItem = async () => {
     if (!deleteItem) return;
     try {
-      await deleteShoppingListItem(
-        deleteItem.id,
-        deleteItem.quantity,
-        deleteItem.unit
-      );
+      await deleteShoppingListItem(deleteItem.id, deleteItem.quantity);
       setItems((prev) => prev.filter((item) => item.id !== deleteItem.id));
       setDeleteItem(null);
     } catch (error) {
@@ -282,7 +255,7 @@ const ShoppingList: React.FC = () => {
             ) : (
               <>
                 <FaReceipt />
-                <span>Upload Receipt</span>
+                <span>Upload Photo of Receipt</span>
               </>
             )}
           </button>
@@ -298,22 +271,13 @@ const ShoppingList: React.FC = () => {
             style={{ backgroundColor: "var(--primary-color)" }}>
             <FaShare /> Share List
           </button>
-          <select
-            value={unitSystem}
-            onChange={(e) => {
-              setUnitSystem(e.target.value);
-            }}
-            className="unit-preference-select">
-            <option value="metric">Metric</option>
-            <option value="imperial">Imperial</option>
-          </select>
         </div>
       </div>
 
       {error && <div className="error-message">{error}</div>}
 
       <div className="list-grid">
-        {convertedItems.map((item) => (
+        {items.map((item) => (
           <div key={item.id} className="list-card">
             <div className="card-header">
               <div className="card-header-content">
@@ -344,9 +308,7 @@ const ShoppingList: React.FC = () => {
             </div>
 
             <div className="card-content">
-              <div className="quantity-info">
-                {item.quantity} {item.unit}
-              </div>
+              <div className="quantity-info">QTY: {item.quantity}</div>
 
               {item.tagged_recipes.length > 0 &&
                 item.tagged_recipes[0].id !== null && (
@@ -354,11 +316,13 @@ const ShoppingList: React.FC = () => {
                     <div className="tagged-recipes-header">
                       <FaTags /> For recipes:
                     </div>
-                    {item.tagged_recipes.map((recipe) => (
-                      <div key={recipe.id} className="recipe-tag">
-                        {recipe.title}
-                      </div>
-                    ))}
+                    {item.tagged_recipes
+                      .filter((r) => r.id)
+                      .map((recipe) => (
+                        <div key={recipe.id} className="recipe-tag">
+                          {recipe.title}
+                        </div>
+                      ))}
                   </div>
                 )}
             </div>

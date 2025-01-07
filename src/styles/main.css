@@ -262,6 +262,8 @@
 :root {
     --primary-color: #05472A;
     /* Lavender purple */
+    --complimentary-color: #a1c800;
+    /* light green */
     --secondary-color: #FF9D72;
     /* Peachy orange */
     --accent-color: #FFD166;

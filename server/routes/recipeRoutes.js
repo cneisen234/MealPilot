@@ -5,12 +5,11 @@ const pool = require("../db");
 const openai = require("../openai");
 const axios = require("axios");
 const cheerio = require("cheerio");
-const { convertToStandardUnit } = require("../utils/measurementUtils");
 const cleanAIResponse = require("../cleanAiResponse");
 
 // Helper to parse ingredient strings
 const parseIngredientString = (ingredientStr) => {
-  // Match pattern: quantity unit ingredient (ex: "2 cups flour" or "1.5 kg sugar")
+  // Match pattern: quantity ingredient (ex: "2 flour" or "1.5 sugar")
   const regex = /^([\d./\s]+)\s+([a-zA-Z]+)\s+(.+)$/;
   const match = ingredientStr.match(regex);
 
@@ -18,25 +17,8 @@ const parseIngredientString = (ingredientStr) => {
 
   return {
     quantity: match[1].trim(),
-    unit: match[2].trim(),
-    ingredient: match[3].trim(),
+    ingredient: match[2].trim(),
   };
-};
-
-// Helper to standardize recipe ingredients
-const standardizeIngredients = (ingredients) => {
-  return ingredients.map((ingredient) => {
-    const parsed = parseIngredientString(ingredient);
-    if (!parsed) return ingredient;
-
-    try {
-      const standardized = convertToStandardUnit(parsed.quantity, parsed.unit);
-      return `${standardized.value} ${standardized.unit} ${parsed.ingredient}`;
-    } catch (error) {
-      // If conversion fails, return original ingredient
-      return ingredient;
-    }
-  });
 };
 
 router.post("/create-recipe", authMiddleware, async (req, res) => {
@@ -48,41 +30,39 @@ router.post("/create-recipe", authMiddleware, async (req, res) => {
     const [
       userQuery,
       recipesQuery,
-      inventoryQuery,
       cantHavesQuery,
       mustHavesQuery,
+      tastePreferencesQuery,
+      dietaryGoalsQuery,
+      cuisinePreferencesQuery,
     ] = await Promise.all([
       pool.query("SELECT id, name FROM users WHERE id = $1", [userId]),
       pool.query("SELECT title FROM recipes WHERE user_id = $1", [userId]),
-      pool.query(
-        "SELECT item_name, quantity, unit FROM inventory WHERE user_id = $1",
-        [userId]
-      ),
       pool.query("SELECT item FROM cant_haves WHERE user_id = $1", [userId]),
       pool.query("SELECT item FROM must_haves WHERE user_id = $1", [userId]),
+      pool.query("SELECT item FROM taste_preferences WHERE user_id = $1", [
+        userId,
+      ]),
+      pool.query("SELECT item FROM dietary_goals WHERE user_id = $1", [userId]),
+      pool.query("SELECT item FROM cuisine_preferences WHERE user_id = $1", [
+        userId,
+      ]),
     ]);
 
     const user = userQuery.rows[0];
     const existingRecipes = recipesQuery.rows.map((recipe) => recipe.title);
-    const inventory = inventoryQuery.rows;
     const cantHaves = cantHavesQuery.rows.map((row) => row.item);
     const mustHaves = mustHavesQuery.rows.map((row) => row.item);
-
-    // Format inventory for the prompt
-    const inventoryList = inventory
-      .map((item) => `${item.quantity} ${item.unit} of ${item.item_name}`)
-      .join("\n");
+    const tastePreferences = tastePreferencesQuery.rows.map((row) => row.item);
+    const dietaryGoals = dietaryGoalsQuery.rows.map((row) => row.item);
+    const cuisinePreferences = cuisinePreferencesQuery.rows.map(
+      (row) => row.item
+    );
 
     // Prepare the prompt for OpenAI
     let prompt = `Generate a detailed recipe for ${
       user.name
-    }. This should be a ${mealType || "meal"} recipe.
-    
-    INVENTORY CONSIDERATION:
-The user has the following ingredients available:
-${inventoryList}
-
-Please try to incorporate these ingredients when possible, considering the available quantities. While the recipe doesn't have to use these ingredients, prioritize recipes that make good use of what's available. If a recipe requires more of an ingredient than is available (e.g., recipe needs 2 cups but only 1 cup is available), consider alternative recipes or ingredients.`;
+    }. This should be a ${mealType || "meal"} recipe.`;
 
     // Add dietary restrictions if any
     if (cantHaves.length > 0) {
@@ -94,6 +74,24 @@ Please try to incorporate these ingredients when possible, considering the avail
     // Add required ingredients if any
     if (mustHaves.length > 0) {
       prompt += `\nThe recipe MUST include the following ingredients: ${mustHaves.join(
+        ", "
+      )}.`;
+    }
+
+    if (tastePreferences.length > 0) {
+      prompt += `\nIt's preferable that the recipe follows these taste preferences: ${tastePreferences.join(
+        ", "
+      )}.`;
+    }
+
+    if (dietaryGoals.length > 0) {
+      prompt += `\nIt's preferable that the recipe follows these dietary goals: ${dietaryGoals.join(
+        ", "
+      )}.`;
+    }
+
+    if (cuisinePreferences.length > 0) {
+      prompt += `\nIt's preferable that the recipe follows these cuisine preferences: ${cuisinePreferences.join(
         ", "
       )}.`;
     }
@@ -133,10 +131,8 @@ Fat: [number]g
 Follow these formatting rules exactly:
 - Main steps must be surrounded by double stars (**)
 - Sub-steps should be listed directly below their main step
-- Use standard measurements (cups, tablespoons, teaspoons, etc.)
 - List exact quantities for all ingredients
-- Include complete, detailed sub-steps for each main step
-- When possible, note which ingredients were chosen based on inventory availability`;
+- Include complete, detailed sub-steps for each main step`;
 
     // Call OpenAI API
     const completion = await openai.chat.completions.create({
@@ -171,9 +167,6 @@ router.post("/save-recipe", authMiddleware, async (req, res) => {
       nutritionalInfo,
     } = req.body;
 
-    // Standardize ingredient quantities
-    const standardizedIngredients = standardizeIngredients(ingredients);
-
     await pool.query("BEGIN");
 
     const recipeResult = await pool.query(
@@ -187,7 +180,7 @@ router.post("/save-recipe", authMiddleware, async (req, res) => {
         prepTime,
         cookTime,
         servings,
-        standardizedIngredients,
+        ingredients,
         instructions,
         nutritionalInfo,
       ]
@@ -214,7 +207,7 @@ router.post("/save-recipe", authMiddleware, async (req, res) => {
               prepTime,
               cookTime,
               servings,
-              ingredients: standardizedIngredients,
+              ingredients,
               instructions,
               nutritionalInfo,
               isNew: false,
@@ -315,46 +308,69 @@ router.get("/myrecipesinventory/:id", authMiddleware, async (req, res) => {
     const inventory = inventoryResult.rows;
     const shoppingList = shoppingListResult.rows;
 
-    // Update prompt to emphasize standardized units
-    const analysisPrompt = `Analyze these recipe ingredients and provide the analysis as a JSON response. Compare them with available inventory and shopping list items.
+    const analysisPrompt = `You are performing intelligent ingredient matching but MUST use exact database names in responses.
+
+Database Items (THESE ARE THE ONLY VALID NAMES YOU CAN USE IN parsed.name):
+${inventory
+  .map(
+    (item) => `"${item.item_name}" (id: ${item.id}, quantity: ${item.quantity})`
+  )
+  .join("\n")}.
 
 IMPORTANT RULES:
-1. ALL quantities must be converted to these standardized units:
-   - Mass: kilograms
-   - Volume: liters
-   - Count: units
 
-2. Unit Conversion Rules:
-   - Mass conversions: mg, g -> kg
-   - Volume conversions: ml, cups, tbsp, tsp -> l
-   - Count items remain as units
-
-3. Parsing Rules:
+1. Parsing Rules:
    - Handle mixed fractions (e.g., "1 1/2" becomes 1.5)
    - Handle simple fractions (e.g., "1/2" becomes 0.5)
    - Handle decimal numbers
-   - All quantities must be converted to standardized units
 
 Recipe Ingredients:
 ${recipe.ingredients.join("\n")}
 
-Current Inventory (already in standardized units):
-${inventory
-  .map((item) => `${item.quantity} ${item.unit} of ${item.item_name}`)
+Current Inventory:
+${inventory.map((item) => `${item.quantity} of ${item.item_name}`).join("\n")}
+
+Shopping List:
+${shoppingList
+  .map((item) => `${item.quantity} of ${item.item_name}`)
   .join("\n")}
 
-Shopping List (already in standardized units):
-${shoppingList
-  .map((item) => `${item.quantity} ${item.unit} of ${item.item_name}`)
-  .join("\n")}
+ABSOLUTELY CRITICAL REQUIREMENT:
+When you find a match, the "parsed.name" field MUST BE EXACTLY the database item_name. 
+Do not use any other variation of the name - use the exact database name character-for-character.
+
+Example of INCORRECT response:
+Recipe: "1 large egg"
+Database item: "Eggs"
+WRONG response:
+{
+  "parsed": {
+    "name": "egg"  <- WRONG! Must use "Eggs" exactly as it appears in database
+  }
+}
+
+Example of CORRECT response:
+Recipe: "1 large egg"
+Database item: "Eggs"
+CORRECT response:
+{
+  "parsed": {
+    "name": "Eggs"  <- CORRECT! Uses exact database name
+  }
+}
+
+More Examples:
+1. If database has "Whole Milk" and recipe says "milk":
+   - parsed.name MUST be "Whole Milk" (exact database name)
+2. If database has "Extra Virgin Olive Oil" and recipe says "olive oil":
+   - parsed.name MUST be "Extra Virgin Olive Oil" (exact database name)
 
 Analyze each ingredient and return a JSON array where each object has this exact structure:
 [
   {
     "original": "original ingredient text",
     "parsed": {
-      "quantity": number,  // Must be in standardized units (kilograms, liters, or units)
-      "unit": "string",   // Must be "kilograms", "liters", or "units"
+      "quantity": number,
       "name": "string"
     },
     "status": {
@@ -362,7 +378,6 @@ Analyze each ingredient and return a JSON array where each object has this exact
       "hasEnough": boolean,
       "available": {
         "quantity": number,
-        "unit": "string", // Must be standardized unit
         "id": number
       } | null,
       "notes": "string explaining the match or mismatch"
@@ -371,12 +386,10 @@ Analyze each ingredient and return a JSON array where each object has this exact
 ]
 
 Critical Requirements:
-1. ALL quantities must be in standardized units (kilograms, liters, units)
-2. Compare quantities only after conversion to same standardized unit
-3. Do not compare ingredients with different unit types (e.g., kilograms vs liters)
-4. Consider ingredient matches carefully (e.g., "fresh lemon" ≠ "lemon juice")
-5. Be conservative with matches - if unsure, mark as "missing"
-6. Validate all unit conversions for accuracy`;
+1. Consider ingredient matches carefully (e.g., "fresh lemon" ≠ "lemon juice")
+2. Be conservative with matches - if unsure, mark as "missing
+
+FINAL REMINDER: parsed.name must ALWAYS be copied exactly from the database item_name - never modified, never variations, exact character-for-character copy.`;
 
     const completion = await openai.chat.completions.create({
       model: "gpt-4o",
@@ -384,7 +397,7 @@ Critical Requirements:
         {
           role: "system",
           content:
-            "You are an expert chef and ingredient analyst. Return a JSON object with a key 'ingredients' containing the array of analyzed ingredients.",
+            "You are an intelligent ingredient matching system that MUST use exact database names in responses. Never modify database names.",
         },
         {
           role: "user",
@@ -421,31 +434,21 @@ Critical Requirements:
           if (!ingredient.parsed) return ingredient;
 
           try {
-            // Double-check standardization
-            const standardized = convertToStandardUnit(
-              ingredient.parsed.quantity,
-              ingredient.parsed.unit
-            );
-
             return {
               ...ingredient,
               parsed: {
                 ...ingredient.parsed,
-                quantity: standardized.value,
-                unit: standardized.unit,
+                quantity: ingredient.parsed.quantity,
               },
             };
           } catch (error) {
-            console.error(
-              `Unit conversion error for ${ingredient.original}:`,
-              error
-            );
+            console.error(`error for ${ingredient.original}:`, error);
             return {
               original: ingredient.original,
               status: {
                 type: "unparseable",
                 hasEnough: false,
-                notes: "Failed to standardize units",
+                notes: "Failed to parse",
               },
             };
           }
@@ -671,13 +674,7 @@ router.post("/scrape-recipe", authMiddleware, async (req, res) => {
     const $ = cheerio.load(html);
     const pageText = $("body").text().replace(/\s+/g, " ").trim();
 
-    // Update prompt to ensure standardized units
     const prompt = `Extract recipe information from this webpage content and format it as a JSON object. The webpage is from ${url}.
-    
-    IMPORTANT: All measurements must be converted to these standardized units:
-    - Mass measurements in kilograms
-    - Volume measurements in liters
-    - Count measurements in units
 
     Return a JSON object with exactly this structure:
     {
@@ -686,8 +683,8 @@ router.post("/scrape-recipe", authMiddleware, async (req, res) => {
       "cookTime": "45 minutes",
       "servings": "4",
       "ingredients": [
-        "0.5 kilograms flour",
-        "0.25 liters milk"
+        "0.5 flour",
+        "0.25 milk"
       ],
       "instructions": [
         "**Preparation:**",
@@ -701,8 +698,6 @@ router.post("/scrape-recipe", authMiddleware, async (req, res) => {
       ]
     }
 
-    Convert ALL ingredient quantities to standardized units (kilograms, liters, units) before including them in the response.
-
         Extract the information from this webpage content and return it as a valid JSON object:
     ${pageText.substring(0, 8000)}`;
 
@@ -711,8 +706,7 @@ router.post("/scrape-recipe", authMiddleware, async (req, res) => {
       messages: [
         {
           role: "system",
-          content:
-            "You are a recipe extraction expert that always uses standardized measurements (kilograms, liters, units).",
+          content: "You are a recipe extraction expert.",
         },
         { role: "user", content: prompt },
       ],
@@ -723,19 +717,14 @@ router.post("/scrape-recipe", authMiddleware, async (req, res) => {
 
     const recipe = JSON.parse(completion.choices[0].message.content);
 
-    // Double-check ingredient standardization
     recipe.ingredients = recipe.ingredients.map((ingredient) => {
       try {
         const parsed = parseIngredientString(ingredient);
         if (!parsed) return ingredient;
 
-        const standardized = convertToStandardUnit(
-          parsed.quantity,
-          parsed.unit
-        );
-        return `${standardized.value} ${standardized.unit} ${parsed.ingredient}`;
+        return `${parsed.quantity} ${parsed.ingredient}`;
       } catch (error) {
-        console.error(`Unit conversion error for ${ingredient}:`, error);
+        console.error(`error for ${ingredient}:`, error);
         return ingredient;
       }
     });
@@ -756,11 +745,6 @@ router.post("/ocr-recipe", authMiddleware, async (req, res) => {
 
     const prompt = `Extract the complete recipe from this image and return it as a JSON object.
 
-    IMPORTANT: All measurements must be converted to these standardized units:
-    - Mass measurements in kilograms
-    - Volume measurements in liters
-    - Count measurements in units
-
     Return the recipe in this exact structure:
     {
       "title": "Recipe title",
@@ -768,22 +752,19 @@ router.post("/ocr-recipe", authMiddleware, async (req, res) => {
       "cookTime": "time",
       "servings": "number",
       "ingredients": [
-        "0.5 kg flour",
-        "0.25 l milk"
+        "0.5 flour",
+        "0.25 milk"
       ],
       "instructions": ["steps"],
       "nutritionalInfo": ["info"]
-    }
-
-    Ensure ALL ingredient quantities are converted to standardized units (kilograms, liters, units) before including them in the response.`;
+    }`;
 
     const completion = await openai.chat.completions.create({
       model: "gpt-4o",
       messages: [
         {
           role: "system",
-          content:
-            "You are a recipe extraction expert that always uses standardized measurements (kilograms, liters, units).",
+          content: "You are a recipe extraction expert.",
         },
         {
           role: "user",
@@ -809,13 +790,9 @@ router.post("/ocr-recipe", authMiddleware, async (req, res) => {
         const parsed = parseIngredientString(ingredient);
         if (!parsed) return ingredient;
 
-        const standardized = convertToStandardUnit(
-          parsed.quantity,
-          parsed.unit
-        );
-        return `${standardized.value} ${standardized.unit} ${parsed.ingredient}`;
+        return `${parsed.quantity} ${parsed.ingredient}`;
       } catch (error) {
-        console.error(`Unit conversion error for ${ingredient}:`, error);
+        console.error(`error for ${ingredient}:`, error);
         return ingredient;
       }
     });
