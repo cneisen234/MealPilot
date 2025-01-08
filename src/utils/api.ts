@@ -262,7 +262,7 @@ export const deleteInventoryItemByName = async (
   itemName: string,
   quantity: number
 ) => {
-  return api.put(`/inventory/delete-by-name/${encodeURIComponent(itemName)}`, { quantity });
+  return api.put(`/inventory/delete-by-name/${itemName}`, { quantity });
 };
 
 export interface ShoppingListItem {
@@ -329,6 +329,20 @@ export const createSharedList = (items: any[], shareId: string) => {
 // Get a shared list by ID
 export const getSharedList = (shareId: string) => {
   return api.get(`/shared-list/get/${shareId}`);
+};
+
+// Scanner endpoint
+export const checkItemInventory = (barcode: string) => {
+  return api.post('/scanner/check-item', { barcode });
+};
+
+// Update shopping list item by name
+export const updateShoppingListItemByName = (itemData: {
+  item_name: string;
+  quantity: number;
+  recipe_ids?: number[];
+}) => {
+  return api.put(`/shopping-list/update-by-name/${itemData.item_name}`, itemData);
 };
 
 export default api;

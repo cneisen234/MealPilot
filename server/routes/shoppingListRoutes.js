@@ -615,4 +615,91 @@ router.post("/bulk-add", authMiddleware, async (req, res) => {
   }
 });
 
+// Add this route to shoppingListRoutes.js
+
+router.put("/update-by-name/:item_name", authMiddleware, async (req, res) => {
+  try {
+    const userId = req.user.id;
+    const item_name = req.params.item_name;
+    const { quantity, recipe_ids = [] } = req.body;
+
+    await pool.query("BEGIN");
+
+    // If quantity is 0 or less, delete the item
+    if (Number(quantity) <= 0) {
+      await pool.query(
+        "DELETE FROM shopping_list WHERE user_id = $1 AND LOWER(item_name) = LOWER($2)",
+        [userId, item_name]
+      );
+
+      await pool.query("COMMIT");
+      return res.json({
+        message: "Item removed due to zero or negative quantity",
+      });
+    }
+
+    // Update the item
+    const result = await pool.query(
+      `UPDATE shopping_list 
+       SET quantity = $1, updated_at = NOW()
+       WHERE user_id = $2 AND LOWER(item_name) = LOWER($3)
+       RETURNING *`,
+      [quantity, userId, item_name]
+    );
+
+    if (result.rows.length === 0) {
+      await pool.query("ROLLBACK");
+      return res.status(404).json({ message: "Item not found" });
+    }
+
+    // Update recipe associations
+    if (recipe_ids.length > 0) {
+      // First remove old associations
+      await pool.query(
+        "DELETE FROM shopping_list_recipes WHERE shopping_list_item_id = $1",
+        [result.rows[0].id]
+      );
+
+      // Add new associations
+      const values = recipe_ids
+        .map((recipe_id) => `(${result.rows[0].id}, ${recipe_id})`)
+        .join(", ");
+
+      await pool.query(`
+        INSERT INTO shopping_list_recipes (shopping_list_item_id, recipe_id)
+        VALUES ${values}
+      `);
+    }
+
+    await pool.query("COMMIT");
+
+    // Fetch updated item with recipes
+    const updatedResult = await pool.query(
+      `
+      SELECT 
+        sl.*,
+        ARRAY_AGG(JSONB_BUILD_OBJECT(
+          'id', r.id,
+          'title', r.title
+        )) as tagged_recipes
+      FROM shopping_list sl
+      LEFT JOIN shopping_list_recipes slr ON sl.id = slr.shopping_list_item_id
+      LEFT JOIN recipes r ON slr.recipe_id = r.id
+      WHERE sl.id = $1
+      GROUP BY sl.id
+    `,
+      [result.rows[0].id]
+    );
+
+    res.json(updatedResult.rows[0]);
+  } catch (error) {
+    await pool.query("ROLLBACK");
+    console.error("Error updating shopping list item:", error);
+    res.status(500).json({
+      message: "Server error",
+      error: error.message,
+    });
+  }
+});
+
 module.exports = router;

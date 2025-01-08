@@ -3,12 +3,12 @@ import { Link, useLocation } from "react-router-dom";
 import {
   FaLightbulb,
   FaBook,
-  FaClock,
   FaBars,
   FaTimes,
   FaCalendar,
   FaBoxes,
   FaShoppingBasket,
+  FaBarcode,
 } from "react-icons/fa";
 import "../../styles/sidebar.css";
 
@@ -90,6 +90,13 @@ const SideNavbar: React.FC = () => {
             title="Shopping List"
             onClick={closeMenu}>
             Shopping List
+          </NavItem>
+          <NavItem
+            to="/scanner"
+            icon={<FaBarcode />}
+            title="Scanner"
+            onClick={closeMenu}>
+            Scanner
           </NavItem>
         </ul>
         <div className="copyright">
