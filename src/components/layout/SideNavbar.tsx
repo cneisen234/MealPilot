@@ -91,13 +91,6 @@ const SideNavbar: React.FC = () => {
             onClick={closeMenu}>
             Shopping List
           </NavItem>
-          <NavItem
-            to="/scanner"
-            icon={<FaBarcode />}
-            title="Scanner"
-            onClick={closeMenu}>
-            Scanner
-          </NavItem>
         </ul>
         <div className="copyright">
           &copy; {currentYear} MealPilot. All rights reserved.

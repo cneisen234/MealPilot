@@ -25,7 +25,6 @@ import MealPlan from "./pages/MealPlan";
 import Inventory from "./pages/Inventory";
 import ShoppingList from "./pages/shoppingList";
 import ShareableListPage from "./components/shoppingList/SharableListPage";
-import Scanner from "./pages/Scanner";
 
 const AppContent: React.FC = () => {
   const { isAuthenticated, checkAuthStatus } = useAuth();
@@ -97,10 +96,6 @@ const AppContent: React.FC = () => {
             <Route
               path="/share/shopping-list/:id"
               element={<ShareableListPage />}
-            />
-            <Route
-              path="/scanner"
-              element={<PrivateRoute element={<Scanner />} />}
             />
           </Routes>
         </main>

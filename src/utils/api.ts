@@ -331,11 +331,6 @@ export const getSharedList = (shareId: string) => {
   return api.get(`/shared-list/get/${shareId}`);
 };
 
-// Scanner endpoint
-export const checkItemInventory = (barcode: string) => {
-  return api.post('/scanner/check-item', { barcode });
-};
-
 // Update shopping list item by name
 export const updateShoppingListItemByName = (itemData: {
   item_name: string;

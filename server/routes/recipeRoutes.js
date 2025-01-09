@@ -743,28 +743,67 @@ router.post("/ocr-recipe", authMiddleware, async (req, res) => {
   try {
     const { imageData } = req.body;
 
-    const prompt = `Extract the complete recipe from this image and return it as a JSON object.
+    const prompt = `You are a recipe extraction expert. Carefully analyze this recipe image and extract all details. Look for recipe title, times, servings, ingredients list, step-by-step instructions, and any nutritional information.
 
-    Return the recipe in this exact structure:
+    Important Guidelines:
+    1. For ingredients:
+       - Extract exact measurements and quantities
+       - Keep original unit measurements
+       - List each ingredient on its own line
+       - Format quantities as decimals (1/2 → 0.5)
+       - Include any preparation notes (e.g., "chopped", "diced")
+    
+    2. For instructions:
+       - Preserve step numbers if present
+       - Break complex steps into separate items
+       - Include any temperature settings or timing notes
+       - Keep cooking method details intact
+    
+    3. For times:
+       - Extract specific prep and cook times if listed
+       - Include any resting/cooling times
+       - Format consistently as "X minutes" or "X hours Y minutes"
+    
+    4. For servings:
+       - Look for yield information
+       - Include portion size if specified
+    
+    5. For nutritional info:
+       - Extract all available nutritional facts
+       - Include serving size basis
+       - Keep measurements in original units
+
+    Return a complete, properly formatted JSON object with this exact structure:
     {
-      "title": "Recipe title",
-      "prepTime": "time",
-      "cookTime": "time",
-      "servings": "number",
+      "title": "Full recipe title",
+      "prepTime": "Preparation time in minutes",
+      "cookTime": "Cooking time in minutes",
+      "servings": "Number of servings",
       "ingredients": [
-        "0.5 flour",
-        "0.25 milk"
+        "0.5 cups flour",
+        "0.25 cups milk"
       ],
-      "instructions": ["steps"],
-      "nutritionalInfo": ["info"]
-    }`;
+      "instructions": [
+        "Preheat oven to 350°F",
+        "Mix dry ingredients",
+        "Combine wet ingredients"
+      ],
+      "nutritionalInfo": [
+        "Calories: 350 per serving",
+        "Protein: 12g",
+        "Fat: 14g"
+      ]
+    }
+
+    If any field is not found in the image, use null or an empty array as appropriate. Ensure all ingredients include measurements where possible.`;
 
     const completion = await openai.chat.completions.create({
       model: "gpt-4o",
       messages: [
         {
           role: "system",
-          content: "You are a recipe extraction expert.",
+          content:
+            "You are a recipe extraction expert trained to analyze recipe images and extract structured data. Be thorough and precise in your extraction.",
         },
         {
           role: "user",
@@ -777,8 +816,8 @@ router.post("/ocr-recipe", authMiddleware, async (req, res) => {
           ],
         },
       ],
-      max_tokens: 1500,
-      temperature: 0.3,
+      max_tokens: 2000, // Increased token limit for more detailed response
+      temperature: 0.1, // Reduced temperature for more consistent output
       response_format: { type: "json_object" },
     });
 
@@ -789,7 +828,6 @@ router.post("/ocr-recipe", authMiddleware, async (req, res) => {
       try {
         const parsed = parseIngredientString(ingredient);
         if (!parsed) return ingredient;
-
         return `${parsed.quantity} ${parsed.ingredient}`;
       } catch (error) {
         console.error(`error for ${ingredient}:`, error);

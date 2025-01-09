@@ -92,6 +92,20 @@ const CreateRecipe: React.FC = () => {
 
   return (
     <div className="recipe-result">
+      <div
+        style={{
+          backgroundColor: "rgba(5, 71, 42)",
+          padding: "12px 20px",
+          borderRadius: "8px",
+          marginTop: "-20px",
+          fontSize: "0.9rem",
+          color: "white",
+          maxWidth: "850px",
+          margin: "20px auto",
+        }}>
+        DISCLAIMER: Make sure to review all recipes before saving. Mistakes can
+        happen.
+      </div>
       <RecipeImport
         onRecipeImported={(recipe) => {
           setFormData({

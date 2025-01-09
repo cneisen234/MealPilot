@@ -2,6 +2,7 @@ const express = require("express");
 const router = express.Router();
 const authMiddleware = require("../middleware/auth");
 const pool = require("../db");
+const axios = require("axios");
 const openai = require("../openai");
 
 router.post("/check-item", authMiddleware, async (req, res) => {
@@ -9,23 +10,58 @@ router.post("/check-item", authMiddleware, async (req, res) => {
     const userId = req.user.id;
     const { barcode } = req.body;
 
-    console.log(barcode);
-    //https://world.openfoodfacts.org/api/v0/product/014668340019.json
+    // First get product info from Open Food Facts API
+    const response = await axios.get(
+      `https://world.openfoodfacts.org/api/v0/product/${barcode}.json`
+    );
 
-    // Get item info from barcode using similar prompt structure to recipe generation
-    const prompt = `Given this barcode: ${barcode}, return a JSON object with the product information in this exact format:
-      {
-        "item_name": "product name in plain text, lowercase",
-        "expiration_date": "YYYY-MM-DD or null if not applicable",
-        "barcode": "original barcode"
-      }
-      
-      If you cannot identify the product, return {"item_name": null, "expiration_date": null, "barcode": "${barcode}"}
+    if (!response.data.product?.product_name) {
+      return res.status(404).json({ message: "Product not found" });
+    }
 
-      Remember:
-      - item_name should be lowercase and simple (e.g., "milk" not "Organic Whole Milk")
-      - expiration_date should be null if not applicable
-      - barcode should be the original input value`;
+    const productName = response.data.product.product_name;
+
+    // Get all items from inventory and shopping list at once
+    const [inventoryItems, shoppingListItems] = await Promise.all([
+      pool.query("SELECT * FROM inventory WHERE user_id = $1", [userId]),
+      pool.query("SELECT * FROM shopping_list WHERE user_id = $1", [userId]),
+    ]);
+
+    const analysisPrompt = `You are performing intelligent product matching but MUST use exact database names in responses.
+
+Database Items (THESE ARE THE ONLY VALID NAMES YOU CAN USE in your matches):
+${inventoryItems.rows
+  .map(
+    (item) => `"${item.item_name}" (id: ${item.id}, quantity: ${item.quantity})`
+  )
+  .join("\n")}
+${shoppingListItems.rows
+  .map(
+    (item) => `"${item.item_name}" (id: ${item.id}, quantity: ${item.quantity})`
+  )
+  .join("\n")}
+
+ABSOLUTELY CRITICAL REQUIREMENT:
+When finding matches, you MUST USE EXACTLY the database item_name. Do not use any variations or modifications.
+
+Scanned Product: "${productName}"
+
+Return a JSON object with this exact structure:
+{
+  "matches": [
+    {
+      "database_name": "exact database item name, character-for-character match",
+      "confidence": "high" | "medium" | "low"
+    }
+  ]
+}
+
+Rules for matching:
+1. The database_name MUST BE EXACTLY as it appears in the database list above
+2. Be conservative with matches - if unsure, don't include the match
+3. Consider product types carefully (e.g., "fresh lemon" ≠ "lemon juice")
+4. Sort matches by confidence
+5. Return empty array if no confident matches`;
 
     const completion = await openai.chat.completions.create({
       model: "gpt-4o",
@@ -33,50 +69,103 @@ router.post("/check-item", authMiddleware, async (req, res) => {
         {
           role: "system",
           content:
-            "You are a product database expert that identifies products from barcodes. Always return properly formatted JSON with lowercase product names.",
+            "You are an intelligent product matching system that MUST use exact database names in responses. Never modify database names.",
         },
         {
           role: "user",
-          content: prompt,
+          content: analysisPrompt,
         },
       ],
-      temperature: 0.3,
-      max_tokens: 150,
+      temperature: 0.2,
+      max_tokens: 500,
       response_format: { type: "json_object" },
     });
 
-    let productInfo;
-    console.log(completion.choices[0].message.content);
+    let matchResults;
     try {
-      productInfo = JSON.parse(completion.choices[0].message.content);
+      matchResults = JSON.parse(completion.choices[0].message.content);
     } catch (error) {
       console.error("Error parsing GPT response:", error);
-      return res.status(500).json({ message: "Error processing barcode" });
+      return res
+        .status(500)
+        .json({ message: "Error processing product matches" });
     }
 
-    if (!productInfo || !productInfo.item_name) {
-      return res.status(404).json({ message: "Product not found" });
+    if (!matchResults.matches || !Array.isArray(matchResults.matches)) {
+      return res.status(500).json({ message: "Invalid match format returned" });
     }
 
-    // Check inventory and shopping list in parallel, similar to recipe inventory check
-    const [inventoryResult, shoppingListResult] = await Promise.all([
-      pool.query(
-        "SELECT * FROM inventory WHERE user_id = $1 AND LOWER(item_name) = LOWER($2)",
-        [userId, productInfo.item_name]
-      ),
-      pool.query(
-        "SELECT * FROM shopping_list WHERE user_id = $1 AND LOWER(item_name) = LOWER($2)",
-        [userId, productInfo.item_name]
-      ),
-    ]);
+    // Filter matches to only high and medium confidence
+    const validMatches = matchResults.matches.filter((m) =>
+      ["high", "medium"].includes(m.confidence.toLowerCase())
+    );
 
-    res.json({
-      ...productInfo,
-      inInventory: inventoryResult.rows.length > 0,
-      inShoppingList: shoppingListResult.rows.length > 0,
-      inventoryItem: inventoryResult.rows[0] || null,
-      shoppingListItem: shoppingListResult.rows[0] || null,
-    });
+    if (validMatches.length > 0) {
+      // Get the matched items from our original query results
+      const matchedNames = new Set(
+        validMatches.map((m) => m.database_name.toLowerCase())
+      );
+
+      const allMatches = [
+        ...inventoryItems.rows
+          .filter((item) => matchedNames.has(item.item_name.toLowerCase()))
+          .map((item) => ({ ...item, source: "inventory" })),
+        ...shoppingListItems.rows
+          .filter((item) => matchedNames.has(item.item_name.toLowerCase()))
+          .map((item) => ({ ...item, source: "shopping_list" })),
+      ];
+
+      if (allMatches.length === 1) {
+        // Single match
+        const match = allMatches[0];
+        res.json({
+          item_name: match.item_name, // Use exact database name
+          barcode: barcode,
+          inInventory: match.source === "inventory",
+          inShoppingList: match.source === "shopping_list",
+          inventoryItem: match.source === "inventory" ? match : null,
+          shoppingListItem: match.source === "shopping_list" ? match : null,
+          multipleMatches: false,
+          matches: [],
+        });
+      } else if (allMatches.length > 1) {
+        // Multiple matches
+        res.json({
+          item_name: productName,
+          barcode: barcode,
+          inInventory: allMatches.some((m) => m.source === "inventory"),
+          inShoppingList: allMatches.some((m) => m.source === "shopping_list"),
+          inventoryItem: null,
+          shoppingListItem: null,
+          multipleMatches: true,
+          matches: allMatches,
+        });
+      } else {
+        // No matches found despite GPT suggestions
+        res.json({
+          item_name: productName,
+          barcode: barcode,
+          inInventory: false,
+          inShoppingList: false,
+          inventoryItem: null,
+          shoppingListItem: null,
+          multipleMatches: false,
+          matches: [],
+        });
+      }
+    } else {
+      // No matches found
+      res.json({
+        item_name: productName,
+        barcode: barcode,
+        inInventory: false,
+        inShoppingList: false,
+        inventoryItem: null,
+        shoppingListItem: null,
+        multipleMatches: false,
+        matches: [],
+      });
+    }
   } catch (error) {
     console.error("Error checking item:", error);
     res.status(500).json({

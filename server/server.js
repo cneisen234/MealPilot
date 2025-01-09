@@ -11,7 +11,6 @@ const inventoryRoutes = require("./routes/inventoryRoutes");
 const shoppingListRoutes = require("./routes/shoppingListRoutes");
 const sharedListRoutes = require("./routes/sharedListRoutes");
 const preferenceRoutes = require("./routes/preferenceRoutes");
-const scannerRoutes = require("./routes/scannerRoutes");
 const path = require("path");
 
 const app = express();
@@ -47,7 +46,6 @@ app.use("/api/inventory", inventoryRoutes);
 app.use("/api/shopping-list", shoppingListRoutes);
 app.use("/api/shared-list", sharedListRoutes);
 app.use("/api/preference", preferenceRoutes);
-app.use("/api/scanner", scannerRoutes);
 
 app.get("*", (req, res) => {
   res.sendFile(path.join(__dirname, "../build", "index.html"));
