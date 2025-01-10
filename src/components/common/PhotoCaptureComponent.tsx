@@ -6,14 +6,12 @@ import AnimatedTechIcon from "./AnimatedTechIcon";
 interface PhotoCaptureModalProps {
   isOpen: boolean;
   onClose: () => void;
-  uploadFunction: (event: React.ChangeEvent<HTMLInputElement>) => void;
   apiFunction: (imageData: string) => Promise<any>;
 }
 
 const PhotoCaptureModal: React.FC<PhotoCaptureModalProps> = ({
   isOpen,
   onClose,
-  uploadFunction,
   apiFunction,
 }) => {
   const [mode, setMode] = useState<"select" | "camera">("select");
@@ -78,6 +76,34 @@ const PhotoCaptureModal: React.FC<PhotoCaptureModalProps> = ({
     }
   }, [apiFunction, onClose]);
 
+  const handleFileUpload = async (
+    event: React.ChangeEvent<HTMLInputElement>
+  ) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    if (file.size > 5 * 1024 * 1024) {
+      setError("Image size must be less than 5MB");
+      return;
+    }
+
+    setIsLoading(true);
+    try {
+      const imageData = await new Promise<string>((resolve) => {
+        const reader = new FileReader();
+        reader.onload = (e) => resolve(e.target?.result as string);
+        reader.readAsDataURL(file);
+      });
+
+      await apiFunction(imageData);
+      onClose();
+    } catch (err) {
+      setError("Failed to process photo");
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   if (!isCameraAvailable && isOpen) {
     return (
       <div
@@ -123,25 +149,40 @@ const PhotoCaptureModal: React.FC<PhotoCaptureModalProps> = ({
               <FaTimes />
             </button>
           </div>
-          <div
-            style={{
-              display: "flex",
-              justifyContent: "center",
-              padding: "20px",
-            }}>
-            <button
-              onClick={() => fileInputRef.current?.click()}
-              className="recipe-action-button back-button">
-              <FaUpload /> Upload Photo
-              <input
-                ref={fileInputRef}
-                type="file"
-                accept="image/*"
-                onChange={uploadFunction}
-                style={{ display: "none" }}
-              />
-            </button>
-          </div>
+          {isLoading ? (
+            <div
+              style={{
+                display: "flex",
+                justifyContent: "center",
+                alignItems: "center",
+                padding: "20px",
+              }}>
+              <AnimatedTechIcon size={64} speed={4} />
+            </div>
+          ) : (
+            <div
+              style={{
+                display: "flex",
+                justifyContent: "center",
+                padding: "20px",
+              }}>
+              <button
+                onClick={() => fileInputRef.current?.click()}
+                className="recipe-action-button back-button">
+                <FaUpload /> Upload Photo
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  accept="image/*"
+                  onChange={(e) => {
+                    setIsLoading(true);
+                    handleFileUpload(e);
+                  }}
+                  style={{ display: "none" }}
+                />
+              </button>
+            </div>
+          )}
         </div>
       </div>
     );
@@ -188,7 +229,10 @@ const PhotoCaptureModal: React.FC<PhotoCaptureModalProps> = ({
                 ref={fileInputRef}
                 type="file"
                 accept="image/*"
-                onChange={uploadFunction}
+                onChange={(e) => {
+                  setIsLoading(true);
+                  handleFileUpload(e);
+                }}
                 style={{ display: "none" }}
               />
             </button>

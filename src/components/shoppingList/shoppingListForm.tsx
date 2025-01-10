@@ -28,6 +28,7 @@ interface ShoppingListFormProps {
   }) => Promise<void>;
   onClose: () => void;
   onMoveToInventory?: (id: number, expiration_date: string) => Promise<void>;
+  newItemFromPhoto?: string | null;
 }
 
 const ShoppingListForm: React.FC<ShoppingListFormProps> = ({
@@ -35,6 +36,7 @@ const ShoppingListForm: React.FC<ShoppingListFormProps> = ({
   onSubmit,
   onClose,
   onMoveToInventory,
+  newItemFromPhoto,
 }) => {
   const [itemName, setItemName] = useState("");
   const [quantity, setQuantity] = useState(1);
@@ -53,9 +55,11 @@ const ShoppingListForm: React.FC<ShoppingListFormProps> = ({
     if (item) {
       setItemName(item.item_name);
       setQuantity(item.quantity);
-      setRecipeIds(item.tagged_recipes.map((recipe) => recipe.id));
+      setRecipeIds(item?.tagged_recipes?.map((recipe) => recipe.id));
+    } else if (newItemFromPhoto) {
+      setItemName(newItemFromPhoto);
     }
-  }, [item]);
+  }, [item, newItemFromPhoto]);
 
   const loadRecipes = async () => {
     try {
@@ -93,6 +97,9 @@ const ShoppingListForm: React.FC<ShoppingListFormProps> = ({
           recipe_ids: recipeIds,
         });
       }
+      setItemName("");
+      setQuantity(1);
+      setRecipeIds([]);
       onClose();
     } catch (error) {
       console.error("Error submitting form:", error);
@@ -117,6 +124,21 @@ const ShoppingListForm: React.FC<ShoppingListFormProps> = ({
           </button>
         </div>
 
+        <div
+          style={{
+            backgroundColor: "rgba(5, 71, 42)",
+            padding: "12px 20px",
+            borderRadius: "8px",
+            marginTop: "-20px",
+            fontSize: "0.9rem",
+            color: "white",
+            maxWidth: "850px",
+            margin: "20px auto",
+          }}>
+          Got an incorrect item name? Simply change the name to match the name
+          in your shopping list and any changes will apply to that item.
+        </div>
+
         <form onSubmit={handleSubmit} className="inventory-form">
           {!showInventoryTransfer && (
             <>
@@ -137,7 +159,7 @@ const ShoppingListForm: React.FC<ShoppingListFormProps> = ({
 
               <div className="form-row">
                 <div className="form-group">
-                  <label htmlFor="quantity">Quantity</label>
+                  <label htmlFor="quantity">Total Quantity</label>
                   <input
                     type="text"
                     id="quantity"
@@ -163,7 +185,7 @@ const ShoppingListForm: React.FC<ShoppingListFormProps> = ({
                     <label key={recipe.id} className="recipe-tag-item">
                       <input
                         type="checkbox"
-                        checked={recipeIds.includes(recipe.id)}
+                        checked={recipeIds?.includes(recipe.id)}
                         onChange={() => handleRecipeToggle(recipe.id)}
                       />
                       <span>{recipe.title}</span>
@@ -178,6 +200,7 @@ const ShoppingListForm: React.FC<ShoppingListFormProps> = ({
             <button
               type="button"
               className="inventory-transfer-button"
+              style={{ backgroundColor: "var(--secondary-color)" }}
               onClick={() => setShowInventoryTransfer(true)}>
               <FaBoxOpen /> Move to Inventory
             </button>
@@ -207,6 +230,9 @@ const ShoppingListForm: React.FC<ShoppingListFormProps> = ({
                   setShowInventoryTransfer(false);
                 } else {
                   onClose();
+                  setItemName("");
+                  setQuantity(1);
+                  setRecipeIds([]);
                 }
               }}
               className="cancel-button">

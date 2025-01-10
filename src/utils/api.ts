@@ -340,5 +340,9 @@ export const updateShoppingListItemByName = (itemData: {
   return api.put(`/shopping-list/update-by-name/${itemData.item_name}`, itemData);
 };
 
+export const processShoppingItemPhoto = (imageData: string) => {
+  return api.post('/shopping-list/analyze-item', { imageData });
+};
+
 export default api;
 

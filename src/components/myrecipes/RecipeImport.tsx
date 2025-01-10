@@ -48,43 +48,12 @@ const RecipeImport: React.FC<RecipeImportProps> = ({
     }
   };
 
-  const handleFileUpload = async (
-    event: React.ChangeEvent<HTMLInputElement>
-  ) => {
-    const file = event.target.files?.[0];
-    if (!file) return;
-
-    if (file.size > 5 * 1024 * 1024) {
-      onError("Image size must be less than 5MB");
-      return;
-    }
-
-    try {
-      const reader = new FileReader();
-      reader.onload = async (e) => {
-        const imageData = e.target?.result as string;
-        setIsLoading(true);
-        const response = await extractRecipeFromImage(imageData);
-        onRecipeImported(response.data.recipe);
-        handleClose();
-      };
-      reader.readAsDataURL(file);
-    } catch (error) {
-      onError(
-        "Failed to extract recipe from image. Please try again or enter recipe details manually."
-      );
-      console.error("Error extracting recipe:", error);
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  const handlePhotoCapture = async (imageData: string) => {
+  const handleImageProcessing = async (imageData: string) => {
     try {
       const response = await extractRecipeFromImage(imageData);
       onRecipeImported(response.data.recipe);
     } catch (error) {
-      throw error; // Let the PhotoCaptureModal handle the error
+      throw error;
     }
   };
 
@@ -151,8 +120,7 @@ const RecipeImport: React.FC<RecipeImportProps> = ({
       <PhotoCaptureModal
         isOpen={isPhotoModalOpen}
         onClose={() => setIsPhotoModalOpen(false)}
-        uploadFunction={handleFileUpload}
-        apiFunction={handlePhotoCapture}
+        apiFunction={handleImageProcessing} // Same function for both photo and upload
       />
     </div>
   );

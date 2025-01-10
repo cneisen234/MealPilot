@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect } from "react";
 import {
   FaPlus,
   FaPencilAlt,
@@ -6,10 +6,12 @@ import {
   FaTags,
   FaReceipt,
   FaShare,
+  FaCamera,
 } from "react-icons/fa";
 import AnimatedTechIcon from "../components/common/AnimatedTechIcon";
 import ConfirmationModal from "../components/common/ConfirmationModal";
 import ShoppingListForm from "../components/shoppingList/shoppingListForm";
+import PhotoCaptureModal from "../components/common/PhotoCaptureComponent";
 import {
   getShoppingList,
   addShoppingListItem,
@@ -18,6 +20,7 @@ import {
   moveToInventory,
   addMultiItemsToInventory,
   processReceipt,
+  processShoppingItemPhoto,
 } from "../utils/api";
 import "../styles/inventory.css";
 import ReceiptMatchesModal from "../components/shoppingList/ReceiptMatchesModal";
@@ -54,8 +57,12 @@ const ShoppingList: React.FC = () => {
   const [receiptMatches, setReceiptMatches] = useState<any[] | null>(null);
   const [selectedItems, setSelectedItems] = useState<Set<number>>(new Set());
   const [isShareModalOpen, setIsShareModalOpen] = useState(false);
-  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [isReceiptModalOpen, setIsReceiptModalOpen] = useState(false);
+  const [isItemPhotoModalOpen, setIsItemPhotoModalOpen] = useState(false);
+  const [newItemFromPhoto, setNewItemFromPhoto] = useState<string | null>(null);
   const [error, setError] = useState("");
+
+  console.log(editingItem);
 
   useEffect(() => {
     loadShoppingList();
@@ -95,60 +102,51 @@ const ShoppingList: React.FC = () => {
     }
   };
 
-  const handleReceiptUpload = async (
-    e: React.ChangeEvent<HTMLInputElement>
-  ) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-
-    if (file.size > 5 * 1024 * 1024) {
-      setError("Receipt image must be less than 5MB");
-      return;
-    }
-
-    const reader = new FileReader();
-    reader.onload = async (event) => {
-      try {
-        setIsUploadingReceipt(true);
-        const response = await processReceipt(event.target?.result as string);
-        if (response.data.matches.length === 0) {
-          setError("No matching items found on receipt");
-        } else {
-          setReceiptMatches(response.data.matches);
-        }
-      } catch (error) {
-        setError("Failed to process receipt. Please try again.");
-        console.error("Error processing receipt:", error);
-      } finally {
-        setIsUploadingReceipt(false);
-        if (fileInputRef.current) {
-          fileInputRef.current.value = "";
-        }
+  const handleReceiptProcessing = async (imageData: string) => {
+    try {
+      setIsUploadingReceipt(true);
+      const response = await processReceipt(imageData);
+      if (response.data.matches.length === 0) {
+        setError("No matching items found on receipt");
+      } else {
+        setReceiptMatches(response.data.matches);
       }
-    };
+    } catch (error) {
+      throw error;
+    } finally {
+      setIsUploadingReceipt(false);
+    }
+  };
 
-    reader.readAsDataURL(file);
+  const handleItemPhotoProcessing = async (imageData: string) => {
+    try {
+      const response = await processShoppingItemPhoto(imageData);
+      if (response.data.exists) {
+        setEditingItem(response.data.item);
+      } else {
+        setNewItemFromPhoto(response.data.suggestedName);
+        setIsFormOpen(true);
+      }
+    } catch (error) {
+      throw error;
+    }
   };
 
   const handleAddItem = async (formData: ShoppingListFormData) => {
     try {
       const response = await addShoppingListItem(formData);
-
-      // Check if this was an update to an existing item or a new item
       const existingItemIndex = items.findIndex(
         (item) =>
           item.item_name.toLowerCase() === formData.item_name.toLowerCase()
       );
 
       if (existingItemIndex !== -1) {
-        // Update existing item
         setItems((prev) =>
           prev.map((item, index) =>
             index === existingItemIndex ? response.data : item
           )
         );
       } else {
-        // Add new item
         setItems((prev) => [response.data, ...prev]);
       }
 
@@ -166,7 +164,6 @@ const ShoppingList: React.FC = () => {
   const handleMultiAddToInventory = async (multiItems: any[]) => {
     try {
       await addMultiItemsToInventory(multiItems);
-      // Refresh shopping list after adding to inventory
       await loadShoppingList();
     } catch (error) {
       setError("Failed to add items to inventory");
@@ -178,12 +175,9 @@ const ShoppingList: React.FC = () => {
     if (!editingItem) return;
     try {
       const response = await updateShoppingListItem(editingItem.id, formData);
-      // If the item was deleted (quantity was 0 or less)
       if (response.data.message?.includes("removed")) {
-        // Remove the item from state
         setItems((prev) => prev.filter((item) => item.id !== editingItem.id));
       } else {
-        // Update the item in state
         setItems((prev) =>
           prev.map((item) =>
             item.id === response.data.id ? response.data : item
@@ -236,38 +230,31 @@ const ShoppingList: React.FC = () => {
       <div className="inventory-header">
         <h1>Shopping List</h1>
         <div className="multi-button-list">
-          <input
-            type="file"
-            ref={fileInputRef}
-            onChange={handleReceiptUpload}
-            accept="image/*"
-            className="hidden"
-          />
           <button
-            onClick={() => fileInputRef.current?.click()}
-            className="scan-receipt-button"
-            disabled={isUploadingReceipt}>
-            {isUploadingReceipt ? (
-              <div className="flex items-center gap-2">
-                <AnimatedTechIcon size={20} speed={4} />
-                <span>Processing Receipt...</span>
-              </div>
-            ) : (
-              <>
-                <FaReceipt />
-                <span>Upload Photo of Receipt</span>
-              </>
-            )}
+            onClick={() => setIsReceiptModalOpen(true)}
+            className="add-item-button-list"
+            disabled={isUploadingReceipt}
+            style={{ backgroundColor: "var(--secondary-color)" }}>
+            <>
+              <FaReceipt />
+              <span>Add Photo of Receipt</span>
+            </>
+          </button>
+          <button
+            onClick={() => setIsItemPhotoModalOpen(true)}
+            className="add-item-button-list"
+            style={{ backgroundColor: "var(--primary-color)" }}>
+            <FaCamera /> Add Item from Photo
           </button>
           <button
             onClick={() => setIsFormOpen(true)}
-            className="scan-receipt-button"
+            className="add-item-button-list"
             style={{ backgroundColor: "var(--primary-color)" }}>
             <FaPlus /> Add Item
           </button>
           <button
             onClick={handleShareList}
-            className="scan-receipt-button"
+            className="add-item-button-list"
             style={{ backgroundColor: "var(--primary-color)" }}>
             <FaShare /> Share List
           </button>
@@ -339,6 +326,7 @@ const ShoppingList: React.FC = () => {
             setEditingItem(null);
           }}
           onMoveToInventory={handleMoveToInventory}
+          newItemFromPhoto={newItemFromPhoto}
         />
       )}
 
@@ -349,6 +337,19 @@ const ShoppingList: React.FC = () => {
           onClose={() => setDeleteItem(null)}
         />
       )}
+
+      <PhotoCaptureModal
+        isOpen={isReceiptModalOpen}
+        onClose={() => setIsReceiptModalOpen(false)}
+        apiFunction={handleReceiptProcessing}
+      />
+
+      <PhotoCaptureModal
+        isOpen={isItemPhotoModalOpen}
+        onClose={() => setIsItemPhotoModalOpen(false)}
+        apiFunction={handleItemPhotoProcessing}
+      />
+
       {receiptMatches && (
         <ReceiptMatchesModal
           matches={receiptMatches}

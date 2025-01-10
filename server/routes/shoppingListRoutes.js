@@ -702,4 +702,65 @@ router.put("/update-by-name/:item_name", authMiddleware, async (req, res) => {
   }
 });
 
+router.post("/analyze-item", authMiddleware, async (req, res) => {
+  try {
+    const userId = req.user.id;
+    const { imageData } = req.body;
+
+    // Process with OpenAI vision API
+    const prompt = `Analyze this image and identify the main grocery or food item in it. 
+    Return ONLY the name of the item in a standard, generic format (e.g., "milk" not "2% organic milk"). 
+    The response should be a JSON object with a single "itemName" field.`;
+
+    const completion = await openai.chat.completions.create({
+      model: "gpt-4o",
+      messages: [
+        {
+          role: "system",
+          content:
+            "You are a shopping list item analyzer that returns standardized item names.",
+        },
+        {
+          role: "user",
+          content: [
+            { type: "text", text: prompt },
+            {
+              type: "image_url",
+              image_url: { url: imageData },
+            },
+          ],
+        },
+      ],
+      max_tokens: 50,
+      temperature: 0.3,
+      response_format: { type: "json_object" },
+    });
+
+    const { itemName } = JSON.parse(completion.choices[0].message.content);
+
+    // Check if item exists in shopping list
+    const existingItem = await pool.query(
+      "SELECT * FROM shopping_list WHERE user_id = $1 AND LOWER(item_name) = LOWER($2)",
+      [userId, itemName]
+    );
+
+    if (existingItem.rows.length > 0) {
+      // Return existing item for edit modal
+      res.json({
+        exists: true,
+        item: existingItem.rows[0],
+      });
+    } else {
+      // Return suggested name for new item
+      res.json({
+        exists: false,
+        suggestedName: itemName,
+      });
+    }
+  } catch (error) {
+    console.error("Error analyzing item photo:", error);
+    res.status(500).json({ message: "Error analyzing photo" });
+  }
+});
+
 module.exports = router;
