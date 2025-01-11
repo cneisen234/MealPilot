@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from "react";
 import decimalHelper from "../../helpers/decimalHelper";
 import { FaTimes } from "react-icons/fa";
+import QtyInput from "../common/QtyInput";
 
 interface InventoryItem {
   id: number;
@@ -13,6 +14,7 @@ interface InventoryItem {
 
 interface InventoryFormProps {
   item?: InventoryItem | null;
+  initialItemName?: string | null;
   onSubmit: (item: {
     item_name: string;
     quantity: number;
@@ -23,6 +25,7 @@ interface InventoryFormProps {
 
 const InventoryForm: React.FC<InventoryFormProps> = ({
   item,
+  initialItemName = "",
   onSubmit,
   onClose,
 }) => {
@@ -45,8 +48,10 @@ const InventoryForm: React.FC<InventoryFormProps> = ({
       setItemName(item.item_name);
       setQuantity(item.quantity);
       setExpirationDate(formattedDate);
+    } else if (initialItemName) {
+      setItemName(initialItemName);
     }
-  }, [item]);
+  }, [item, initialItemName]);
 
   const validateForm = () => {
     let isValid = true;
@@ -104,22 +109,12 @@ const InventoryForm: React.FC<InventoryFormProps> = ({
           </div>
 
           <div className="form-row">
-            <div className="form-group">
-              <label htmlFor="quantity">Quantity</label>
-              <input
-                type="text"
-                id="quantity"
-                value={quantity}
-                onChange={(e) => decimalHelper(setQuantity, e)}
-                className={quantityError ? "error" : ""}
-                min="0"
-                step="1"
-                placeholder="Enter quantity"
-              />
-              {quantityError && (
-                <span className="error-message">{quantityError}</span>
-              )}
-            </div>
+            <QtyInput
+              value={quantity}
+              onChange={setQuantity}
+              error={quantityError}
+              label="Quantity"
+            />
           </div>
 
           <div className="form-group">

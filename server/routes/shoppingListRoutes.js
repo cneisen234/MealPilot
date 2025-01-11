@@ -46,32 +46,71 @@ router.post("/", authMiddleware, async (req, res) => {
 
     await pool.query("BEGIN");
 
-    // Insert shopping list item
-    const itemResult = await pool.query(
-      `INSERT INTO shopping_list (user_id, item_name, quantity) 
-       VALUES ($1, $2, $3) 
-       RETURNING *`,
-      [userId, item_name.trim(), quantity]
+    // Check for existing item with same name
+    const existingItem = await pool.query(
+      "SELECT id, quantity FROM shopping_list WHERE user_id = $1 AND LOWER(item_name) = LOWER($2)",
+      [userId, item_name.trim()]
     );
 
-    const newItem = itemResult.rows[0];
+    let result;
 
-    // Add recipe associations if any
-    if (recipe_ids.length > 0) {
-      const values = recipe_ids
-        .map((recipe_id) => `(${newItem.id}, ${recipe_id})`)
-        .join(", ");
+    if (existingItem.rows.length > 0) {
+      const currentItem = existingItem.rows[0];
 
-      await pool.query(`
-        INSERT INTO shopping_list_recipes (shopping_list_item_id, recipe_id)
-        VALUES ${values}
-      `);
+      // Add quantities
+      const newQuantity = Number(quantity) + Number(currentItem.quantity);
+
+      // Update existing item
+      result = await pool.query(
+        `UPDATE shopping_list 
+         SET quantity = $1, updated_at = NOW()
+         WHERE id = $2 AND user_id = $3
+         RETURNING *`,
+        [newQuantity, currentItem.id, userId]
+      );
+
+      // Update recipe associations
+      if (recipe_ids.length > 0) {
+        // First remove existing associations
+        await pool.query(
+          "DELETE FROM shopping_list_recipes WHERE shopping_list_item_id = $1",
+          [currentItem.id]
+        );
+
+        // Add new associations
+        const values = recipe_ids
+          .map((recipe_id) => `(${currentItem.id}, ${recipe_id})`)
+          .join(", ");
+
+        await pool.query(`
+          INSERT INTO shopping_list_recipes (shopping_list_item_id, recipe_id)
+          VALUES ${values}
+        `);
+      }
+    } else {
+      // New item, insert into shopping list
+      result = await pool.query(
+        `INSERT INTO shopping_list (user_id, item_name, quantity) 
+         VALUES ($1, $2, $3) 
+         RETURNING *`,
+        [userId, item_name.trim(), quantity]
+      );
+
+      // Add recipe associations if any
+      if (recipe_ids.length > 0) {
+        const values = recipe_ids
+          .map((recipe_id) => `(${result.rows[0].id}, ${recipe_id})`)
+          .join(", ");
+
+        await pool.query(`
+          INSERT INTO shopping_list_recipes (shopping_list_item_id, recipe_id)
+          VALUES ${values}
+        `);
+      }
     }
 
-    await pool.query("COMMIT");
-
     // Fetch complete item with recipe associations
-    const result = await pool.query(
+    const finalResult = await pool.query(
       `SELECT 
         sl.*,
         ARRAY_AGG(JSONB_BUILD_OBJECT(
@@ -83,10 +122,11 @@ router.post("/", authMiddleware, async (req, res) => {
       LEFT JOIN recipes r ON slr.recipe_id = r.id
       WHERE sl.id = $1
       GROUP BY sl.id`,
-      [newItem.id]
+      [result.rows[0].id]
     );
 
-    res.status(201).json(result.rows[0]);
+    await pool.query("COMMIT");
+    res.status(201).json(finalResult.rows[0]);
   } catch (error) {
     await pool.query("ROLLBACK");
     console.error("Error adding shopping list item:", error);
@@ -707,10 +747,22 @@ router.post("/analyze-item", authMiddleware, async (req, res) => {
     const userId = req.user.id;
     const { imageData } = req.body;
 
+    // First get all user's shopping list items for comparison
+    const userItems = await pool.query(
+      "SELECT * FROM shopping_list WHERE user_id = $1",
+      [userId]
+    );
+
     // Process with OpenAI vision API
-    const prompt = `Analyze this image and identify the main grocery or food item in it. 
-    Return ONLY the name of the item in a standard, generic format (e.g., "milk" not "2% organic milk"). 
-    The response should be a JSON object with a single "itemName" field.`;
+    const prompt = `Analyze this image and identify what grocery or food item it is. 
+    Also list any common alternative names or categories for this item.
+    For example, if it's Skittles, you might say: candy, skittles, sweets.
+    If it's pasta sauce you might say: marinara, pasta sauce, tomato sauce.
+    Return a JSON object with this structure:
+    {
+      "itemName": "primary item name",
+      "alternativeNames": ["list", "of", "alternative", "names"]
+    }`;
 
     const completion = await openai.chat.completions.create({
       model: "gpt-4o",
@@ -718,40 +770,44 @@ router.post("/analyze-item", authMiddleware, async (req, res) => {
         {
           role: "system",
           content:
-            "You are a shopping list item analyzer that returns standardized item names.",
+            "You are a shopping list item analyzer that helps match items flexibly.",
         },
         {
           role: "user",
           content: [
             { type: "text", text: prompt },
-            {
-              type: "image_url",
-              image_url: { url: imageData },
-            },
+            { type: "image_url", image_url: { url: imageData } },
           ],
         },
       ],
-      max_tokens: 50,
+      max_tokens: 150,
       temperature: 0.3,
       response_format: { type: "json_object" },
     });
 
-    const { itemName } = JSON.parse(completion.choices[0].message.content);
-
-    // Check if item exists in shopping list
-    const existingItem = await pool.query(
-      "SELECT * FROM shopping_list WHERE user_id = $1 AND LOWER(item_name) = LOWER($2)",
-      [userId, itemName]
+    const { itemName, alternativeNames } = JSON.parse(
+      completion.choices[0].message.content
     );
 
-    if (existingItem.rows.length > 0) {
-      // Return existing item for edit modal
+    // Check for matches using all possible names
+    const allNames = [itemName, ...alternativeNames].map((name) =>
+      name.toLowerCase()
+    );
+    const matches = userItems.rows.filter((item) =>
+      allNames.some(
+        (name) =>
+          item.item_name.toLowerCase().includes(name) ||
+          name.includes(item.item_name.toLowerCase())
+      )
+    );
+
+    if (matches.length > 0) {
       res.json({
         exists: true,
-        item: existingItem.rows[0],
+        matches: matches,
+        suggestedName: itemName,
       });
     } else {
-      // Return suggested name for new item
       res.json({
         exists: false,
         suggestedName: itemName,

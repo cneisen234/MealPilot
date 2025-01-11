@@ -3,6 +3,7 @@ import decimalHelper from "../../helpers/decimalHelper";
 import { FaTimes, FaTags, FaBoxOpen } from "react-icons/fa";
 import { getUserRecipes } from "../../utils/api";
 import "../../styles/shoppingList.css";
+import QtyInput from "../common/QtyInput";
 
 interface Recipe {
   id: number;
@@ -124,21 +125,6 @@ const ShoppingListForm: React.FC<ShoppingListFormProps> = ({
           </button>
         </div>
 
-        <div
-          style={{
-            backgroundColor: "rgba(5, 71, 42)",
-            padding: "12px 20px",
-            borderRadius: "8px",
-            marginTop: "-20px",
-            fontSize: "0.9rem",
-            color: "white",
-            maxWidth: "850px",
-            margin: "20px auto",
-          }}>
-          Got an incorrect item name? Simply change the name to match the name
-          in your shopping list and any changes will apply to that item.
-        </div>
-
         <form onSubmit={handleSubmit} className="inventory-form">
           {!showInventoryTransfer && (
             <>
@@ -158,22 +144,11 @@ const ShoppingListForm: React.FC<ShoppingListFormProps> = ({
               </div>
 
               <div className="form-row">
-                <div className="form-group">
-                  <label htmlFor="quantity">Total Quantity</label>
-                  <input
-                    type="text"
-                    id="quantity"
-                    value={quantity}
-                    onChange={(e) => decimalHelper(setQuantity, e)}
-                    className={quantityError ? "error" : ""}
-                    min="0"
-                    step="1"
-                    placeholder="Enter quantity"
-                  />
-                  {quantityError && (
-                    <span className="error-message">{quantityError}</span>
-                  )}
-                </div>
+                <QtyInput
+                  value={quantity}
+                  onChange={setQuantity}
+                  error={quantityError}
+                />
               </div>
 
               <div className="form-group">

@@ -1,6 +1,7 @@
 const express = require("express");
 const router = express.Router();
 const authMiddleware = require("../middleware/auth");
+const openai = require("../openai");
 const pool = require("../db");
 
 // Get all inventory items for the logged-in user
@@ -257,6 +258,83 @@ router.put("/delete-by-name/:itemName", authMiddleware, async (req, res) => {
     await pool.query("ROLLBACK");
     console.error("Error updating inventory item:", error);
     res.status(500).json({ message: "Server error" });
+  }
+});
+
+router.post("/analyze-item", authMiddleware, async (req, res) => {
+  try {
+    const userId = req.user.id;
+    const { imageData } = req.body;
+
+    // First get all user's inventory items for comparison
+    const userItems = await pool.query(
+      "SELECT * FROM inventory WHERE user_id = $1",
+      [userId]
+    );
+
+    // Process with OpenAI vision API
+    const prompt = `Analyze this image and identify what grocery or food item it is. 
+    Also list any common alternative names or categories for this item.
+    For example, if it's Skittles, you might say: candy, skittles, sweets.
+    If it's pasta sauce you might say: marinara, pasta sauce, tomato sauce.
+    Return a JSON object with this structure:
+    {
+      "itemName": "primary item name",
+      "alternativeNames": ["list", "of", "alternative", "names"]
+    }`;
+
+    const completion = await openai.chat.completions.create({
+      model: "gpt-4o",
+      messages: [
+        {
+          role: "system",
+          content:
+            "You are an inventory item analyzer that helps match items flexibly.",
+        },
+        {
+          role: "user",
+          content: [
+            { type: "text", text: prompt },
+            { type: "image_url", image_url: { url: imageData } },
+          ],
+        },
+      ],
+      max_tokens: 150,
+      temperature: 0.3,
+      response_format: { type: "json_object" },
+    });
+
+    const { itemName, alternativeNames } = JSON.parse(
+      completion.choices[0].message.content
+    );
+
+    // Check for matches using all possible names
+    const allNames = [itemName, ...alternativeNames].map((name) =>
+      name.toLowerCase()
+    );
+    const matches = userItems.rows.filter((item) =>
+      allNames.some(
+        (name) =>
+          item.item_name.toLowerCase().includes(name) ||
+          name.includes(item.item_name.toLowerCase())
+      )
+    );
+
+    if (matches.length > 0) {
+      res.json({
+        exists: true,
+        matches: matches,
+        suggestedName: itemName,
+      });
+    } else {
+      res.json({
+        exists: false,
+        suggestedName: itemName,
+      });
+    }
+  } catch (error) {
+    console.error("Error analyzing item photo:", error);
+    res.status(500).json({ message: "Error analyzing photo" });
   }
 });
 

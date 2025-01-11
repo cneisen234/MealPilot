@@ -25,6 +25,7 @@ import {
 import "../styles/inventory.css";
 import ReceiptMatchesModal from "../components/shoppingList/ReceiptMatchesModal";
 import ShareableListModal from "../components/shoppingList/SharableListModal";
+import MatchSelectionModal from "../components/common/MatchSelectionModal";
 
 interface Recipe {
   id: number;
@@ -60,9 +61,8 @@ const ShoppingList: React.FC = () => {
   const [isReceiptModalOpen, setIsReceiptModalOpen] = useState(false);
   const [isItemPhotoModalOpen, setIsItemPhotoModalOpen] = useState(false);
   const [newItemFromPhoto, setNewItemFromPhoto] = useState<string | null>(null);
+  const [matches, setMatches] = useState<any[] | null>(null);
   const [error, setError] = useState("");
-
-  console.log(editingItem);
 
   useEffect(() => {
     loadShoppingList();
@@ -121,11 +121,18 @@ const ShoppingList: React.FC = () => {
   const handleItemPhotoProcessing = async (imageData: string) => {
     try {
       const response = await processShoppingItemPhoto(imageData);
+      setNewItemFromPhoto(response.data.suggestedName);
       if (response.data.exists) {
-        setEditingItem(response.data.item);
+        if (response.data.matches.length === 1) {
+          // If only one match, open edit directly
+          setEditingItem(response.data.matches[0]);
+        } else {
+          // If multiple matches, show selection modal
+          setMatches(response.data.matches);
+        }
       } else {
-        setNewItemFromPhoto(response.data.suggestedName);
-        setIsFormOpen(true);
+        // No matches, open add form with suggested name
+        handleNoMatch();
       }
     } catch (error) {
       throw error;
@@ -224,6 +231,11 @@ const ShoppingList: React.FC = () => {
       </div>
     );
   }
+
+  const handleNoMatch = () => {
+    setIsFormOpen(true);
+    setMatches(null);
+  };
 
   return (
     <div className="inventory-container">
@@ -367,6 +379,17 @@ const ShoppingList: React.FC = () => {
         }))}
         onMoveToInventory={handleMultiAddToInventory}
       />
+      {matches && (
+        <MatchSelectionModal
+          matches={matches}
+          onSelect={(item) => {
+            setEditingItem(item);
+            setMatches(null);
+          }}
+          onNoMatch={handleNoMatch}
+          onClose={() => setMatches(null)}
+        />
+      )}
     </div>
   );
 };

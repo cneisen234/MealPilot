@@ -344,5 +344,9 @@ export const processShoppingItemPhoto = (imageData: string) => {
   return api.post('/shopping-list/analyze-item', { imageData });
 };
 
+export const processInventoryItemPhoto = (imageData: string) => {
+  return api.post('/inventory/analyze-item', { imageData });
+};
+
 export default api;
 

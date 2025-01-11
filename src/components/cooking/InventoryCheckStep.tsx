@@ -1,7 +1,7 @@
 import React, { useState } from "react";
 import { deleteInventoryItemByName } from "../../utils/api";
 import AnimatedTechIcon from "../common/AnimatedTechIcon";
-import decimalHelper from "../../helpers/decimalHelper";
+import QtyInput from "../common/QtyInput";
 import InventoryUpdateConfirmModal from "../common/InventoryUpdateConfirm";
 
 interface IngredientAnalysis {
@@ -18,12 +18,6 @@ interface IngredientAnalysis {
       id: number;
     };
   };
-}
-
-interface UpdatedItem {
-  name: string;
-  removedQuantity: number;
-  remainingQuantity?: number;
 }
 
 interface InventoryCheckStepProps {
@@ -53,20 +47,14 @@ const InventoryCheckStep: React.FC<InventoryCheckStepProps> = ({
 
   const [isProcessing, setIsProcessing] = useState(false);
 
-  // Handle quantity input changes using existing decimal helper
-  const handleQuantityChange = (
-    name: string,
-    e: React.ChangeEvent<HTMLInputElement>
-  ) => {
-    decimalHelper((newValue: number) => {
-      setQuantities((prev) => ({
-        ...prev,
-        [name]: newValue,
-      }));
-    }, e);
+  // New handler for QtyInput
+  const handleQuantityChange = (name: string, newValue: number) => {
+    setQuantities((prev) => ({
+      ...prev,
+      [name]: newValue,
+    }));
   };
 
-  // Toggle ingredient selection
   const handleIngredientToggle = (name: string) => {
     if (selectedIngredients.includes(name)) {
       setSelectedIngredients((prev) =>
@@ -77,7 +65,6 @@ const InventoryCheckStep: React.FC<InventoryCheckStepProps> = ({
     }
   };
 
-  // Process inventory updates for selected items
   const handleRemoveFromInventory = async () => {
     setIsProcessing(true);
     try {
@@ -96,7 +83,6 @@ const InventoryCheckStep: React.FC<InventoryCheckStepProps> = ({
       );
       setSelectedIngredients([]);
       setShowConfirmation(true);
-      console.log(showConfirmation);
     } catch (error) {
       console.error("Error updating inventory:", error);
     } finally {
@@ -124,11 +110,10 @@ const InventoryCheckStep: React.FC<InventoryCheckStepProps> = ({
 
                   <div className="item-right-content">
                     <div className="controls-group">
-                      <input
-                        type="text"
-                        value={quantities[name] || ""}
-                        onChange={(e) => handleQuantityChange(name, e)}
-                        className="quantity-input"
+                      <QtyInput
+                        value={quantities[name] || 0}
+                        onChange={(value) => handleQuantityChange(name, value)}
+                        min={0}
                       />
                       <input
                         type="checkbox"

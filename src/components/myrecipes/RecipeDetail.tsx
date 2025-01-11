@@ -5,9 +5,6 @@ import {
   getRecipeInventory,
   updateRecipe,
   deleteRecipe,
-  addShoppingListItem,
-  addInventoryItem,
-  moveToInventoryByName,
 } from "../../utils/api";
 import AnimatedTechIcon from "../common/AnimatedTechIcon";
 import {
@@ -21,7 +18,6 @@ import {
 } from "react-icons/fa";
 import ConfirmDeleteModal from "../common/ConfirmDeleteModal";
 import CookingMode from "../cooking/CookingMode";
-import decimalHelper from "../../helpers/decimalHelper";
 
 interface IngredientAnalysis {
   original: string;
@@ -69,8 +65,6 @@ const RecipeDetail: React.FC = () => {
   const navigate = useNavigate();
   const routeLocation = useLocation();
   const fromMealPlan = routeLocation.state?.fromMealPlan;
-  const [ingredientQuantities, setIngredientQuantities] =
-    useState<IngredientQuantities>({});
   let currentStep = 1;
 
   const createPlaceholderAnalysis = (
@@ -125,64 +119,6 @@ const RecipeDetail: React.FC = () => {
       console.error("Error analyzing ingredients:", error);
     } finally {
       setIsAnalyzing(false);
-    }
-  };
-
-  const handleAddToShoppingList = async (
-    ingredient: IngredientAnalysis,
-    index: number
-  ) => {
-    if (!ingredient.parsed) return;
-
-    try {
-      await addShoppingListItem({
-        item_name: ingredient.parsed.name,
-        quantity: ingredientQuantities[index] || ingredient.parsed.quantity,
-        recipe_ids: recipe ? [recipe.id] : [],
-      });
-
-      let ingredients = recipe?.ingredients;
-      ingredient.status.type = "in-shopping-list";
-      //@ts-ignore
-      ingredients[index] = ingredient;
-      //@ts-ignore
-      const newRecipe = { ...recipe, ingredient: [...ingredients] };
-      //@ts-ignore
-      setRecipe(newRecipe);
-    } catch (error) {
-      console.error("Error adding to shopping list:", error);
-    }
-  };
-
-  const handleAddToInventory = async (
-    ingredient: IngredientAnalysis,
-    index: number
-  ) => {
-    if (!ingredient.parsed) return;
-
-    try {
-      if (
-        ingredient.status.type === "in-shopping-list" &&
-        ingredient.parsed.name
-      ) {
-        await moveToInventoryByName(ingredient.parsed.name, "");
-      } else {
-        await addInventoryItem({
-          item_name: ingredient.parsed.name,
-          quantity: ingredientQuantities[index] || ingredient.parsed.quantity,
-          expiration_date: "",
-        });
-      }
-      let ingredients = recipe?.ingredients;
-      ingredient.status.type = "in-inventory";
-      //@ts-ignore
-      ingredients[index] = ingredient;
-      //@ts-ignore
-      const newRecipe = { ...recipe, ingredient: [...ingredients] };
-      //@ts-ignore
-      setRecipe(newRecipe);
-    } catch (error) {
-      console.error("Error managing inventory:", error);
     }
   };
 
@@ -573,45 +509,6 @@ const RecipeDetail: React.FC = () => {
                           </span>
                         </div>
                       </div>
-                      <input
-                        type="text"
-                        value={
-                          ingredientQuantities[index] !== undefined
-                            ? ingredientQuantities[index]
-                            : ingredient.parsed?.quantity ?? ""
-                        }
-                        onChange={(e) =>
-                          decimalHelper(
-                            (value: any) =>
-                              setIngredientQuantities((prev) => ({
-                                ...prev,
-                                [index]: value,
-                              })),
-                            e
-                          )
-                        }
-                        className="quantity-input"
-                        style={{ width: 40, marginRight: 10, float: "left" }}
-                        min="0"
-                        step="1"
-                        placeholder="Enter quantity"
-                      />
-                      <button
-                        onClick={() =>
-                          ingredient.status.type === "in-shopping-list"
-                            ? handleAddToInventory(ingredient, index)
-                            : handleAddToShoppingList(ingredient, index)
-                        }
-                        style={{ width: 150 }}
-                        className={
-                          ingredient.status.type === "in-shopping-list"
-                            ? "add-to-inventory-btn"
-                            : "add-to-shopping-btn"
-                        }>
-                        {ingredient.status.type === "in-shopping-list"
-                          ? "+ Inventory"
-                          : "+ Shopping List"}
-                      </button>
                     </div>
                   </div>
                 )}

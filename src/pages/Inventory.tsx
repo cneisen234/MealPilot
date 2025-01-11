@@ -1,14 +1,17 @@
 import React, { useState, useEffect } from "react";
-import { FaPlus, FaPencilAlt, FaTrash } from "react-icons/fa";
+import { FaPlus, FaPencilAlt, FaTrash, FaCamera } from "react-icons/fa";
 import AnimatedTechIcon from "../components/common/AnimatedTechIcon";
 import ConfirmationModal from "../components/common/ConfirmationModal";
 import InventoryForm from "../components/inventory/InventoryForm";
 import ExpirationAlert from "../components/inventory/ExpirationAlert";
+import PhotoCaptureModal from "../components/common/PhotoCaptureComponent";
+import MatchSelectionModal from "../components/common/MatchSelectionModal";
 import {
   getInventoryItems,
   addInventoryItem,
   updateInventoryItem,
   deleteInventoryItem,
+  processInventoryItemPhoto,
 } from "../utils/api";
 import "../styles/inventory.css";
 
@@ -41,6 +44,12 @@ const Inventory: React.FC = () => {
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [editingItem, setEditingItem] = useState<InventoryItem | null>(null);
   const [deleteItem, setDeleteItem] = useState<InventoryItem | null>(null);
+  const [isPhotoModalOpen, setIsPhotoModalOpen] = useState(false);
+  const [matches, setMatches] = useState<{
+    items: any[];
+    suggestedName: string;
+  } | null>(null);
+  const [newItemFromPhoto, setNewItemFromPhoto] = useState<string | null>(null);
   const [error, setError] = useState("");
   const [showExpirationAlert, setShowExpirationAlert] = useState(false);
   const [expiringItems, setExpiringItems] = useState<ExpiringItemData[]>([]);
@@ -159,6 +168,35 @@ const Inventory: React.FC = () => {
     }
   };
 
+  const handleItemPhotoProcessing = async (imageData: string) => {
+    try {
+      const response = await processInventoryItemPhoto(imageData);
+      setNewItemFromPhoto(response.data.suggestedName);
+      if (response.data.exists) {
+        if (response.data.matches.length === 1) {
+          // If only one match, open edit directly
+          setEditingItem(response.data.matches[0]);
+        } else {
+          // If multiple matches, show selection modal with suggested name
+          setMatches({
+            items: response.data.matches,
+            suggestedName: response.data.suggestedName,
+          });
+        }
+      } else {
+        // No matches, open add form with suggested name
+        handleNoMatch();
+      }
+    } catch (error) {
+      throw error;
+    }
+  };
+
+  const handleNoMatch = () => {
+    setIsFormOpen(true);
+    setMatches(null);
+  };
+
   if (isLoading) {
     return (
       <div className="loading-container">
@@ -173,9 +211,15 @@ const Inventory: React.FC = () => {
         <h1>My Inventory</h1>
         <div className="multi-button-list">
           <button
+            onClick={() => setIsPhotoModalOpen(true)}
+            className="add-item-button-list"
+            style={{ backgroundColor: "var(--secondary-color)" }}>
+            <FaCamera /> Add from Photo
+          </button>
+          <button
             onClick={() => setIsFormOpen(true)}
             className="add-item-button-list"
-            style={{ marginTop: 5 }}>
+            style={{ backgroundColor: "var(--primary-color)" }}>
             <FaPlus /> Add Item
           </button>
         </div>
@@ -226,10 +270,12 @@ const Inventory: React.FC = () => {
       {(isFormOpen || editingItem) && (
         <InventoryForm
           item={editingItem}
+          initialItemName={newItemFromPhoto}
           onSubmit={editingItem ? handleUpdateItem : handleAddItem}
           onClose={() => {
             setIsFormOpen(false);
             setEditingItem(null);
+            setNewItemFromPhoto(null);
           }}
         />
       )}
@@ -239,6 +285,24 @@ const Inventory: React.FC = () => {
           message={`Are you sure you want to delete "${deleteItem.item_name}"?`}
           onConfirm={handleDeleteItem}
           onClose={() => setDeleteItem(null)}
+        />
+      )}
+
+      <PhotoCaptureModal
+        isOpen={isPhotoModalOpen}
+        onClose={() => setIsPhotoModalOpen(false)}
+        apiFunction={handleItemPhotoProcessing}
+      />
+
+      {matches && (
+        <MatchSelectionModal
+          matches={matches.items}
+          onSelect={(item) => {
+            setEditingItem(item);
+            setMatches(null);
+          }}
+          onNoMatch={handleNoMatch}
+          onClose={() => setMatches(null)}
         />
       )}
 
