@@ -538,7 +538,7 @@ router.post("/process-receipt", authMiddleware, async (req, res) => {
     Only include items that are clear matches or very close matches.`;
 
     const completion = await openai.chat.completions.create({
-      model: "gpt-4o",
+      model: "gpt-4o-mini",
       messages: [
         {
           role: "system",
@@ -765,7 +765,7 @@ router.post("/analyze-item", authMiddleware, async (req, res) => {
     }`;
 
     const completion = await openai.chat.completions.create({
-      model: "gpt-4o",
+      model: "gpt-4o-mini",
       messages: [
         {
           role: "system",

@@ -26,6 +26,7 @@ import "../styles/inventory.css";
 import ReceiptMatchesModal from "../components/shoppingList/ReceiptMatchesModal";
 import ShareableListModal from "../components/shoppingList/SharableListModal";
 import MatchSelectionModal from "../components/common/MatchSelectionModal";
+import SearchInput from "../components/common/SearchInput";
 
 interface Recipe {
   id: number;
@@ -50,6 +51,7 @@ interface ShoppingListFormData {
 
 const ShoppingList: React.FC = () => {
   const [items, setItems] = useState<ShoppingListItem[]>([]);
+  const [filteredItems, setFilteredItems] = useState<ShoppingListItem[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [editingItem, setEditingItem] = useState<ShoppingListItem | null>(null);
@@ -67,6 +69,10 @@ const ShoppingList: React.FC = () => {
   useEffect(() => {
     loadShoppingList();
   }, []);
+
+  useEffect(() => {
+    setFilteredItems(items);
+  }, [items]);
 
   useEffect(() => {
     if (items.length > 0) {
@@ -140,6 +146,10 @@ const ShoppingList: React.FC = () => {
   };
 
   const handleAddItem = async (formData: ShoppingListFormData) => {
+    if (Number(items.length) > 99) {
+      setError("Shopping list can't exceed 100 items");
+      return;
+    }
     try {
       const response = await addShoppingListItem(formData);
       const existingItemIndex = items.findIndex(
@@ -272,11 +282,18 @@ const ShoppingList: React.FC = () => {
           </button>
         </div>
       </div>
-
+      <SearchInput
+        items={items.map((item) => ({
+          ...item,
+          name: item.item_name,
+        }))}
+        onSearch={(filtered) => setFilteredItems(filtered)}
+        placeholder="Search your recipes..."
+      />
       {error && <div className="error-message">{error}</div>}
 
       <div className="list-grid">
-        {items.map((item) => (
+        {filteredItems.map((item) => (
           <div key={item.id} className="list-card">
             <div className="card-header">
               <div className="card-header-content">

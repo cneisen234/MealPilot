@@ -14,6 +14,7 @@ interface PreferenceInputProps {
   options?: string[];
   selectedItem?: string;
   onSelect?: (item: string) => void;
+  disabled: boolean;
 }
 
 const PreferenceInput: React.FC<PreferenceInputProps> = ({
@@ -27,6 +28,7 @@ const PreferenceInput: React.FC<PreferenceInputProps> = ({
   options = [],
   selectedItem = "",
   onSelect,
+  disabled,
 }) => {
   const [item, setItem] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -95,7 +97,7 @@ const PreferenceInput: React.FC<PreferenceInputProps> = ({
                 <select
                   onChange={handleSelectChange}
                   className="preference-select"
-                  disabled={isSubmitting}>
+                  disabled={isSubmitting || disabled}>
                   <option value="custom">Select a common item...</option>
                   {availableOptions.map((option) => (
                     <option
@@ -115,15 +117,17 @@ const PreferenceInput: React.FC<PreferenceInputProps> = ({
                     placeholder="Or type your own..."
                     className="preference-input"
                     style={{ width: "80%" }}
-                    disabled={isSubmitting}
+                    disabled={isSubmitting || disabled}
                   />
-                  <button
-                    type="submit"
-                    disabled={isSubmitting}
-                    style={{ width: "20%" }}
-                    className="add-button">
-                    Add
-                  </button>
+                  {!disabled && (
+                    <button
+                      type="submit"
+                      disabled={isSubmitting || disabled}
+                      style={{ width: "20%" }}
+                      className="add-button">
+                      Add
+                    </button>
+                  )}
                 </div>
               </div>
             </form>

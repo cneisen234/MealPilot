@@ -1,6 +1,11 @@
 import React, { useState, useEffect } from "react";
 import { useLocation } from "react-router-dom";
-import { getCurrentMealPlan, generateMealPlan } from "../utils/api";
+import {
+  getCurrentMealPlan,
+  generateMealPlan,
+  swapMealWithSaved,
+  getUserRecipes,
+} from "../utils/api";
 import AnimatedTechIcon from "../components/common/AnimatedTechIcon";
 import ConfirmationModal from "../components/common/ConfirmationModal";
 import MealItem from "../components/MealPlan/MealItem";
@@ -32,9 +37,20 @@ const MealPlan: React.FC = () => {
   const [mealPlan, setMealPlan] = useState<MealPlan | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [showConfirmModal, setShowConfirmModal] = useState(false);
+  const [userRecipes, setUserRecipes] = useState([]);
 
   useEffect(() => {
     loadMealPlan();
+    const loadUserRecipes = async () => {
+      try {
+        const response = await getUserRecipes();
+        setUserRecipes(response.data);
+      } catch (error) {
+        console.error("Error loading recipes:", error);
+      }
+    };
+
+    loadUserRecipes();
   }, []);
 
   useEffect(() => {
@@ -119,6 +135,43 @@ const MealPlan: React.FC = () => {
     return filteredMealPlan.length;
   };
 
+  const handleMealSwap = async (
+    date: string,
+    mealType: string,
+    newRecipeId: number
+  ) => {
+    try {
+      const response = await swapMealWithSaved(date, mealType, newRecipeId);
+      if (response.data.success) {
+        // Update the meal plan state with the saved recipe
+        setMealPlan((prevPlan) => {
+          if (!prevPlan) return null;
+
+          const updatedPlan = { ...prevPlan };
+          const savedRecipe = response.data.recipe;
+
+          updatedPlan.meals[date] = {
+            ...updatedPlan.meals[date],
+            [mealType]: {
+              title: savedRecipe.title,
+              isNew: false,
+              recipeId: savedRecipe.id,
+              // Include any other recipe properties that your app uses
+              prepTime: savedRecipe.prepTime,
+              cookTime: savedRecipe.cookTime,
+              servings: savedRecipe.servings,
+            },
+          };
+
+          return updatedPlan;
+        });
+      }
+    } catch (error) {
+      console.error("Error swapping meal:", error);
+      // Handle error appropriately - maybe show a toast notification
+    }
+  };
+
   if (isLoading) {
     return (
       <div className="loading-container">
@@ -171,16 +224,25 @@ const MealPlan: React.FC = () => {
                   mealType="Breakfast"
                   meal={meals.breakfast}
                   accentColor="#FF9D72"
+                  date={date}
+                  onMealSwap={handleMealSwap}
+                  userRecipes={userRecipes}
                 />
                 <MealItem
                   mealType="Lunch"
                   meal={meals.lunch}
                   accentColor="#05472A"
+                  date={date}
+                  onMealSwap={handleMealSwap}
+                  userRecipes={userRecipes}
                 />
                 <MealItem
                   mealType="Dinner"
                   meal={meals.dinner}
                   accentColor="#a1c800"
+                  date={date}
+                  onMealSwap={handleMealSwap}
+                  userRecipes={userRecipes}
                 />
               </div>
             </div>

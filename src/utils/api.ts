@@ -348,5 +348,13 @@ export const processInventoryItemPhoto = (imageData: string) => {
   return api.post('/inventory/analyze-item', { imageData });
 };
 
+export const swapMealWithSaved = async (date: string, mealType: string, recipeId: number) => {
+  return await api.post('/mealplan/update', {
+    date,
+    mealType,
+    recipeId
+  });
+};
+
 export default api;
 

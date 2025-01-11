@@ -18,6 +18,7 @@ import {
 } from "react-icons/fa";
 import ConfirmDeleteModal from "../common/ConfirmDeleteModal";
 import CookingMode from "../cooking/CookingMode";
+import RecipePDF from "./RecipePdf";
 
 interface IngredientAnalysis {
   original: string;
@@ -444,6 +445,7 @@ const RecipeDetail: React.FC = () => {
         </button>
       </div>
       <h1 className="recipe-title">{recipe.title}</h1>
+      <RecipePDF recipe={recipe} />
       <div className="recipe-meta">
         {recipe.prep_time && (
           <div className="recipe-meta-item">
@@ -560,7 +562,6 @@ const RecipeDetail: React.FC = () => {
           item_name={recipe.title}
         />
       )}
-
       {isCookingMode && (
         <CookingMode recipe={recipe} onClose={() => setIsCookingMode(false)} />
       )}

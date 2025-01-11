@@ -61,6 +61,7 @@ const Recipe = () => {
   const [cuisinePreferences, setCuisinePreferences] = useState<
     CuisinePreference[]
   >([]);
+  const [preferencesCount, setPreferencesCount] = useState(0);
   const [selectedMealType, setSelectedMealType] =
     useState<string>("main course");
   const [isLoading, setIsLoading] = useState(true);
@@ -71,6 +72,27 @@ const Recipe = () => {
   useEffect(() => {
     loadPreferences();
   }, []);
+
+  useEffect(() => {
+    const cantHavesCount = cantHaves.length;
+    const mustHavesCount = mustHaves.length;
+    const tastePreferencesCount = tastePreferences.length;
+    const dietaryGoalsCount = dietaryGoals.length;
+    const cuisinePreferencesCount = cuisinePreferences.length;
+    const totalPreferences =
+      Number(cantHavesCount) +
+      Number(mustHavesCount) +
+      Number(tastePreferencesCount) +
+      Number(dietaryGoalsCount) +
+      Number(cuisinePreferencesCount);
+    setPreferencesCount(totalPreferences);
+  }, [
+    cantHaves,
+    mustHaves,
+    tastePreferences,
+    dietaryGoals,
+    cuisinePreferences,
+  ]);
 
   useEffect(() => {
     if (routeLocation.state?.recipe) {
@@ -374,7 +396,7 @@ const Recipe = () => {
       <div className="recipe-header">
         <h1>Recipe Preferences</h1>
         <p>
-          Customize your dietary preferences to get personalized recipe
+          Choose up to 7 dietary preferences to get personalized recipe
           recommendations.
         </p>
         <div
@@ -402,6 +424,7 @@ const Recipe = () => {
           options={MEAL_TYPES}
           selectedItem={selectedMealType}
           onSelect={setSelectedMealType}
+          disabled={false}
         />
         <PreferenceInput
           label="Can't Haves"
@@ -412,6 +435,7 @@ const Recipe = () => {
           onRemove={handleRemoveCantHave}
           type="combo"
           options={COMMON_CANT_HAVES}
+          disabled={preferencesCount > 6}
         />
 
         <PreferenceInput
@@ -423,6 +447,7 @@ const Recipe = () => {
           onRemove={handleRemoveMustHave}
           type="combo"
           options={COMMON_MUST_HAVES}
+          disabled={preferencesCount > 6}
         />
 
         <PreferenceInput
@@ -434,6 +459,7 @@ const Recipe = () => {
           onRemove={handleRemoveTastePreference}
           type="combo"
           options={COMMON_TASTE_PREFERENCES}
+          disabled={preferencesCount > 6}
         />
 
         <PreferenceInput
@@ -445,6 +471,7 @@ const Recipe = () => {
           onRemove={handleRemoveDietaryGoal}
           type="combo"
           options={COMMON_DIETARY_GOALS}
+          disabled={preferencesCount > 6}
         />
 
         <PreferenceInput
@@ -456,6 +483,7 @@ const Recipe = () => {
           onRemove={handleRemoveCuisinePreference}
           type="combo"
           options={COMMON_CUISINE_PREFERENCES}
+          disabled={preferencesCount > 6}
         />
       </div>
 

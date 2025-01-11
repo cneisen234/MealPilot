@@ -6,43 +6,45 @@ interface Meal {
   title: string;
   isNew: boolean;
   recipeId: number | null;
-  prepTime?: string;
-  cookTime?: string;
-  servings?: string;
-  ingredients?: string[];
-  instructions?: string[];
-  nutritionalInfo?: string[];
 }
 
 interface MealItemProps {
   mealType: string;
   meal: Meal;
   accentColor: string;
+  date: string;
+  userRecipes: Array<{ id: number; title: string }>;
+  onMealSwap: (
+    date: string,
+    mealType: string,
+    recipeId: number
+  ) => Promise<void>;
 }
 
-const MealItem: React.FC<MealItemProps> = ({ mealType, meal, accentColor }) => {
+const MealItem: React.FC<MealItemProps> = ({
+  mealType,
+  meal,
+  accentColor,
+  date,
+  userRecipes,
+  onMealSwap,
+}) => {
   const navigate = useNavigate();
 
-  const handleRecipeClick = () => {
+  const handleRecipeClick = (e: React.MouseEvent) => {
+    if ((e.target as HTMLElement).closest(".meal-swap-select")) {
+      return;
+    }
+
     if (meal.recipeId) {
-      // Navigate to saved recipe with source information
       navigate(`/myrecipes/${meal.recipeId}`, {
-        state: {
-          fromMealPlan: true,
-        },
+        state: { fromMealPlan: true },
       });
     } else {
-      // Navigate to recipe view with full recipe data
       navigate("/recipe", {
         state: {
           recipe: {
             title: meal.title,
-            prepTime: meal.prepTime,
-            cookTime: meal.cookTime,
-            servings: meal.servings,
-            ingredients: meal.ingredients,
-            instructions: meal.instructions,
-            nutritionalInfo: meal.nutritionalInfo,
           },
           fromMealPlan: true,
         },
@@ -50,12 +52,53 @@ const MealItem: React.FC<MealItemProps> = ({ mealType, meal, accentColor }) => {
     }
   };
 
+  const handleSwapChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+    const recipeId = parseInt(e.target.value);
+    console.log(recipeId);
+    if (recipeId) {
+      onMealSwap(date, mealType.toLowerCase(), recipeId);
+    }
+  };
+
+  // Filter out current recipe from options
+  const availableRecipes = userRecipes.filter(
+    (recipe) => recipe.id !== meal.recipeId
+  );
+
   return (
     <div
       className="meal-item"
       onClick={handleRecipeClick}
       style={{ cursor: "pointer" }}>
-      <h3 style={{ color: accentColor }}>{mealType}</h3>
+      <div
+        className="meal-header"
+        style={{
+          display: "flex",
+          justifyContent: "space-between",
+          alignItems: "center",
+        }}>
+        <h3 style={{ color: accentColor }}>{mealType}</h3>
+        <select
+          className="meal-swap-select"
+          onChange={handleSwapChange}
+          onClick={(e) => e.stopPropagation()}
+          value=""
+          style={{
+            width: 160,
+            padding: "4px 8px",
+            borderRadius: "4px",
+            border: "1px solid #ccc",
+            backgroundColor: "white",
+            cursor: "pointer",
+          }}>
+          <option value="">Swap recipe</option>
+          {availableRecipes.map((recipe) => (
+            <option key={recipe.id} value={recipe.id}>
+              {recipe.title}
+            </option>
+          ))}
+        </select>
+      </div>
       <p>{meal.title}</p>
       {meal.isNew ? (
         <span className="new-recipe-badge">New Recipe</span>

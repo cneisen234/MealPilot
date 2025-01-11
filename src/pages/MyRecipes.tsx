@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
 import { getUserRecipes } from "../utils/api";
 import AnimatedTechIcon from "../components/common/AnimatedTechIcon";
-import { useNavigate } from "react-router-dom";
+import SearchInput from "../components/common/SearchInput";
 import "../styles/myrecipes.css";
 
 interface Recipe {
@@ -18,6 +19,7 @@ interface Recipe {
 
 const MyRecipes: React.FC = () => {
   const [recipes, setRecipes] = useState<Recipe[]>([]);
+  const [filteredRecipes, setFilteredRecipes] = useState<Recipe[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const navigate = useNavigate();
 
@@ -29,6 +31,7 @@ const MyRecipes: React.FC = () => {
     try {
       const response = await getUserRecipes();
       setRecipes(response.data);
+      setFilteredRecipes(response.data);
     } catch (error) {
       console.error("Error loading recipes:", error);
     } finally {
@@ -55,6 +58,17 @@ const MyRecipes: React.FC = () => {
         </button>
       </div>
 
+      {recipes.length > 0 && (
+        <SearchInput
+          items={recipes.map((recipe) => ({
+            ...recipe,
+            name: recipe.title,
+          }))}
+          onSearch={(filtered) => setFilteredRecipes(filtered)}
+          placeholder="Search your recipes..."
+        />
+      )}
+
       {recipes.length === 0 ? (
         <div className="empty-state">
           <p>You haven't saved any recipes yet.</p>
@@ -62,7 +76,7 @@ const MyRecipes: React.FC = () => {
         </div>
       ) : (
         <div className="recipes-grid">
-          {recipes.map((recipe) => (
+          {filteredRecipes.map((recipe) => (
             <div
               key={recipe.id}
               className="recipe-card"

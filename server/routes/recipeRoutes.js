@@ -26,7 +26,7 @@ router.post("/create-recipe", authMiddleware, async (req, res) => {
     const userId = req.user.id;
     const { mealType } = req.body;
 
-    // Fetch both user data and existing recipes in parallel
+    // Fetch user data and preferences in parallel
     const [
       userQuery,
       recipesQuery,
@@ -59,53 +59,91 @@ router.post("/create-recipe", authMiddleware, async (req, res) => {
       (row) => row.item
     );
 
-    // Prepare the prompt for OpenAI
+    // Check for matching recipes in global_recipes
+    const threeeDaysAgo = new Date();
+    threeeDaysAgo.setDate(threeeDaysAgo.getDate() - 3);
+
+    const matchingRecipesQuery = await pool.query(
+      `SELECT * FROM global_recipes 
+       WHERE meal_type = $1 
+       AND last_queried_at < $2
+       AND NOT ($3::text[] && cant_haves)  -- No overlap with cant_haves
+       AND must_haves @> $4::text[]        -- Contains all must_haves
+       AND taste_preferences && $5::text[]  -- Some overlap with taste preferences
+       AND dietary_goals && $6::text[]      -- Some overlap with dietary goals
+       AND cuisine_preferences && $7::text[] -- Some overlap with cuisine preferences
+       AND title NOT IN (SELECT unnest($8::text[]))  -- Not in user's existing recipes`,
+      [
+        mealType || "meal",
+        threeeDaysAgo.toISOString(),
+        cantHaves,
+        mustHaves,
+        tastePreferences,
+        dietaryGoals,
+        cuisinePreferences,
+        existingRecipes,
+      ]
+    );
+
+    let recipe;
+
+    if (matchingRecipesQuery.rows.length > 0) {
+      // Randomly select one matching recipe
+      const randomIndex = Math.floor(
+        Math.random() * matchingRecipesQuery.rows.length
+      );
+      recipe = matchingRecipesQuery.rows[randomIndex];
+
+      // Update last_queried_at for the selected recipe only
+      await pool.query(
+        "UPDATE global_recipes SET last_queried_at = NOW() WHERE id = $1",
+        [recipe.id]
+      );
+
+      return res.json({ recipe });
+    }
+
+    // If no matching recipe found, generate new one using AI
     let prompt = `Generate a detailed recipe for ${
       user.name
     }. This should be a ${mealType || "meal"} recipe.`;
 
-    // Add dietary restrictions if any
+    // Add dietary restrictions
     if (cantHaves.length > 0) {
       prompt += `\nThe recipe MUST NOT include the following ingredients under any circumstances: ${cantHaves.join(
         ", "
       )}.`;
     }
-
-    // Add required ingredients if any
     if (mustHaves.length > 0) {
       prompt += `\nThe recipe MUST include the following ingredients: ${mustHaves.join(
         ", "
       )}.`;
     }
-
     if (tastePreferences.length > 0) {
       prompt += `\nIt's preferable that the recipe follows these taste preferences: ${tastePreferences.join(
         ", "
       )}.`;
     }
-
     if (dietaryGoals.length > 0) {
       prompt += `\nIt's preferable that the recipe follows these dietary goals: ${dietaryGoals.join(
         ", "
       )}.`;
     }
-
     if (cuisinePreferences.length > 0) {
       prompt += `\nIt's preferable that the recipe follows these cuisine preferences: ${cuisinePreferences.join(
         ", "
       )}.`;
     }
-
     if (existingRecipes.length > 0) {
       prompt += `\nIMPORTANT: The recipe must be unique and MUST NOT be any of these existing recipes: ${existingRecipes.join(
         ", "
       )}.`;
     }
 
+    // Add formatting instructions
     prompt += `\nPlease format the recipe exactly as follows:
 
 Name: [Recipe Name]
-
 Prep Time: [Time in minutes]
 Cook Time: [Time in minutes]
 Servings: [Number]
@@ -122,19 +160,9 @@ Instructions:
 [Continue pattern for all steps]
 
 Nutritional Information:
-Calories: [number]
-Protein: [number]g
-Carbohydrates: [number]g
-Fat: [number]g
-[Any additional nutritional info]
+[Nutritional details]`;
 
-Follow these formatting rules exactly:
-- Main steps must be surrounded by double stars (**)
-- Sub-steps should be listed directly below their main step
-- List exact quantities for all ingredients
-- Include complete, detailed sub-steps for each main step`;
-
-    // Call OpenAI API
+    // Generate recipe using OpenAI
     const completion = await openai.chat.completions.create({
       model: "gpt-4o",
       messages: [{ role: "user", content: prompt }],
@@ -143,9 +171,34 @@ Follow these formatting rules exactly:
     });
 
     const recipeText = completion.choices[0].message.content;
-    const cleanedRecommendation = cleanAIResponse(recipeText);
+    recipe = cleanAIResponse(recipeText);
 
-    res.json({ recipe: cleanedRecommendation });
+    // Save to global_recipes table
+    await pool.query(
+      `INSERT INTO global_recipes (
+        title, prep_time, cook_time, servings, 
+        ingredients, instructions, nutritional_info,
+        cant_haves, must_haves, taste_preferences, 
+        dietary_goals, cuisine_preferences, meal_type
+      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)`,
+      [
+        recipe.title,
+        recipe.prepTime,
+        recipe.cookTime,
+        recipe.servings,
+        recipe.ingredients,
+        recipe.instructions,
+        recipe.nutritionalInfo,
+        cantHaves,
+        mustHaves,
+        tastePreferences,
+        dietaryGoals,
+        cuisinePreferences,
+        mealType || "meal",
+      ]
+    );
+
+    res.json({ recipe });
   } catch (error) {
     console.error("Error generating recipe:", error);
     res
@@ -392,7 +445,7 @@ Critical Requirements:
 FINAL REMINDER: parsed.name must ALWAYS be copied exactly from the database item_name - never modified, never variations, exact character-for-character copy.`;
 
     const completion = await openai.chat.completions.create({
-      model: "gpt-4o",
+      model: "gpt-4o-mini",
       messages: [
         {
           role: "system",

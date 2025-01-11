@@ -107,3 +107,41 @@ CREATE TABLE recipes
     );
 
         CREATE INDEX idx_shared_lists_expires_at ON shared_lists(expires_at);
+
+        CREATE TABLE global_recipes
+        (
+            id SERIAL PRIMARY KEY,
+            title VARCHAR(255) NOT NULL,
+            prep_time VARCHAR(50),
+            cook_time VARCHAR(50),
+            servings VARCHAR(50),
+            ingredients TEXT
+            [],
+    instructions TEXT[],
+    nutritional_info TEXT[],
+    created_at TIMESTAMP DEFAULT NOW
+            (),
+    last_queried_at TIMESTAMP DEFAULT NOW
+            (),
+    
+    -- Preference flags (based on user preferences when recipe was created)
+    cant_haves TEXT[],
+    must_haves TEXT[],
+    taste_preferences TEXT[],
+    dietary_goals TEXT[],
+    cuisine_preferences TEXT[],
+    meal_type VARCHAR
+            (50)
+);
+
+            -- Index for efficient querying of recipes based on last query date
+            CREATE INDEX idx_global_recipes_last_queried 
+ON global_recipes(last_queried_at);
+
+            -- Composite index for meal type and preferences for faster lookups
+            CREATE INDEX idx_global_recipes_preferences 
+ON global_recipes(meal_type, cant_haves, must_haves, taste_preferences, dietary_goals, cuisine_preferences);
+
+            -- Index on title for quick duplicate checks
+            CREATE INDEX idx_global_recipes_title 
+ON global_recipes(title);

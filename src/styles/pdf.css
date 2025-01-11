@@ -1,0 +1,137 @@
+.pdf-download-button {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    background-color: var(--surface-color);
+    color: var(--primary-color);
+    border: 2px solid var(--primary-color);
+    padding: 12px 24px;
+    border-radius: 8px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    margin: 16px auto;
+}
+
+.pdf-download-button:hover {
+    background-color: var(--primary-color);
+    color: white;
+    transform: translateY(-2px);
+}
+
+.pdf-content {
+    display: none;
+}
+
+.pdf-container {
+    background-color: white;
+    padding: 40px;
+    max-width: 800px;
+    margin: 0 auto;
+}
+
+.pdf-header {
+    text-align: center;
+    margin-bottom: 40px;
+}
+
+.pdf-title {
+    font-size: 2.5rem;
+    color: var(--primary-color);
+    margin-bottom: 24px;
+    font-weight: bold;
+}
+
+.pdf-meta {
+    display: flex;
+    justify-content: center;
+    gap: 32px;
+    font-size: 0.9rem;
+}
+
+.pdf-meta-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.pdf-meta-label {
+    font-weight: 600;
+    color: var(--secondary-color);
+}
+
+.pdf-section {
+    margin-bottom: 32px;
+}
+
+.pdf-section-title {
+    font-size: 1.5rem;
+    font-weight: 600;
+    color: var(--secondary-color);
+    margin-bottom: 16px;
+    padding-bottom: 8px;
+    border-bottom: 2px solid rgba(5, 71, 42, 0.1);
+}
+
+.pdf-ingredients-list {
+    list-style-type: disc;
+    padding-left: 24px;
+    margin-bottom: 32px;
+}
+
+.pdf-ingredients-list li {
+    margin-bottom: 8px;
+    color: var(--text-color);
+}
+
+.pdf-instructions {
+    margin-bottom: 32px;
+}
+
+.pdf-instruction-step {
+    margin-bottom: 16px;
+    color: var(--text-color);
+}
+
+.pdf-instruction-step.main-step {
+    font-weight: 600;
+    margin-top: 24px;
+}
+
+.pdf-instruction-step.sub-step {
+    padding-left: 24px;
+}
+
+.pdf-nutrition-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+    gap: 16px;
+    margin-bottom: 32px;
+}
+
+.pdf-nutrition-item {
+    background-color: rgba(5, 71, 42, 0.05);
+    padding: 12px;
+    border-radius: 8px;
+    font-size: 0.9rem;
+    color: var(--text-color);
+}
+
+.pdf-footer {
+    margin-top: 48px;
+    padding-top: 24px;
+    border-top: 1px solid rgba(0, 0, 0, 0.1);
+    text-align: center;
+    color: var(--text-color);
+    opacity: 0.7;
+    font-size: 0.9rem;
+}
+
+/* Hide the PDF container in the main UI but keep it available for PDF generation */
+.pdf-hidden {
+    position: absolute;
+    left: -9999px;
+    top: -9999px;
+    width: 800px;
+    /* Fixed width for PDF generation */
+}

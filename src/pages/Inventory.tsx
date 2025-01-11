@@ -14,6 +14,7 @@ import {
   processInventoryItemPhoto,
 } from "../utils/api";
 import "../styles/inventory.css";
+import SearchInput from "../components/common/SearchInput";
 
 interface InventoryItem {
   id: number;
@@ -39,6 +40,7 @@ type ExpiringItemData = {
 
 const Inventory: React.FC = () => {
   const [items, setItems] = useState<InventoryItem[]>([]);
+  const [filteredItems, setFilteredItems] = useState<InventoryItem[]>([]);
   const [alertDidShow, setAlertDidShow] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [isFormOpen, setIsFormOpen] = useState(false);
@@ -59,6 +61,10 @@ const Inventory: React.FC = () => {
   useEffect(() => {
     loadInventory();
   }, []);
+
+  useEffect(() => {
+    setFilteredItems(items);
+  }, [items]);
 
   // Check for expiring items whenever items list changes
   useEffect(() => {
@@ -99,6 +105,9 @@ const Inventory: React.FC = () => {
   };
 
   const handleAddItem = async (formData: InventoryFormData) => {
+    if (Number(items.length) > 99) {
+      setError("Inventory can't exceed 100 items");
+    }
     try {
       const response = await addInventoryItem(formData);
 
@@ -224,11 +233,19 @@ const Inventory: React.FC = () => {
           </button>
         </div>
       </div>
+      <SearchInput
+        items={items.map((item) => ({
+          ...item,
+          name: item.item_name,
+        }))}
+        onSearch={(filtered) => setFilteredItems(filtered)}
+        placeholder="Search your recipes..."
+      />
 
       {error && <div className="error-message">{error}</div>}
 
       <div className="list-grid">
-        {items.map((item) => (
+        {filteredItems.map((item) => (
           <div key={item.id} className="list-card">
             <div className="card-header">
               <h3 className="card-title">{item.item_name}</h3>
