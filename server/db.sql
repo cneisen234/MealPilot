@@ -5,7 +5,9 @@ CREATE TABLE users
     email VARCHAR(255) NOT NULL UNIQUE,
     password VARCHAR(255) NOT NULL,
     reset_password_token VARCHAR(255),
-    reset_password_expires TIMESTAMP
+    reset_password_expires TIMESTAMP,
+    tokens INTEGER NOT NULL DEFAULT 1000,
+    admin BOOLEAN NOT NULL DEFAULT false
 );
 
 CREATE TABLE cant_haves
@@ -54,7 +56,9 @@ CREATE TABLE recipes
     ingredients TEXT
     [],
     instructions TEXT[],
-    nutritional_info TEXT[]
+    nutritional_info TEXT[],
+    mealType VARCHAR
+    (50)
 );
 
     CREATE TABLE meal_plans

@@ -8,6 +8,7 @@ function cleanAIResponse(response) {
     ingredients: [],
     instructions: [],
     nutritionalInfo: [],
+    mealType: "",
   };
 
   // Split the response into lines and remove empty lines

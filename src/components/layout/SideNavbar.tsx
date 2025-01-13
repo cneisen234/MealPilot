@@ -58,7 +58,11 @@ const navItems = [
   { path: "/myrecipes", icon: <FaBook />, label: "Recipes" },
   { path: "/mealplan", icon: <FaCalendar />, label: "Plan" },
   { path: "/inventory", icon: <FaBoxes />, label: "Inventory" },
-  { path: "/shopping-list", icon: <FaShoppingBasket />, label: "List" },
+  {
+    path: "/shopping-list",
+    icon: <FaShoppingBasket />,
+    label: "Shopping",
+  },
 ];
 
 const SideNavbar: React.FC = () => {

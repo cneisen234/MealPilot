@@ -222,6 +222,7 @@ const MealPlan: React.FC = () => {
               <div className="meals-list">
                 <MealItem
                   mealType="Breakfast"
+                  //@ts-ignore
                   meal={meals.breakfast}
                   accentColor="#FF9D72"
                   date={date}
@@ -230,6 +231,7 @@ const MealPlan: React.FC = () => {
                 />
                 <MealItem
                   mealType="Lunch"
+                  //@ts-ignore
                   meal={meals.lunch}
                   accentColor="#05472A"
                   date={date}
@@ -238,6 +240,7 @@ const MealPlan: React.FC = () => {
                 />
                 <MealItem
                   mealType="Dinner"
+                  //@ts-ignore
                   meal={meals.dinner}
                   accentColor="#a1c800"
                   date={date}
@@ -252,6 +255,11 @@ const MealPlan: React.FC = () => {
         <div className="empty-state">
           <p>No meal plan generated yet.</p>
           <p>Generate a new plan to get started!</p>
+          <br />
+          <p>
+            Make sure you have some saved recipes first. Our meal plan generator
+            will pull from your saved recipes as well as recommend some new ones
+          </p>
         </div>
       )}
 

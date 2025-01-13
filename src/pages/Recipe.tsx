@@ -40,6 +40,7 @@ import { useLocation, useNavigate } from "react-router-dom";
 import { FaArrowLeft } from "react-icons/fa";
 
 interface Recipe {
+  mealType: any;
   title: string;
   prepTime: string;
   cookTime: string;
@@ -252,6 +253,8 @@ const Recipe = () => {
         ingredients: recipe.ingredients,
         instructions: recipe.instructions,
         nutritionalInfo: recipe.nutritionalInfo,
+        //@ts-ignore
+        mealType: recipe.mealType,
       });
       setRecipe(null);
       if (routeLocation.state?.fromMealPlan) {
@@ -342,7 +345,7 @@ const Recipe = () => {
           <div className="recipe-section">
             <h2>Ingredients</h2>
             <ul className="recipe-list">
-              {recipe.ingredients.map((ingredient, index) => (
+              {recipe.ingredients?.map((ingredient, index) => (
                 <li key={`ingredient-${index}`} className="recipe-list-item">
                   {ingredient}
                 </li>
@@ -353,7 +356,7 @@ const Recipe = () => {
           <div className="recipe-section">
             <h2>Instructions</h2>
             <div className="recipe-list">
-              {recipe.instructions.map((instruction, index) => {
+              {recipe.instructions?.map((instruction, index) => {
                 // Check if the instruction is surrounded by double stars
                 const isMainStep =
                   instruction.startsWith("**") && instruction.endsWith("**");
@@ -379,7 +382,7 @@ const Recipe = () => {
           <div className="recipe-section">
             <h2>Nutritional Information</h2>
             <ul className="recipe-list nutrition-list">
-              {recipe.nutritionalInfo.map((info, index) => (
+              {recipe.nutritionalInfo?.map((info, index) => (
                 <li key={`nutrition-${index}`} className="recipe-list-item">
                   {info}
                 </li>

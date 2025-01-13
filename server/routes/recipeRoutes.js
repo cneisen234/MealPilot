@@ -6,6 +6,8 @@ const openai = require("../openai");
 const axios = require("axios");
 const cheerio = require("cheerio");
 const cleanAIResponse = require("../cleanAiResponse");
+const vision = require("@google-cloud/vision");
+const client = new vision.ImageAnnotatorClient();
 
 // Helper to parse ingredient strings
 const parseIngredientString = (ingredientStr) => {
@@ -87,6 +89,8 @@ router.post("/create-recipe", authMiddleware, async (req, res) => {
 
     let recipe;
 
+    console.log(matchingRecipesQuery.rows);
+
     if (matchingRecipesQuery.rows.length > 0) {
       // Randomly select one matching recipe
       const randomIndex = Math.floor(
@@ -164,7 +168,7 @@ Nutritional Information:
 
     // Generate recipe using OpenAI
     const completion = await openai.chat.completions.create({
-      model: "gpt-4o",
+      model: "gpt-3.5-turbo",
       messages: [{ role: "user", content: prompt }],
       max_tokens: 1000,
       temperature: 0.7,
@@ -172,6 +176,7 @@ Nutritional Information:
 
     const recipeText = completion.choices[0].message.content;
     recipe = cleanAIResponse(recipeText);
+    recipe.mealType = mealType;
 
     // Save to global_recipes table
     await pool.query(
@@ -218,14 +223,15 @@ router.post("/save-recipe", authMiddleware, async (req, res) => {
       ingredients,
       instructions,
       nutritionalInfo,
+      mealType,
     } = req.body;
 
     await pool.query("BEGIN");
 
     const recipeResult = await pool.query(
       `INSERT INTO recipes 
-        (user_id, title, prep_time, cook_time, servings, ingredients, instructions, nutritional_info)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+        (user_id, title, prep_time, cook_time, servings, ingredients, instructions, nutritional_info, meal_type)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
        RETURNING id`,
       [
         userId,
@@ -236,6 +242,7 @@ router.post("/save-recipe", authMiddleware, async (req, res) => {
         ingredients,
         instructions,
         nutritionalInfo,
+        mealType,
       ]
     );
 
@@ -263,6 +270,7 @@ router.post("/save-recipe", authMiddleware, async (req, res) => {
               ingredients,
               instructions,
               nutritionalInfo,
+              mealType,
               isNew: false,
               recipeId: newRecipeId,
             };
@@ -342,7 +350,6 @@ router.get("/myrecipesinventory/:id", authMiddleware, async (req, res) => {
     const userId = req.user.id;
     const recipeId = req.params.id;
 
-    // Get recipe, inventory, and shopping list data in parallel
     const [recipeResult, inventoryResult, shoppingListResult] =
       await Promise.all([
         pool.query("SELECT * FROM recipes WHERE id = $1 AND user_id = $2", [
@@ -361,185 +368,137 @@ router.get("/myrecipesinventory/:id", authMiddleware, async (req, res) => {
     const inventory = inventoryResult.rows;
     const shoppingList = shoppingListResult.rows;
 
-    const analysisPrompt = `You are performing intelligent ingredient matching but MUST use exact database names in responses.
+    const analysisPrompt = `Analyze these recipe ingredients and match against inventory database items.
+Your task is to parse quantities and match ingredients exactly.
 
-Database Items (THESE ARE THE ONLY VALID NAMES YOU CAN USE IN parsed.name):
+INVENTORY DATABASE (ONLY USE THESE EXACT NAMES):
 ${inventory
-  .map(
-    (item) => `"${item.item_name}" (id: ${item.id}, quantity: ${item.quantity})`
-  )
-  .join("\n")}.
-
-IMPORTANT RULES:
-
-1. Parsing Rules:
-   - Handle mixed fractions (e.g., "1 1/2" becomes 1.5)
-   - Handle simple fractions (e.g., "1/2" becomes 0.5)
-   - Handle decimal numbers
-
-Recipe Ingredients:
-${recipe.ingredients.join("\n")}
-
-Current Inventory:
-${inventory.map((item) => `${item.quantity} of ${item.item_name}`).join("\n")}
-
-Shopping List:
-${shoppingList
-  .map((item) => `${item.quantity} of ${item.item_name}`)
+  .map((item) => `"${item.item_name}" (id: ${item.id}, qty: ${item.quantity})`)
   .join("\n")}
 
-ABSOLUTELY CRITICAL REQUIREMENT:
-When you find a match, the "parsed.name" field MUST BE EXACTLY the database item_name. 
-Do not use any other variation of the name - use the exact database name character-for-character.
+RECIPE INGREDIENTS TO ANALYZE:
+${recipe.ingredients.join("\n")}
 
-Example of INCORRECT response:
-Recipe: "1 large egg"
-Database item: "Eggs"
-WRONG response:
+CURRENT SHOPPING LIST:
+${shoppingList
+  .map((item) => `${item.item_name} (qty: ${item.quantity})`)
+  .join("\n")}
+
+CRITICAL RULES:
+1. Analyze each ingredient for quantity and exact match
+2. Convert all fractions to decimals (1/2 → 0.5, 1 1/2 → 1.5)
+3. For matches, use EXACT inventory item names (e.g., "Fresh Eggs" not "eggs")
+4. If unsure of match, mark as "missing"
+5. Be conservative - "fresh lemon" ≠ "lemon juice"
+
+FORMAT REQUIRED:
+Return a JSON object with this structure:
 {
-  "parsed": {
-    "name": "egg"  <- WRONG! Must use "Eggs" exactly as it appears in database
-  }
-}
-
-Example of CORRECT response:
-Recipe: "1 large egg"
-Database item: "Eggs"
-CORRECT response:
-{
-  "parsed": {
-    "name": "Eggs"  <- CORRECT! Uses exact database name
-  }
-}
-
-More Examples:
-1. If database has "Whole Milk" and recipe says "milk":
-   - parsed.name MUST be "Whole Milk" (exact database name)
-2. If database has "Extra Virgin Olive Oil" and recipe says "olive oil":
-   - parsed.name MUST be "Extra Virgin Olive Oil" (exact database name)
-
-Analyze each ingredient and return a JSON array where each object has this exact structure:
-[
-  {
-    "original": "original ingredient text",
-    "parsed": {
-      "quantity": number,
-      "name": "string"
-    },
-    "status": {
-      "type": "in-inventory" | "in-shopping-list" | "missing" | "unparseable",
-      "hasEnough": boolean,
-      "available": {
+  "ingredients": [
+    {
+      "original": "original ingredient text",
+      "parsed": {
         "quantity": number,
-        "id": number
-      } | null,
-      "notes": "string explaining the match or mismatch"
+        "name": "exact inventory item name"
+      },
+      "status": {
+        "type": "in-inventory|in-shopping-list|missing|unparseable",
+        "hasEnough": boolean,
+        "available": {
+          "quantity": number,
+          "id": number
+        }
+      }
     }
-  }
-]
+  ]
+}
 
-Critical Requirements:
-1. Consider ingredient matches carefully (e.g., "fresh lemon" ≠ "lemon juice")
-2. Be conservative with matches - if unsure, mark as "missing
-
-FINAL REMINDER: parsed.name must ALWAYS be copied exactly from the database item_name - never modified, never variations, exact character-for-character copy.`;
+EXAMPLE OUTPUT:
+{
+  "ingredients": [
+    {
+      "original": "2 cups milk",
+      "parsed": {
+        "quantity": 2,
+        "name": "Whole Milk"
+      },
+      "status": {
+        "type": "in-inventory",
+        "hasEnough": true,
+        "available": {
+          "quantity": 4,
+          "id": 123
+        }
+      }
+    }
+  ]
+}`;
 
     const completion = await openai.chat.completions.create({
-      model: "gpt-4o-mini",
+      model: "gpt-3.5-turbo",
       messages: [
         {
           role: "system",
           content:
-            "You are an intelligent ingredient matching system that MUST use exact database names in responses. Never modify database names.",
+            "You are a precise ingredient matching system. Always maintain exact format and structure.",
         },
         {
           role: "user",
-          content: `${analysisPrompt}
-          
-          Return the response in this exact format:
-          {
-            "ingredients": [
-              // array of ingredient analyses
-            ]
-          }`,
+          content: analysisPrompt,
         },
       ],
-      max_tokens: 1500,
       temperature: 0.2,
       response_format: { type: "json_object" },
     });
 
-    const cleanGPTResponse = (response) => {
-      try {
-        // Parse the response if it's a string
-        const parsed =
-          typeof response === "string" ? JSON.parse(response) : response;
-
-        // Extract the ingredients array from the response object
-        const ingredientsArray = parsed.ingredients || [];
-
-        if (!Array.isArray(ingredientsArray)) {
-          throw new Error("Ingredients is not an array");
-        }
-
-        // Process each ingredient
-        return ingredientsArray.map((ingredient) => {
-          if (!ingredient.parsed) return ingredient;
-
-          try {
-            return {
-              ...ingredient,
-              parsed: {
-                ...ingredient.parsed,
-                quantity: ingredient.parsed.quantity,
-              },
-            };
-          } catch (error) {
-            console.error(`error for ${ingredient.original}:`, error);
-            return {
-              original: ingredient.original,
-              status: {
-                type: "unparseable",
-                hasEnough: false,
-                notes: "Failed to parse",
-              },
-            };
-          }
-        });
-      } catch (e) {
-        console.error("Error parsing response:", e);
-        console.error("Raw response:", response);
-        // Return a safe default for unparseable responses
-        return recipe.ingredients.map((ing) => ({
-          original: typeof ing === "string" ? ing : ing.original,
-          status: {
-            type: "unparseable",
-            hasEnough: false,
-            notes: "Failed to parse ingredient analysis",
-          },
-        }));
-      }
-    };
-
     let ingredients;
     try {
-      const content = completion.choices[0].message.content;
-      ingredients = cleanGPTResponse(content);
+      const parsedResponse = JSON.parse(completion.choices[0].message.content);
 
-      if (!Array.isArray(ingredients)) {
-        throw new Error("Failed to get valid ingredients array");
+      if (
+        !parsedResponse.ingredients ||
+        !Array.isArray(parsedResponse.ingredients)
+      ) {
+        throw new Error("Invalid response structure");
       }
+
+      ingredients = parsedResponse.ingredients.map((ingredient) => {
+        // Validate and ensure correct structure
+        if (!ingredient.original || !ingredient.parsed || !ingredient.status) {
+          return {
+            original: ingredient.original || "Unknown ingredient",
+            status: {
+              type: "unparseable",
+              hasEnough: false,
+              notes: "Invalid ingredient format",
+            },
+          };
+        }
+
+        return {
+          original: ingredient.original,
+          parsed: {
+            quantity: Number(ingredient.parsed.quantity) || 0,
+            name: ingredient.parsed.name,
+          },
+          status: {
+            type: ingredient.status.type,
+            hasEnough: ingredient.status.hasEnough || false,
+            available: ingredient.status.available || null,
+            notes: ingredient.status.notes,
+          },
+        };
+      });
     } catch (error) {
       console.error("Error processing GPT response:", error);
-      // Log the raw response for debugging
-      console.error("Raw GPT response:", completion.choices[0].message.content);
-      // Provide a fallback response
+      console.error("Raw response:", completion.choices[0].message.content);
+
       ingredients = recipe.ingredients.map((ing) => ({
         original: typeof ing === "string" ? ing : ing.original,
         status: {
           type: "unparseable",
           hasEnough: false,
-          notes: "Analysis failed",
+          notes: "Failed to analyze ingredient",
         },
       }));
     }
@@ -549,9 +508,9 @@ FINAL REMINDER: parsed.name must ALWAYS be copied exactly from the database item
       ingredients,
     });
   } catch (error) {
-    console.error("Error analyzing recipe:", error);
+    console.error("Recipe analysis error:", error);
     res.status(500).json({
-      error: "An error occurred while analyzing the recipe",
+      error: "Failed to analyze recipe",
       details: error.message,
     });
   }
@@ -569,6 +528,7 @@ router.put("/myrecipes/:id", authMiddleware, async (req, res) => {
       ingredients,
       instructions,
       nutritionalInfo,
+      mealType,
     } = req.body;
 
     // Start transaction
@@ -598,6 +558,7 @@ router.put("/myrecipes/:id", authMiddleware, async (req, res) => {
               ingredients,
               instructions,
               nutritionalInfo,
+              mealType,
               // isNew and recipeId remain unchanged
             };
           }
@@ -621,7 +582,8 @@ router.put("/myrecipes/:id", authMiddleware, async (req, res) => {
            ingredients = $5, 
            instructions = $6, 
            nutritional_info = $7
-       WHERE id = $8 AND user_id = $9
+           mealType = $8
+       WHERE id = $9 AND user_id = $10
        RETURNING *`,
       [
         title,
@@ -631,6 +593,7 @@ router.put("/myrecipes/:id", authMiddleware, async (req, res) => {
         ingredients,
         instructions,
         nutritionalInfo,
+        mealType,
         recipeId,
         userId,
       ]
@@ -748,14 +711,15 @@ router.post("/scrape-recipe", authMiddleware, async (req, res) => {
       "nutritionalInfo": [
         "Calories: 350",
         "Protein: 12g"
-      ]
+      ],
+      "mealType": "dinner"
     }
 
         Extract the information from this webpage content and return it as a valid JSON object:
     ${pageText.substring(0, 8000)}`;
 
     const completion = await openai.chat.completions.create({
-      model: "gpt-4o",
+      model: "gpt-3.5-turbo",
       messages: [
         {
           role: "system",
@@ -796,106 +760,212 @@ router.post("/ocr-recipe", authMiddleware, async (req, res) => {
   try {
     const { imageData } = req.body;
 
-    const prompt = `You are a recipe extraction expert. Carefully analyze this recipe image and extract all details. Look for recipe title, times, servings, ingredients list, step-by-step instructions, and any nutritional information.
-
-    Important Guidelines:
-    1. For ingredients:
-       - Extract exact measurements and quantities
-       - Keep original unit measurements
-       - List each ingredient on its own line
-       - Format quantities as decimals (1/2 → 0.5)
-       - Include any preparation notes (e.g., "chopped", "diced")
-    
-    2. For instructions:
-       - Preserve step numbers if present
-       - Break complex steps into separate items
-       - Include any temperature settings or timing notes
-       - Keep cooking method details intact
-    
-    3. For times:
-       - Extract specific prep and cook times if listed
-       - Include any resting/cooling times
-       - Format consistently as "X minutes" or "X hours Y minutes"
-    
-    4. For servings:
-       - Look for yield information
-       - Include portion size if specified
-    
-    5. For nutritional info:
-       - Extract all available nutritional facts
-       - Include serving size basis
-       - Keep measurements in original units
-
-    Return a complete, properly formatted JSON object with this exact structure:
-    {
-      "title": "Full recipe title",
-      "prepTime": "Preparation time in minutes",
-      "cookTime": "Cooking time in minutes",
-      "servings": "Number of servings",
-      "ingredients": [
-        "0.5 cups flour",
-        "0.25 cups milk"
-      ],
-      "instructions": [
-        "Preheat oven to 350°F",
-        "Mix dry ingredients",
-        "Combine wet ingredients"
-      ],
-      "nutritionalInfo": [
-        "Calories: 350 per serving",
-        "Protein: 12g",
-        "Fat: 14g"
-      ]
+    // Input validation
+    if (!imageData) {
+      return res.status(400).json({ message: "Image data is required" });
     }
 
-    If any field is not found in the image, use null or an empty array as appropriate. Ensure all ingredients include measurements where possible.`;
+    // Validate base64 image format
+    if (!/^data:image\/[a-z]+;base64,/.test(imageData)) {
+      return res.status(400).json({ message: "Invalid image data format" });
+    }
+
+    // Clean up base64 image data
+    const base64Image = imageData.replace(/^data:image\/[a-z]+;base64,/, "");
+
+    // 1. Use Google Vision API for text detection and label detection in parallel
+    const [textResult, labelResult] = await Promise.all([
+      client.documentTextDetection({
+        image: { content: Buffer.from(base64Image, "base64") },
+      }),
+      client.labelDetection({
+        image: { content: Buffer.from(base64Image, "base64") },
+      }),
+    ]);
+
+    const fullText = textResult[0].fullTextAnnotation;
+    if (!fullText) {
+      return res.status(400).json({ message: "No text detected in image" });
+    }
+
+    // Extract food labels with high confidence
+    const foodLabels = labelResult[0].labelAnnotations
+      .filter((label) => label.score > 0.7)
+      .map((label) => label.description);
+
+    // 2. Process the OCR text into logical sections
+    const lines = fullText.text.split("\n");
+
+    // Common section identifiers
+    const sectionPatterns = {
+      ingredients: /^ingredients:?|what you(')?ll need:?/i,
+      instructions: /^(instructions|directions|method|steps):?/i,
+      nutrition: /^nutrition(al)?( facts| information)?:?/i,
+      servings: /^(serves|servings|yield):?\s*(\d+)/i,
+      prepTime: /(prep(aration)? time):?\s*(\d+)/i,
+      cookTime: /(cook(ing)? time):?\s*(\d+)/i,
+    };
+
+    // Initialize sections
+    const sections = {
+      title: [],
+      ingredients: [],
+      instructions: [],
+      nutrition: [],
+      meta: [],
+    };
+
+    // Track current section
+    let currentSection = "title";
+
+    // Process lines into sections
+    lines.forEach((line) => {
+      const trimmedLine = line.trim();
+      if (!trimmedLine) return;
+
+      // Check for section headers
+      if (sectionPatterns.ingredients.test(trimmedLine)) {
+        currentSection = "ingredients";
+        return;
+      } else if (sectionPatterns.instructions.test(trimmedLine)) {
+        currentSection = "instructions";
+        return;
+      } else if (sectionPatterns.nutrition.test(trimmedLine)) {
+        currentSection = "nutrition";
+        return;
+      }
+
+      // Check for meta information
+      const servingsMatch = trimmedLine.match(sectionPatterns.servings);
+      const prepTimeMatch = trimmedLine.match(sectionPatterns.prepTime);
+      const cookTimeMatch = trimmedLine.match(sectionPatterns.cookTime);
+
+      if (servingsMatch || prepTimeMatch || cookTimeMatch) {
+        sections.meta.push(trimmedLine);
+        return;
+      }
+
+      // Add line to current section
+      sections[currentSection].push(trimmedLine);
+    });
+
+    // 3. Use GPT to interpret and structure the extracted text
+    const gptPrompt = `Based on this extracted recipe text and detected food items:
+
+Food items detected: ${foodLabels.join(", ")}
+
+Title candidates:
+${sections.title.join("\n")}
+
+Meta information:
+${sections.meta.join("\n")}
+
+Ingredients section:
+${sections.ingredients.join("\n")}
+
+Instructions section:
+${sections.instructions.join("\n")}
+
+Nutrition section:
+${sections.nutrition.join("\n")}
+
+Convert this into a structured recipe. Guidelines:
+1. Choose the most appropriate title based on the content
+2. Standardize all measurements (convert fractions to decimals)
+3. Format instructions into clear, numbered steps
+4. Identify the meal type based on ingredients and context
+5. Extract exact prep/cook times and servings from meta information
+6. Organize nutritional info into clear bullet points
+
+Return a JSON object with this exact structure:
+{
+  "title": "string",
+  "prepTime": "string (in minutes)",
+  "cookTime": "string (in minutes)",
+  "servings": "string",
+  "ingredients": ["array of strings"],
+  "instructions": ["array of strings"],
+  "nutritionalInfo": ["array of strings"],
+  "mealType": "string (breakfast/lunch/dinner/dessert/etc)"
+}`;
 
     const completion = await openai.chat.completions.create({
-      model: "gpt-4o",
+      model: "gpt-3.5-turbo",
       messages: [
         {
           role: "system",
           content:
-            "You are a recipe extraction expert trained to analyze recipe images and extract structured data. Be thorough and precise in your extraction.",
+            "You are a professional recipe formatter specializing in converting OCR text into structured recipes.",
         },
         {
           role: "user",
-          content: [
-            { type: "text", text: prompt },
-            {
-              type: "image_url",
-              image_url: { url: imageData },
-            },
-          ],
+          content: gptPrompt,
         },
       ],
-      max_tokens: 2000, // Increased token limit for more detailed response
-      temperature: 0.1, // Reduced temperature for more consistent output
+      max_tokens: 1000,
+      temperature: 0.3,
       response_format: { type: "json_object" },
     });
 
     const recipe = JSON.parse(completion.choices[0].message.content);
 
-    // Double-check ingredient standardization
+    // 4. Post-process and validate the recipe
     recipe.ingredients = recipe.ingredients.map((ingredient) => {
       try {
-        const parsed = parseIngredientString(ingredient);
-        if (!parsed) return ingredient;
-        return `${parsed.quantity} ${parsed.ingredient}`;
+        const standardized = standardizeIngredient(ingredient);
+        return standardized || ingredient;
       } catch (error) {
-        console.error(`error for ${ingredient}:`, error);
+        console.error(`Error standardizing ingredient: ${ingredient}`, error);
         return ingredient;
       }
     });
 
-    res.json({ recipe });
+    // Validate all required fields
+    const validatedRecipe = {
+      title: recipe.title || "Untitled Recipe",
+      prepTime: recipe.prepTime || "N/A",
+      cookTime: recipe.cookTime || "N/A",
+      servings: recipe.servings || "N/A",
+      ingredients: recipe.ingredients || [],
+      instructions: recipe.instructions || [],
+      nutritionalInfo: recipe.nutritionalInfo || [],
+      mealType: recipe.mealType || "main course",
+    };
+
+    res.json({ recipe: validatedRecipe });
   } catch (error) {
-    console.error("Error processing image:", error);
-    res.status(500).json({
+    console.error("Error processing recipe image:", error);
+    if (error.response) {
+      return res.status(error.response.status).json({
+        message: "Error processing recipe",
+        details: error.response.data.message,
+      });
+    }
+    return res.status(500).json({
       message: "Error extracting recipe from image",
       error: error.message,
     });
   }
 });
+
+// Helper function to standardize ingredient measurements
+function standardizeIngredient(ingredient) {
+  // Common fraction patterns
+  const fractionPattern = /(\d+\/\d+|\d+\s+\d+\/\d+)/g;
+
+  // Replace fractions with decimal equivalents
+  return ingredient.replace(fractionPattern, (match) => {
+    if (match.includes(" ")) {
+      // Mixed number (e.g., "1 1/2")
+      const [whole, fraction] = match.split(" ");
+      const [num, denom] = fraction.split("/");
+      return (parseInt(whole) + parseInt(num) / parseInt(denom)).toString();
+    } else {
+      // Simple fraction (e.g., "1/2")
+      const [num, denom] = match.split("/");
+      return (parseInt(num) / parseInt(denom)).toString();
+    }
+  });
+}
 
 module.exports = router;

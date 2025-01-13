@@ -36,9 +36,7 @@ api.interceptors.response.use(
     if (error.response) {
       switch (error.response.status) {
         case 401:
-          // Unauthorized: clear token and redirect to login
-          localStorage.removeItem('token');
-          window.location.href = '/login';
+         console.error('Forbidden request:', error.response.data);
           break;
         case 403:
           // Forbidden: you might want to handle this differently
@@ -182,6 +180,7 @@ export const saveRecipe = (recipeData: {
   ingredients: string[];
   instructions: string[];
   nutritionalInfo: string[];
+  mealType: string;
 }) => {
   return api.post('/recipe/save-recipe', recipeData);
 };
@@ -206,6 +205,7 @@ export const updateRecipe = (id: string, recipeData: {
   ingredients: string[];
   instructions: string[];
   nutritionalInfo: string[];
+  mealType: string;
 }) => {
   return api.put(`/recipe/myrecipes/${id}`, recipeData);
 };
@@ -354,6 +354,60 @@ export const swapMealWithSaved = async (date: string, mealType: string, recipeId
     mealType,
     recipeId
   });
+};
+
+const huggingFaceApi = axios.create({
+  headers: {
+    'Content-Type': 'application/json',
+  },
+});
+
+export const analyzeImageWithHuggingFace = async (file: File): Promise<string> => {
+  const delay = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
+  
+  const makeRequest = async (retries = 3): Promise<string> => {
+    try {
+      const base64data = await new Promise<string>((resolve) => {
+        const reader = new FileReader();
+        reader.onloadend = () => {
+          //@ts-ignore
+          const base64 = reader.result.toString().split(',')[1];
+          resolve(base64);
+        };
+        reader.readAsDataURL(file);
+      });
+
+      const response = await huggingFaceApi.post(
+        'https://api-inference.huggingface.co/models/facebook/detr-resnet-50',
+        { inputs: base64data },
+        {
+          headers: {
+            'Authorization': `Bearer ${process.env.REACT_APP_HUGGING_FACE_API_KEY}`,
+            'Content-Type': 'application/json'
+          }
+        }
+      );
+
+      return response.data
+        
+      throw new Error('No objects detected');
+      
+    } catch (error) {
+      if (axios.isAxiosError(error) && error.response?.status === 503) {
+        // Get estimated time from error response or default to 20 seconds
+        const estimatedTime = error.response.data.estimated_time || 20;
+        
+        if (retries > 0) {
+          console.log(`Model is loading, retrying in ${estimatedTime} seconds...`);
+          await delay(estimatedTime * 1000);
+          return makeRequest(retries - 1);
+        }
+      }
+      throw error;
+    }
+  };
+
+  return makeRequest();
 };
 
 export default api;

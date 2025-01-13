@@ -71,3 +71,5 @@ typings/
 # ignore package-lock as it complicates merging
 package-lock.json
 
+google-cloud-auth.json
+

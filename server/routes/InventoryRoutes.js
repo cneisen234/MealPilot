@@ -3,6 +3,8 @@ const router = express.Router();
 const authMiddleware = require("../middleware/auth");
 const openai = require("../openai");
 const pool = require("../db");
+const vision = require("@google-cloud/vision");
+const client = new vision.ImageAnnotatorClient();
 
 // Get all inventory items for the logged-in user
 router.get("/", authMiddleware, async (req, res) => {
@@ -266,37 +268,74 @@ router.post("/analyze-item", authMiddleware, async (req, res) => {
     const userId = req.user.id;
     const { imageData } = req.body;
 
-    // First get all user's inventory items for comparison
+    if (!imageData) {
+      return res.status(400).json({ message: "Image data is required" });
+    }
+
+    // Check if imageData is a valid base64 string
+    if (!/^data:image\/[a-z]+;base64,/.test(imageData)) {
+      return res.status(400).json({ message: "Invalid image data format" });
+    }
+
+    // Clean up base64 image data
+    const base64Image = imageData.replace(/^data:image\/[a-z]+;base64,/, "");
+
+    // Get inventory items from the database
     const userItems = await pool.query(
       "SELECT * FROM inventory WHERE user_id = $1",
       [userId]
     );
 
-    // Process with OpenAI vision API
-    const prompt = `Analyze this image and identify what grocery or food item it is. 
-    Also list any common alternative names or categories for this item.
-    For example, if it's Skittles, you might say: candy, skittles, sweets.
-    If it's pasta sauce you might say: marinara, pasta sauce, tomato sauce.
-    Return a JSON object with this structure:
-    {
-      "itemName": "primary item name",
-      "alternativeNames": ["list", "of", "alternative", "names"]
-    }`;
+    // 1. Use Google Vision API to analyze the image
+    const [result] = await client.labelDetection({
+      image: { content: Buffer.from(base64Image, "base64") },
+    });
+
+    const labels = result.labelAnnotations;
+
+    if (!labels || labels.length === 0) {
+      return res
+        .status(400)
+        .json({ message: "No labels detected in the image" });
+    }
+
+    // Filter the labels to only include high-confidence ones
+    const concepts = labels
+      .filter((label) => label.score > 0.3) // You can adjust the threshold (0.3) as needed
+      .map((label) => ({
+        name: label.description,
+        confidence: (label.score * 100).toFixed(1),
+      }));
+
+    if (concepts.length === 0) {
+      return res.status(400).json({ message: "No relevant concepts detected" });
+    }
+
+    // 2. Use GPT to find inventory matches based on Google Vision results
+    const gptPrompt = `Based on these image recognition results:
+${concepts.map((c) => `${c.name} (${c.confidence}% confidence)`).join("\n")}
+
+And these inventory items:
+${userItems.rows.map((item) => item.item_name).join("\n")}
+
+Identify the most specific item name and find matches from the inventory list.
+
+Return a JSON object with this structure:
+{
+  "itemName": "most specific item name",
+  "inventoryMatches": ["exact", "matches", "from", "inventory"]
+}`;
 
     const completion = await openai.chat.completions.create({
-      model: "gpt-4o-mini",
+      model: "gpt-3.5-turbo",
       messages: [
         {
           role: "system",
-          content:
-            "You are an inventory item analyzer that helps match items flexibly.",
+          content: "You are a precise inventory matching expert.",
         },
         {
           role: "user",
-          content: [
-            { type: "text", text: prompt },
-            { type: "image_url", image_url: { url: imageData } },
-          ],
+          content: gptPrompt,
         },
       ],
       max_tokens: 150,
@@ -304,37 +343,35 @@ router.post("/analyze-item", authMiddleware, async (req, res) => {
       response_format: { type: "json_object" },
     });
 
-    const { itemName, alternativeNames } = JSON.parse(
-      completion.choices[0].message.content
-    );
+    const analysis = JSON.parse(completion.choices[0].message.content);
 
-    // Check for matches using all possible names
-    const allNames = [itemName, ...alternativeNames].map((name) =>
-      name.toLowerCase()
-    );
-    const matches = userItems.rows.filter((item) =>
-      allNames.some(
-        (name) =>
-          item.item_name.toLowerCase().includes(name) ||
-          name.includes(item.item_name.toLowerCase())
-      )
-    );
-
-    if (matches.length > 0) {
-      res.json({
-        exists: true,
-        matches: matches,
-        suggestedName: itemName,
-      });
-    } else {
-      res.json({
-        exists: false,
-        suggestedName: itemName,
-      });
+    if (!analysis.itemName || !analysis.inventoryMatches) {
+      return res.status(400).json({ message: "Error parsing GPT response" });
     }
+
+    // 3. Find the actual inventory items that match
+    const matches = userItems.rows.filter((item) =>
+      analysis.inventoryMatches.includes(item.item_name)
+    );
+
+    res.json({
+      exists: matches.length > 0,
+      matches,
+      suggestedName: analysis.itemName,
+    });
   } catch (error) {
     console.error("Error analyzing item photo:", error);
-    res.status(500).json({ message: "Error analyzing photo" });
+    if (error.response) {
+      // Error coming from an API
+      return res
+        .status(error.response.status)
+        .json({ message: error.response.data.message });
+    } else {
+      // Other errors (e.g., network or GPT errors)
+      return res
+        .status(500)
+        .json({ message: "Error analyzing photo", error: error.message });
+    }
   }
 });
 

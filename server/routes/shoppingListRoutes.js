@@ -3,6 +3,8 @@ const router = express.Router();
 const authMiddleware = require("../middleware/auth");
 const openai = require("../openai");
 const pool = require("../db");
+const vision = require("@google-cloud/vision");
+const client = new vision.ImageAnnotatorClient();
 
 // Get all shopping list items for the logged-in user
 router.get("/", authMiddleware, async (req, res) => {
@@ -503,74 +505,158 @@ router.post("/process-receipt", authMiddleware, async (req, res) => {
     const userId = req.user.id;
     const { imageData } = req.body;
 
-    // First get user's shopping list items
+    // Input validation
+    if (!imageData) {
+      return res.status(400).json({ message: "Image data is required" });
+    }
+
+    // Validate base64 image format
+    if (!/^data:image\/[a-z]+;base64,/.test(imageData)) {
+      return res.status(400).json({ message: "Invalid image data format" });
+    }
+
+    // Clean up base64 image data
+    const base64Image = imageData.replace(/^data:image\/[a-z]+;base64,/, "");
+
+    // Get user's shopping list items
     const shoppingListResult = await pool.query(
       `SELECT id, item_name, quantity FROM shopping_list WHERE user_id = $1`,
       [userId]
     );
     const shoppingList = shoppingListResult.rows;
 
-    // Convert shopping list to a format that's easy for the AI to reference
-    const shoppingListItems = shoppingList.map((item) => ({
-      id: item.id,
-      name: item.item_name,
-      quantity: item.quantity,
-    }));
+    // 1. Use Google Vision API for text detection (OCR)
+    const [result] = await client.documentTextDetection({
+      image: { content: Buffer.from(base64Image, "base64") },
+    });
 
-    // Prepare prompt for GPT-4
-    const prompt = `Analyze this receipt image and identify any items that match or closely match these shopping list items:
-    ${JSON.stringify(shoppingListItems)}
-    
-    For example, if the shopping list has "milk" and the receipt shows "2% MILK", that's a match.
-    
-    Return a JSON array of matched items in this format:
-    {
-      "matches": [
-        {
-          "shopping_list_id": [id from shopping list],
-          "shopping_list_item": "original item name",
-          "receipt_match": "text as shown on receipt",
-          "quantity": [quantity from shopping list]
-        }
-      ]
+    const fullText = result.fullTextAnnotation;
+    if (!fullText) {
+      return res.status(400).json({ message: "No text detected in receipt" });
     }
 
-    Only include items that are clear matches or very close matches.`;
+    // 2. Extract structured data from the text
+    // Get each line from the OCR result
+    const receiptLines = fullText.text.split("\n");
+
+    // Pre-process receipt lines to extract potential items and prices
+    const receiptItems = receiptLines
+      .map((line) => {
+        // Common receipt item patterns
+        const pricePattern = /\d+\.\d{2}/; // Matches prices like 12.99
+        const price = line.match(pricePattern)?.[0];
+
+        // Remove price and common receipt prefixes/suffixes
+        let itemText = line
+          .replace(pricePattern, "")
+          .replace(/^[0-9]+\s/, "") // Remove leading numbers
+          .replace(/\s+@\s+.*$/, "") // Remove @ price indicators
+          .trim();
+
+        return {
+          text: itemText,
+          price: price,
+        };
+      })
+      .filter((item) => item.text && item.text.length > 1); // Filter out empty or single-char lines
+
+    // 3. Use GPT to match receipt items with shopping list
+    const gptPrompt = `Given these receipt items:
+${receiptItems
+  .map((item) => `${item.text} - $${item.price || "N/A"}`)
+  .join("\n")}
+
+And these shopping list items:
+${shoppingList
+  .map(
+    (item) => `ID ${item.id}: ${item.item_name} (Quantity: ${item.quantity})`
+  )
+  .join("\n")}
+
+Find matches between the receipt items and shopping list items.
+Be conservative - only match items that are clearly the same product.
+Consider common variations in product names and abbreviations.
+
+Return a JSON object with this structure:
+{
+  "matches": [
+    {
+      "shopping_list_id": number,
+      "shopping_list_item": "item name from shopping list",
+      "receipt_match": "exact text found on receipt",
+      "quantity": number
+    }
+  ]
+}`;
 
     const completion = await openai.chat.completions.create({
-      model: "gpt-4o-mini",
+      model: "gpt-3.5-turbo",
       messages: [
         {
           role: "system",
           content:
-            "You are a receipt analysis expert that identifies shopping list items in receipt images.",
+            "You are a receipt analysis expert that specializes in matching shopping list items with receipt entries. Be precise and conservative in making matches.",
         },
         {
           role: "user",
-          content: [
-            { type: "text", text: prompt },
-            {
-              type: "image_url",
-              image_url: {
-                url: imageData,
-              },
-            },
-          ],
+          content: gptPrompt,
         },
       ],
-      max_tokens: 1500,
+      max_tokens: 500,
       temperature: 0.3,
       response_format: { type: "json_object" },
     });
 
-    const matches = JSON.parse(completion.choices[0].message.content);
-    res.json(matches);
+    const analysis = JSON.parse(completion.choices[0].message.content);
+
+    // 4. Validate and clean up matches
+    const validatedMatches = {
+      matches: analysis.matches.filter((match) => {
+        // Ensure all required fields are present
+        if (
+          !match.shopping_list_id ||
+          !match.shopping_list_item ||
+          !match.receipt_match ||
+          !match.quantity
+        ) {
+          return false;
+        }
+
+        // Verify shopping_list_id exists in original shopping list
+        const validItem = shoppingList.find(
+          (item) => item.id === match.shopping_list_id
+        );
+        if (!validItem) {
+          return false;
+        }
+
+        // Verify quantity is reasonable (not zero or negative)
+        if (match.quantity <= 0) {
+          match.quantity = validItem.quantity; // Use original quantity if invalid
+        }
+
+        return true;
+      }),
+    };
+
+    // 5. Return the processed matches
+    res.json(validatedMatches);
   } catch (error) {
     console.error("Error processing receipt:", error);
-    res.status(500).json({
-      message: "Error processing receipt image",
-      error: error.message,
-    });
+    // Handle specific types of errors
+    if (error.response) {
+      // API-specific errors (Google Vision or OpenAI)
+      return res.status(error.response.status).json({
+        message: "Error processing receipt",
+        details: error.response.data.message,
+      });
+    } else {
+      // Other errors (network, parsing, etc.)
+      return res.status(500).json({
+        message: "Error processing receipt image",
+        error: error.message,
+      });
+    }
   }
 });
 
@@ -747,37 +833,76 @@ router.post("/analyze-item", authMiddleware, async (req, res) => {
     const userId = req.user.id;
     const { imageData } = req.body;
 
-    // First get all user's shopping list items for comparison
+    // Input validation
+    if (!imageData) {
+      return res.status(400).json({ message: "Image data is required" });
+    }
+
+    // Validate base64 image format
+    if (!/^data:image\/[a-z]+;base64,/.test(imageData)) {
+      return res.status(400).json({ message: "Invalid image data format" });
+    }
+
+    // Clean up base64 image data
+    const base64Image = imageData.replace(/^data:image\/[a-z]+;base64,/, "");
+
+    // Get user's shopping list items
     const userItems = await pool.query(
       "SELECT * FROM shopping_list WHERE user_id = $1",
       [userId]
     );
 
-    // Process with OpenAI vision API
-    const prompt = `Analyze this image and identify what grocery or food item it is. 
-    Also list any common alternative names or categories for this item.
-    For example, if it's Skittles, you might say: candy, skittles, sweets.
-    If it's pasta sauce you might say: marinara, pasta sauce, tomato sauce.
-    Return a JSON object with this structure:
-    {
-      "itemName": "primary item name",
-      "alternativeNames": ["list", "of", "alternative", "names"]
-    }`;
+    // 1. Use Google Vision API for image analysis
+    const [result] = await client.labelDetection({
+      image: { content: Buffer.from(base64Image, "base64") },
+    });
+
+    const labels = result.labelAnnotations;
+
+    if (!labels || labels.length === 0) {
+      return res
+        .status(400)
+        .json({ message: "No labels detected in the image" });
+    }
+
+    // Filter for high-confidence labels (above 30%)
+    const concepts = labels
+      .filter((label) => label.score > 0.3)
+      .map((label) => ({
+        name: label.description,
+        confidence: (label.score * 100).toFixed(1),
+      }));
+
+    if (concepts.length === 0) {
+      return res.status(400).json({ message: "No relevant concepts detected" });
+    }
+
+    // 2. Use GPT to analyze Vision API results and find shopping list matches
+    const gptPrompt = `Based on these image recognition results:
+${concepts.map((c) => `${c.name} (${c.confidence}% confidence)`).join("\n")}
+
+And these shopping list items:
+${userItems.rows.map((item) => item.item_name).join("\n")}
+
+Identify the most specific item name and find matches from the shopping list.
+Consider common variations and alternative names for grocery items.
+
+Return a JSON object with this structure:
+{
+  "itemName": "most specific item name",
+  "shoppingListMatches": ["exact", "matches", "from", "shopping list"]
+}`;
 
     const completion = await openai.chat.completions.create({
-      model: "gpt-4o-mini",
+      model: "gpt-3.5-turbo",
       messages: [
         {
           role: "system",
-          content:
-            "You are a shopping list item analyzer that helps match items flexibly.",
+          content: "You are a precise shopping list matching expert.",
         },
         {
           role: "user",
-          content: [
-            { type: "text", text: prompt },
-            { type: "image_url", image_url: { url: imageData } },
-          ],
+          content: gptPrompt,
         },
       ],
       max_tokens: 150,
@@ -785,37 +910,37 @@ router.post("/analyze-item", authMiddleware, async (req, res) => {
       response_format: { type: "json_object" },
     });
 
-    const { itemName, alternativeNames } = JSON.parse(
-      completion.choices[0].message.content
-    );
+    const analysis = JSON.parse(completion.choices[0].message.content);
 
-    // Check for matches using all possible names
-    const allNames = [itemName, ...alternativeNames].map((name) =>
-      name.toLowerCase()
-    );
-    const matches = userItems.rows.filter((item) =>
-      allNames.some(
-        (name) =>
-          item.item_name.toLowerCase().includes(name) ||
-          name.includes(item.item_name.toLowerCase())
-      )
-    );
-
-    if (matches.length > 0) {
-      res.json({
-        exists: true,
-        matches: matches,
-        suggestedName: itemName,
-      });
-    } else {
-      res.json({
-        exists: false,
-        suggestedName: itemName,
-      });
+    if (!analysis.itemName || !analysis.shoppingListMatches) {
+      return res.status(400).json({ message: "Error parsing GPT response" });
     }
+
+    // 3. Find actual shopping list items that match
+    const matches = userItems.rows.filter((item) =>
+      analysis.shoppingListMatches.includes(item.item_name)
+    );
+
+    // Return results
+    res.json({
+      exists: matches.length > 0,
+      matches,
+      suggestedName: analysis.itemName,
+    });
   } catch (error) {
     console.error("Error analyzing item photo:", error);
-    res.status(500).json({ message: "Error analyzing photo" });
+    if (error.response) {
+      // Handle API-specific errors
+      return res.status(error.response.status).json({
+        message: error.response.data.message,
+      });
+    } else {
+      // Handle other errors (network, parsing, etc.)
+      return res.status(500).json({
+        message: "Error analyzing photo",
+        error: error.message,
+      });
+    }
   }
 });
 

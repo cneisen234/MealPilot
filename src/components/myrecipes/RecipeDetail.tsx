@@ -47,6 +47,7 @@ interface Recipe {
   ingredients: IngredientAnalysis[];
   instructions: string[];
   nutritional_info: string[];
+  mealType: string;
 }
 
 interface IngredientQuantities {
@@ -183,7 +184,7 @@ const RecipeDetail: React.FC = () => {
 
   const handleSave = async () => {
     if (!editedRecipe || !id) return;
-    const ingredentsTitle = editedRecipe.ingredients.map((i) => i.original);
+    const ingredientsTitle = editedRecipe.ingredients.map((i) => i.original);
     setIsSaving(true);
     try {
       await updateRecipe(id, {
@@ -192,11 +193,12 @@ const RecipeDetail: React.FC = () => {
         cookTime: editedRecipe.cook_time,
         servings: editedRecipe.servings,
         //@ts-ignore
-        ingredients: ingredentsTitle.filter((item) => item.trim()),
+        ingredients: ingredientsTitle.filter((item) => item.trim()),
         instructions: editedRecipe.instructions.filter((item) => item.trim()),
         nutritionalInfo: editedRecipe.nutritional_info.filter((item) =>
           item.trim()
         ),
+        mealType: editedRecipe.mealType,
       });
       await loadRecipe();
       setIsEditing(false);

@@ -6,6 +6,7 @@ import PhotoCaptureModal from "../common/PhotoCaptureComponent";
 
 interface RecipeImportProps {
   onRecipeImported: (recipe: {
+    meaType: any;
     title: string;
     prepTime: string;
     cookTime: string;

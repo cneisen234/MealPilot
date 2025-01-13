@@ -4,6 +4,13 @@ import "../../styles/mealplan.css";
 
 interface Meal {
   title: string;
+  cookTime: string;
+  ingredients: string;
+  instructions: string;
+  mealType: string;
+  nutritionalInfo: string;
+  prepTime: string;
+  servings: string;
   isNew: boolean;
   recipeId: number | null;
 }
@@ -31,12 +38,14 @@ const MealItem: React.FC<MealItemProps> = ({
 }) => {
   const navigate = useNavigate();
 
+  console.log(meal);
+
   const handleRecipeClick = (e: React.MouseEvent) => {
     if ((e.target as HTMLElement).closest(".meal-swap-select")) {
       return;
     }
 
-    if (meal.recipeId) {
+    if (meal?.recipeId) {
       navigate(`/myrecipes/${meal.recipeId}`, {
         state: { fromMealPlan: true },
       });
@@ -45,6 +54,13 @@ const MealItem: React.FC<MealItemProps> = ({
         state: {
           recipe: {
             title: meal.title,
+            cookTime: meal.cookTime,
+            ingredients: meal.ingredients,
+            instructions: meal.instructions,
+            mealType: meal.mealType,
+            nutritionalInfo: meal.nutritionalInfo,
+            prepTime: meal.prepTime,
+            servings: meal.servings,
           },
           fromMealPlan: true,
         },
@@ -54,7 +70,6 @@ const MealItem: React.FC<MealItemProps> = ({
 
   const handleSwapChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
     const recipeId = parseInt(e.target.value);
-    console.log(recipeId);
     if (recipeId) {
       onMealSwap(date, mealType.toLowerCase(), recipeId);
     }
@@ -62,7 +77,7 @@ const MealItem: React.FC<MealItemProps> = ({
 
   // Filter out current recipe from options
   const availableRecipes = userRecipes.filter(
-    (recipe) => recipe.id !== meal.recipeId
+    (recipe) => recipe.id !== meal?.recipeId
   );
 
   return (
