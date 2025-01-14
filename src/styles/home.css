@@ -1,0 +1,202 @@
+.mealpilot-home {
+    min-height: 100vh;
+    position: relative;
+    overflow: hidden;
+}
+
+.mealpilot-home__float {
+    position: absolute;
+    pointer-events: none;
+    z-index: 1;
+}
+
+.mealpilot-home__container {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    min-height: 100vh;
+    box-sizing: border-box;
+}
+
+.mealpilot-home__content {
+    max-width: 1200px;
+    width: 100%;
+    text-align: center;
+    position: relative;
+    z-index: 2;
+}
+
+.mealpilot-home__logo-wrapper {
+    text-align: center;
+    margin-bottom: 2rem;
+}
+
+.mealpilot-home__logo {
+    width: 96px;
+    height: 96px;
+    margin: 0 auto;
+}
+
+.mealpilot-home__title {
+    font-size: 3.5rem;
+    color: var(--primary-color);
+    text-align: center;
+    margin-bottom: 1rem;
+    line-height: 1.2;
+}
+
+.mealpilot-home__title-accent {
+    display: block;
+    color: var(--secondary-color);
+    margin-top: 0.5rem;
+}
+
+.mealpilot-home__description {
+    font-size: 1.5rem;
+    color: var(--text-color);
+    text-align: center;
+    margin: 0 auto 2rem;
+    max-width: 800px;
+}
+
+.mealpilot-home__cta {
+    display: inline-block;
+    padding: 1rem 2.5rem;
+    background-color: var(--primary-color);
+    color: var(--surface-color);
+    border-radius: 50px;
+    font-size: 1.2rem;
+    font-weight: 600;
+    text-decoration: none;
+    transition: transform 0.3s ease, box-shadow 0.3s ease;
+    box-shadow: 0 4px 10px rgba(5, 71, 42, 0.2);
+    margin-bottom: 1.5rem;
+}
+
+.mealpilot-home__cta:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 15px rgba(5, 71, 42, 0.3);
+}
+
+.mealpilot-home__auth-links {
+    display: flex;
+    justify-content: center;
+    gap: 2rem;
+    margin-bottom: 4rem;
+}
+
+.mealpilot-home__auth-link {
+    color: var(--primary-color);
+    text-decoration: none;
+    font-weight: 600;
+    font-size: 1.1rem;
+    transition: color 0.3s ease;
+}
+
+.mealpilot-home__auth-link:hover {
+    color: var(--secondary-color);
+}
+
+.mealpilot-home__features {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 2rem;
+    margin-top: 2rem;
+    padding: 0 2rem;
+}
+
+.mealpilot-home__feature {
+    background-color: var(--surface-color);
+    padding: 2rem;
+    border-radius: 1rem;
+    text-align: center;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+    transition: transform 0.3s ease, box-shadow 0.3s ease;
+}
+
+.mealpilot-home__feature:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 8px 15px rgba(0, 0, 0, 0.1);
+}
+
+.mealpilot-home__feature-icon {
+    font-size: 1.5rem;
+    color: var(--primary-color);
+    margin-bottom: 1rem;
+}
+
+.mealpilot-home__feature-title {
+    color: var(--primary-color);
+    margin-bottom: 0.5rem;
+    font-size: 1.2rem;
+    font-weight: 600;
+}
+
+.mealpilot-home__feature-text {
+    color: var(--text-color);
+    font-size: 0.9rem;
+    margin: 0;
+    line-height: 1.5;
+}
+
+@keyframes mealpilot-float {
+    from {
+        transform: translateY(0) rotate(0deg);
+    }
+
+    to {
+        transform: translateY(-120vh) rotate(360deg);
+    }
+}
+
+@media (max-width: 1024px) {
+    .mealpilot-home__features {
+        grid-template-columns: repeat(2, 1fr);
+        padding: 0 1.5rem;
+    }
+}
+
+@media (max-width: 768px) {
+    .mealpilot-home__title {
+        font-size: 2.5rem;
+    }
+
+    .mealpilot-home__description {
+        font-size: 1.2rem;
+        padding: 0 1rem;
+    }
+
+    .mealpilot-home__features {
+        grid-template-columns: 1fr;
+        gap: 1.5rem;
+        padding: 0 1rem;
+    }
+
+    .mealpilot-home__cta {
+        font-size: 1.1rem;
+        padding: 0.875rem 2rem;
+    }
+}
+
+@media (max-width: 480px) {
+    .mealpilot-home__title {
+        font-size: 2rem;
+    }
+
+    .mealpilot-home__description {
+        font-size: 1rem;
+    }
+
+    .mealpilot-home__logo-wrapper {
+        margin-bottom: 1.5rem;
+    }
+
+    .mealpilot-home__logo {
+        width: 72px;
+        height: 72px;
+    }
+
+    .mealpilot-home__auth-links {
+        gap: 1rem;
+    }
+}

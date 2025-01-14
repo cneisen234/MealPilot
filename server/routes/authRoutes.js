@@ -4,6 +4,7 @@ const bcrypt = require("bcrypt");
 const jwt = require("jsonwebtoken");
 const pool = require("../db");
 const crypto = require("crypto");
+const sgMail = require("@sendgrid/mail");
 
 router.post("/login", async (req, res) => {
   const { email, password } = req.body;
@@ -105,17 +106,17 @@ router.post("/forgot-password", async (req, res) => {
     <html>
     <body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px;">
       <div style="text-align: center; margin-bottom: 20px;">
-        <div style="background-color: #966FD6; color: white; font-size: 24px; font-weight: bold; padding: 10px 20px; display: inline-block; border-radius: 5px;">
+        <div style="background-color: #05472A; color: white; font-size: 24px; font-weight: bold; padding: 10px 20px; display: inline-block; border-radius: 5px;">
           MealPilot
         </div>
       </div>
       <div style="background-color: #f8f9fa; border-radius: 5px; padding: 20px; margin-bottom: 20px;">
-        <h2 style="color: #966FD6; margin-top: 0;">Password Reset Request</h2>
+        <h2 style="color: #05472A; margin-top: 0;">Password Reset Request</h2>
         <p>Hello,</p>
         <p>You are receiving this because you (or someone else) have requested to reset the password for your MealPilot account.</p>
         <p>Please click the button below to complete the process:</p>
         <div style="text-align: center; margin: 30px 0;">
-          <a href="${resetUrl}" style="background-color: #966FD6; color: white; padding: 12px 20px; text-decoration: none; border-radius: 5px; font-weight: bold;">Reset Your Password</a>
+          <a href="${resetUrl}" style="background-color: #FF9D72; color: white; padding: 12px 20px; text-decoration: none; border-radius: 5px; font-weight: bold;">Reset Your Password</a>
         </div>
         <p>If you did not request this, please ignore this email and your password will remain unchanged.</p>
       </div>

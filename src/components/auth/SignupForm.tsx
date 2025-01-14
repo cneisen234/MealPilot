@@ -9,6 +9,7 @@ import {
   getPasswordValidationErrors,
   passwordValidationHelper,
 } from "../../helpers/passwordValidationHelper";
+import { InputWithPasswordToggle } from "./InputWithPasswordToggle";
 
 const SignupForm: React.FC = () => {
   const [name, setName] = useState("");
@@ -120,31 +121,12 @@ const SignupForm: React.FC = () => {
         {emailError && <div className="invalid-feedback">{emailError}</div>}
       </div>
       <div className="form-group">
-        <input
-          type={showPassword ? "text" : "password"}
-          className={`form-control ${
-            passwordError.length > 0 ? "is-invalid" : ""
-          }`}
-          onFocus={() => setPasswordError([])}
-          placeholder="Password"
+        <InputWithPasswordToggle
           value={password}
           onChange={(e) => setPassword(e.target.value)}
-          required
+          showPassword={showPassword}
+          onToggle={togglePasswordVisibility}
         />
-        <button
-          type="button"
-          onClick={togglePasswordVisibility}
-          style={{
-            float: "right",
-            paddingBottom: 45,
-            paddingRight: 15,
-            transform: "translateY(-50%)",
-            background: "none",
-            border: "none",
-            cursor: "pointer",
-          }}>
-          {showPassword ? <FaEye size={20} /> : <FaEyeSlash size={20} />}
-        </button>
       </div>
       {passwordError.length > 0 && (
         <div className="invalid-feedback">

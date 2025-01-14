@@ -2,7 +2,8 @@ import React, { useState, useCallback } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { login, checkEmailExists } from "../utils/api";
 import { useAuth } from "../context/AuthContext";
-import { FaExclamationCircle, FaEye, FaEyeSlash } from "react-icons/fa";
+import { FaExclamationCircle } from "react-icons/fa";
+import { InputWithPasswordToggle } from "../components/auth/InputWithPasswordToggle";
 
 const Login: React.FC = () => {
   const [email, setEmail] = useState("");
@@ -96,28 +97,12 @@ const Login: React.FC = () => {
               )}
             </div>
             <div className="form-group">
-              <input
-                type={showPassword ? "text" : "password"}
-                className="form-control"
-                placeholder="Password"
+              <InputWithPasswordToggle
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
-                required
+                showPassword={showPassword}
+                onToggle={togglePasswordVisibility}
               />
-              {/* <button
-                type="button"
-                onClick={togglePasswordVisibility}
-                style={{
-                  float: "right",
-                  paddingBottom: 45,
-                  paddingRight: 15,
-                  transform: "translateY(-50%)",
-                  background: "none",
-                  border: "none",
-                  cursor: "pointer",
-                }}>
-                {showPassword ? <FaEye size={20} /> : <FaEyeSlash size={20} />}
-              </button> */}
             </div>
             {loginError && (
               <div

@@ -1,76 +1,94 @@
 import React, { useEffect, useState } from "react";
+import {
+  FaUtensils,
+  FaHeart,
+  FaLeaf,
+  FaAppleAlt,
+  FaCarrot,
+  FaWineGlassAlt,
+} from "react-icons/fa";
 
-interface Bubble {
+interface FloatingElement {
   id: number;
   size: number;
   left: number;
   startDelay: number;
   duration: number;
+  rotation: number;
+  type: "leaf" | "heart" | "utensil" | "apple" | "carrot" | "wine";
   color: "primary" | "secondary";
 }
 
 const BubbleBackground: React.FC = () => {
-  const [bubbles, setBubbles] = useState<Bubble[]>([]);
+  const [elements, setElements] = useState<FloatingElement[]>([]);
 
   useEffect(() => {
-    const generateBubbles = () => {
-      const newBubbles: Bubble[] = [];
-      for (let i = 0; i < 15; i++) {
-        newBubbles.push({
+    const generateElements = () => {
+      const newElements: FloatingElement[] = [];
+      const types: FloatingElement["type"][] = [
+        "leaf",
+        "heart",
+        "utensil",
+        "apple",
+        "carrot",
+        "wine",
+      ];
+
+      for (let i = 0; i < 20; i++) {
+        newElements.push({
           id: i,
-          size: Math.random() * 80 + 20,
+          size: Math.random() * 40 + 20,
           left: Math.random() * 100,
-          startDelay: Math.random() * 30,
-          duration: Math.random() * 20 + 30,
+          startDelay: Math.random() * 20,
+          duration: Math.random() * 15 + 25,
+          rotation: Math.random() * 360,
+          type: types[Math.floor(Math.random() * types.length)],
           color: Math.random() > 0.5 ? "primary" : "secondary",
         });
       }
-      setBubbles(newBubbles);
+      setElements(newElements);
     };
 
-    generateBubbles();
+    generateElements();
   }, []);
+
+  const renderIcon = (type: FloatingElement["type"], size: number) => {
+    switch (type) {
+      case "leaf":
+        return <FaLeaf size={size} />;
+      case "heart":
+        return <FaHeart size={size} />;
+      case "utensil":
+        return <FaUtensils size={size} />;
+      case "apple":
+        return <FaAppleAlt size={size} />;
+      case "carrot":
+        return <FaCarrot size={size} />;
+      case "wine":
+        return <FaWineGlassAlt size={size} />;
+      default:
+        return null;
+    }
+  };
 
   return (
     <>
-      {bubbles.map((bubble) => (
+      {elements.map((element) => (
         <div
-          key={bubble.id}
+          key={element.id}
+          className="mealpilot-float"
           style={{
             position: "absolute",
-            bottom: `-${bubble.size}px`,
-            left: `${bubble.left}%`,
-            width: `${bubble.size}px`,
-            height: `${bubble.size}px`,
+            bottom: `-${element.size}px`,
+            left: `${element.left}%`,
+            color: `var(--${element.color}-color)`,
             opacity: 0.1,
-            animation: `rise ${bubble.duration}s linear infinite`,
-            animationDelay: `${bubble.startDelay}s`,
+            transform: `rotate(${element.rotation}deg)`,
+            animation: `mealpilot-float ${element.duration}s linear infinite`,
+            animationDelay: `${element.startDelay}s`,
             zIndex: -10,
           }}>
-          {bubble.color === "primary" ? (
-            <svg
-              viewBox="0 0 100 100"
-              style={{
-                width: "100%",
-                height: "100%",
-                fill: "var(--primary-color)",
-                transform: `rotate(${Math.random() * 360}deg)`,
-              }}>
-              <path
-                d="M50 90 C50 90, 90 50, 90 25 C90 10, 75 5, 60 15 C45 25, 50 90, 50 90 
-                       C50 90, 50 90, 50 90 C50 90, 55 25, 40 15 C25 5, 10 10, 10 25 C10 50, 50 90, 50 90 Z"
-              />
-            </svg>
-          ) : (
-            <div
-              style={{
-                width: "100%",
-                height: "100%",
-                borderRadius: "50%",
-                background: "var(--secondary-color)",
-              }}
-            />
-          )}
+          {renderIcon(element.type, element.size)}
         </div>
       ))}
     </>
