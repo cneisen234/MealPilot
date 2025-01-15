@@ -34,7 +34,7 @@ const PhotoCaptureModal: React.FC<PhotoCaptureModalProps> = ({
         if (hasCamera) {
           try {
             const stream = await navigator.mediaDevices.getUserMedia({
-              video: true,
+              video: { facingMode: "environment" },
             });
             stream.getTracks().forEach((track) => track.stop());
             setIsCameraAvailable(true);

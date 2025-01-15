@@ -146,12 +146,6 @@ const QtyInput: React.FC<QtyInputProps> = ({
           <FaPlus size={12} />
         </button>
       </div>
-
-      {error && (
-        <span style={errorStyles} className="error-message">
-          {error}
-        </span>
-      )}
     </div>
   );
 };

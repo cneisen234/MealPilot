@@ -84,7 +84,7 @@ const SideNavbar: React.FC = () => {
           ))}
         </ul>
         <div className="copyright">
-          &copy; {currentYear} MealPilot. All rights reserved.
+          &copy; {currentYear} VibeQuest. All rights reserved.
         </div>
       </nav>
 
@@ -92,7 +92,7 @@ const SideNavbar: React.FC = () => {
       <>
         <>
           <div className="mobile-copyright">
-            &copy; {currentYear} MealPilot. All rights reserved.
+            &copy; {currentYear} VibeQuest. All rights reserved.
           </div>
           <nav className="mobile-navbar">
             {navItems.map((item) => (

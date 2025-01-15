@@ -9,6 +9,7 @@ import {
 import AnimatedTechIcon from "../components/common/AnimatedTechIcon";
 import ConfirmationModal from "../components/common/ConfirmationModal";
 import MealItem from "../components/MealPlan/MealItem";
+import { useToast } from "../context/ToastContext";
 import "../styles/mealplan.css";
 
 interface Meal {
@@ -34,6 +35,7 @@ interface MealPlan {
 
 const MealPlan: React.FC = () => {
   const routeLocation = useLocation();
+  const { showToast } = useToast();
   const [mealPlan, setMealPlan] = useState<MealPlan | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [showConfirmModal, setShowConfirmModal] = useState(false);
@@ -108,8 +110,9 @@ const MealPlan: React.FC = () => {
     try {
       const response = await generateMealPlan();
       setMealPlan(response.data.mealPlan);
+      showToast("New meal plan generated successfully", "success");
     } catch (error) {
-      console.error("Error generating meal plan:", error);
+      showToast("Error generating meal plan", "error");
     } finally {
       setIsLoading(false);
     }
@@ -162,13 +165,12 @@ const MealPlan: React.FC = () => {
               servings: savedRecipe.servings,
             },
           };
-
+          showToast("Meal swapped successfully", "success");
           return updatedPlan;
         });
       }
     } catch (error) {
-      console.error("Error swapping meal:", error);
-      // Handle error appropriately - maybe show a toast notification
+      showToast("Error swapping meal", "error");
     }
   };
 
@@ -257,8 +259,10 @@ const MealPlan: React.FC = () => {
           <p>Generate a new plan to get started!</p>
           <br />
           <p>
-            Make sure you have some saved recipes first. Our meal plan generator
-            will pull from your saved recipes as well as recommend some new ones
+            For the best results, ensure you have recipes saved. Our meal plan
+            generator will grab from both your saved recipes as well as
+            recommend new ones. The more it has to pick from, the more diverse
+            your results will be.
           </p>
         </div>
       )}

@@ -1,12 +1,6 @@
 import React from "react";
 import { Link } from "react-router-dom";
-import {
-  FaUtensils,
-  FaHeart,
-  FaLeaf,
-  FaClipboardList,
-  FaCalendar,
-} from "react-icons/fa";
+import { FaUtensils, FaClipboardList, FaCalendar } from "react-icons/fa";
 import "../styles/home.css";
 
 const Home: React.FC = () => {
@@ -20,6 +14,7 @@ const Home: React.FC = () => {
               alt="MealPilot"
               className="mealpilot-home__logo"
             />
+            <div className="mealpilot-home__brand">MealPilot</div>
           </div>
 
           <h1 className="mealpilot-home__title">

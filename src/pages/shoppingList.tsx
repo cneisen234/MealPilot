@@ -27,6 +27,7 @@ import ReceiptMatchesModal from "../components/shoppingList/ReceiptMatchesModal"
 import ShareableListModal from "../components/shoppingList/SharableListModal";
 import MatchSelectionModal from "../components/common/MatchSelectionModal";
 import SearchInput from "../components/common/SearchInput";
+import { useToast } from "../context/ToastContext";
 
 interface Recipe {
   id: number;
@@ -50,6 +51,7 @@ interface ShoppingListFormData {
 }
 
 const ShoppingList: React.FC = () => {
+  const { showToast } = useToast();
   const [items, setItems] = useState<ShoppingListItem[]>([]);
   const [filteredItems, setFilteredItems] = useState<ShoppingListItem[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -112,9 +114,13 @@ const ShoppingList: React.FC = () => {
     try {
       setIsUploadingReceipt(true);
       const response = await processReceipt(imageData);
-      if (response.data.matches.length === 0) {
-        setError("No matching items found on receipt");
+      if (!response.data.matches.length) {
+        showToast("No matching items found on receipt", "info");
       } else {
+        showToast(
+          `Found ${response.data.matches.length} matching items`,
+          "success"
+        );
         setReceiptMatches(response.data.matches);
       }
     } catch (error) {
@@ -146,8 +152,11 @@ const ShoppingList: React.FC = () => {
   };
 
   const handleAddItem = async (formData: ShoppingListFormData) => {
-    if (Number(items.length) > 99) {
-      setError("Shopping list can't exceed 100 items");
+    if (items.length >= 200) {
+      showToast(
+        "Shopping list limit reached. Maximum 200 items allowed.",
+        "error"
+      );
       return;
     }
     try {
@@ -168,12 +177,10 @@ const ShoppingList: React.FC = () => {
       }
 
       setIsFormOpen(false);
+      showToast("Item added successfully!", "success");
     } catch (error) {
-      if (error instanceof Error) {
-        setError(error.message);
-      } else {
-        setError("Failed to add item");
-      }
+      setError("Failed to add item");
+      showToast("Error adding item. Please try again.", "error");
       console.error("Error adding item:", error);
     }
   };
@@ -226,11 +233,11 @@ const ShoppingList: React.FC = () => {
   ) => {
     try {
       await moveToInventory(itemId, expirationDate);
+      showToast("Item moved to inventory successfully", "success");
       setItems((prev) => prev.filter((item) => item.id !== itemId));
       setEditingItem(null);
     } catch (error) {
-      setError("Failed to move item to inventory");
-      console.error("Error moving item to inventory:", error);
+      showToast("Error moving item to inventory", "error");
     }
   };
 
@@ -290,7 +297,6 @@ const ShoppingList: React.FC = () => {
         onSearch={(filtered) => setFilteredItems(filtered)}
         placeholder="Search your recipes..."
       />
-      {error && <div className="error-message">{error}</div>}
 
       <div className="list-grid">
         {filteredItems.map((item) => (

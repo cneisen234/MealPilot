@@ -25,6 +25,8 @@ import MealPlan from "./pages/MealPlan";
 import Inventory from "./pages/Inventory";
 import ShoppingList from "./pages/shoppingList";
 import ShareableListPage from "./components/shoppingList/SharableListPage";
+import { ToastContainer } from "./components/common/Toast";
+import { ToastProvider } from "./context/ToastContext";
 
 const AppContent: React.FC = () => {
   const { isAuthenticated, checkAuthStatus } = useAuth();
@@ -107,17 +109,20 @@ const AppContent: React.FC = () => {
 const App: React.FC = () => {
   return (
     <Router>
-      <div
-        style={{
-          position: "relative",
-          minHeight: "100vh",
-          overflow: "hidden",
-        }}>
-        <BubbleBackground />
-        <AuthProvider>
-          <AppContent />
-        </AuthProvider>
-      </div>
+      <ToastProvider>
+        <div
+          style={{
+            position: "relative",
+            minHeight: "100vh",
+            overflow: "hidden",
+          }}>
+          <BubbleBackground />
+          <AuthProvider>
+            <AppContent />
+          </AuthProvider>
+        </div>
+        <ToastContainer />
+      </ToastProvider>
     </Router>
   );
 };

@@ -2,6 +2,7 @@ import React, { useState, useEffect } from "react";
 import { FaLink, FaCopy, FaCheck } from "react-icons/fa";
 import { createSharedList } from "../../utils/api";
 import ShareableList from "./SharableList";
+import { useToast } from "../../context/ToastContext";
 
 interface ShareableListModalProps {
   isOpen: boolean;
@@ -16,6 +17,7 @@ const ShareableListModal: React.FC<ShareableListModalProps> = ({
   items,
   onMoveToInventory,
 }) => {
+  const { showToast } = useToast();
   const [shareableLink, setShareableLink] = useState("");
   const [copied, setCopied] = useState(false);
 
@@ -45,9 +47,10 @@ const ShareableListModal: React.FC<ShareableListModalProps> = ({
     try {
       await navigator.clipboard.writeText(shareableLink);
       setCopied(true);
+      showToast("Link copied to clipboard", "success");
       setTimeout(() => setCopied(false), 2000);
     } catch (error) {
-      console.error("Failed to copy link:", error);
+      showToast("Error copying link", "error");
     }
   };
 

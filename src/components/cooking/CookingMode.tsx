@@ -4,6 +4,7 @@ import AnimatedTechIcon from "../common/AnimatedTechIcon";
 import InstructionStep from "./InstructionStep";
 import CookingComplete from "./CookingComplete";
 import InventoryCheckStep from "./InventoryCheckStep";
+import { useToast } from "../../context/ToastContext";
 
 interface CookingModeProps {
   recipe: {
@@ -15,6 +16,7 @@ interface CookingModeProps {
 }
 
 const CookingMode: React.FC<CookingModeProps> = ({ recipe, onClose }) => {
+  const { showToast } = useToast();
   const [currentStep, setCurrentStep] = useState(-1);
   const [analyzedIngredients, setAnalyzedIngredients] = useState<any[]>([]);
   const [isAnalyzing, setIsAnalyzing] = useState(true);
@@ -31,8 +33,9 @@ const CookingMode: React.FC<CookingModeProps> = ({ recipe, onClose }) => {
         (ing: any) => ing.status.type === "in-inventory"
       );
       setAnalyzedIngredients(inStockIngredients);
+      showToast("Ingredients checked successfully", "success");
     } catch (error) {
-      console.error("Error analyzing ingredients:", error);
+      showToast("Error checking ingredients", "error");
     } finally {
       setIsAnalyzing(false);
     }

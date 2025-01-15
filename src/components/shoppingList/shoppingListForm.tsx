@@ -138,9 +138,6 @@ const ShoppingListForm: React.FC<ShoppingListFormProps> = ({
                   className={itemNameError ? "error" : ""}
                   placeholder="Enter item name"
                 />
-                {itemNameError && (
-                  <span className="error-message">{itemNameError}</span>
-                )}
               </div>
 
               <div className="form-row">
@@ -191,9 +188,6 @@ const ShoppingListForm: React.FC<ShoppingListFormProps> = ({
                 onChange={(e) => setExpirationDate(e.target.value)}
                 className={expirationDateError ? "error" : ""}
               />
-              {expirationDateError && (
-                <span className="error-message">{expirationDateError}</span>
-              )}
             </div>
           )}
 

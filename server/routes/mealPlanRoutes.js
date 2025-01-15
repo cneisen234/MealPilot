@@ -64,7 +64,13 @@ router.post("/generate", authMiddleware, async (req, res) => {
       dietaryGoalsResult,
       cuisinePrefsResult,
     ] = await Promise.all([
-      pool.query("SELECT * FROM recipes WHERE user_id = $1", [userId]),
+      pool.query(
+        `SELECT * FROM recipes 
+   WHERE user_id = $1 
+   AND (meal_type IS NULL 
+    OR LOWER(meal_type) IN ('breakfast', 'brunch', 'lunch', 'dinner', 'main course', 'meal'))`,
+        [userId]
+      ),
       pool.query("SELECT item FROM cant_haves WHERE user_id = $1", [userId]),
       pool.query("SELECT item FROM must_haves WHERE user_id = $1", [userId]),
       pool.query("SELECT item FROM taste_preferences WHERE user_id = $1", [
@@ -87,67 +93,41 @@ router.post("/generate", authMiddleware, async (req, res) => {
 
     // Now get global recipes with modified query
     const globalRecipesResult = await pool.query(
-      `SELECT title, prep_time, cook_time, servings, ingredients, instructions, nutritional_info, created_at, last_queried_at, cant_haves, must_haves, taste_preferences, dietary_goals, cuisine_preferences, meal_type
-FROM global_recipes
-WHERE title NOT IN (SELECT title FROM recipes)
-ORDER BY RANDOM();
-`
+      `SELECT title, 
+    prep_time, 
+    cook_time, 
+    servings, 
+    ingredients, 
+    instructions, 
+    nutritional_info, 
+    created_at, 
+    last_queried_at, 
+    cant_haves, 
+    must_haves, 
+    taste_preferences, 
+    dietary_goals, 
+    cuisine_preferences, 
+    meal_type FROM global_recipes 
+  WHERE 
+    ($1::text[] = '{}' OR (cant_haves @> $1::text[] AND array_length($1::text[], 1) = array_length(ARRAY(
+      SELECT DISTINCT unnest($1::text[])
+      INTERSECT
+      SELECT DISTINCT unnest(cant_haves)
+    ), 1)))
+
+    AND ($2::text[] = '{}' OR (must_haves @> $2::text[] AND array_length($2::text[], 1) = array_length(ARRAY(
+      SELECT DISTINCT unnest($2::text[])
+      INTERSECT
+      SELECT DISTINCT unnest(must_haves)
+    ), 1)))
+
+    AND title NOT IN (SELECT title FROM recipes)
+  ORDER BY RANDOM();`,
+      [
+        restrictions.cantHaves, // $1: array of cant_haves restrictions
+        restrictions.mustHaves, // $2: array of must_haves restrictions
+      ]
     );
-
-    function areArraysEqual(arr1, arr2) {
-      if (arr1.length !== arr2.length) return false;
-      return (
-        arr1.every((item) => arr2.includes(item)) &&
-        arr2.every((item) => arr1.includes(item))
-      );
-    }
-
-    // Function to filter recipes
-    function filterRecipes(recipes) {
-      return recipes.filter((recipe) => {
-        // Check for cant_haves
-        const cantHavesMatch =
-          restrictions.cantHaves.length === 0 ||
-          areArraysEqual(recipe.cant_haves, restrictions.cantHaves);
-
-        // Check for must_haves
-        const mustHavesMatch =
-          restrictions.mustHaves.length === 0 ||
-          areArraysEqual(recipe.must_haves, restrictions.mustHaves);
-
-        // Check for taste_preferences
-        const tastePreferencesMatch =
-          restrictions.tastePreferences.length === 0 ||
-          areArraysEqual(
-            recipe.taste_preferences,
-            restrictions.tastePreferences
-          );
-
-        // Check for dietary_goals
-        const dietaryGoalsMatch =
-          restrictions.dietaryGoals.length === 0 ||
-          areArraysEqual(recipe.dietary_goals, restrictions.dietaryGoals);
-
-        // Check for cuisine_preferences
-        const cuisinePreferencesMatch =
-          restrictions.cuisinePreferences.length === 0 ||
-          areArraysEqual(
-            recipe.cuisine_preferences,
-            restrictions.cuisinePreferences
-          );
-
-        // Only include recipes where all conditions match
-        return (
-          cantHavesMatch &&
-          mustHavesMatch &&
-          tastePreferencesMatch &&
-          dietaryGoalsMatch &&
-          cuisinePreferencesMatch
-        );
-      });
-    }
-
-    const filteredRecipes = filterRecipes(globalRecipesResult.rows);
 
     // Initialize arrays for first and second uses
     const firstUse = {
@@ -157,7 +137,7 @@ ORDER BY RANDOM();
     };
 
     // Combine and shuffle all recipes
-    const allRecipes = [...savedRecipes.rows, ...filteredRecipes].sort(
+    const allRecipes = [...savedRecipes.rows, ...globalRecipesResult.rows].sort(
       () => Math.random() - 0.5
     );
 
@@ -189,6 +169,115 @@ ORDER BY RANDOM();
         });
       }
     });
+
+    // Check what meal types we're missing
+    const missingMealTypes = [];
+    if (firstUse.breakfast.length === 0) missingMealTypes.push("breakfast");
+    if (firstUse.lunch.length === 0) missingMealTypes.push("lunch");
+    if (firstUse.dinner.length === 0) missingMealTypes.push("dinner");
+
+    // Generate missing recipes if needed
+    if (missingMealTypes.length > 0) {
+      for (const mealType of missingMealTypes) {
+        // Create prompt
+        let prompt = `Generate a detailed recipe for ${mealType}.\n\n`;
+
+        if (restrictions.cantHaves.length > 0) {
+          prompt += `The recipe MUST NOT include: ${restrictions.cantHaves.join(
+            ", "
+          )}.\n`;
+        }
+        if (restrictions.mustHaves.length > 0) {
+          prompt += `The recipe MUST include: ${restrictions.mustHaves.join(
+            ", "
+          )}.\n`;
+        }
+        if (restrictions.tastePreferences.length > 0) {
+          prompt += `Taste preferences: ${restrictions.tastePreferences.join(
+            ", "
+          )}.\n`;
+        }
+        if (restrictions.dietaryGoals.length > 0) {
+          prompt += `Dietary goals: ${restrictions.dietaryGoals.join(", ")}.\n`;
+        }
+        if (restrictions.cuisinePreferences.length > 0) {
+          prompt += `Cuisine preferences: ${restrictions.cuisinePreferences.join(
+            ", "
+          )}.\n`;
+        }
+
+        prompt += `\nFormat as follows:
+Name: [Recipe Name]
+Prep Time: [Time in minutes]
+Cook Time: [Time in minutes]
+Servings: [Number]
+
+Ingredients:
+[List each ingredient with measurements]
+
+Instructions:
+**[Main Step Title]:**
+[Sub-steps]
+**[Next Main Step Title]:**
+[Sub-steps]
+
+Nutritional Information:
+[Details]`;
+
+        try {
+          const completion = await openai.chat.completions.create({
+            model: "gpt-3.5-turbo",
+            messages: [{ role: "user", content: prompt }],
+            max_tokens: 1000,
+            temperature: 0.7,
+          });
+
+          const recipeText = completion.choices[0].message.content;
+          const recipe = cleanAIResponse(recipeText);
+          recipe.mealType = mealType;
+
+          // Save to global_recipes
+          await pool.query(
+            `INSERT INTO global_recipes (
+              title, prep_time, cook_time, servings, 
+              ingredients, instructions, nutritional_info,
+              cant_haves, must_haves, taste_preferences, 
+              dietary_goals, cuisine_preferences, meal_type
+            ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)`,
+            [
+              recipe.title,
+              recipe.prepTime,
+              recipe.cookTime,
+              recipe.servings,
+              recipe.ingredients,
+              recipe.instructions,
+              recipe.nutritionalInfo,
+              restrictions.cantHaves,
+              restrictions.mustHaves,
+              restrictions.tastePreferences,
+              restrictions.dietaryGoals,
+              restrictions.cuisinePreferences,
+              mealType,
+            ]
+          );
+
+          // Add to firstUse array
+          firstUse[mealType].push({
+            title: recipe.title,
+            prep_time: recipe.prepTime,
+            cook_time: recipe.cookTime,
+            servings: recipe.servings,
+            ingredients: recipe.ingredients,
+            instructions: recipe.instructions,
+            nutritional_info: recipe.nutritionalInfo,
+            meal_type: recipe.mealType,
+          });
+        } catch (error) {
+          console.error(`Error generating recipe for ${mealType}:`, error);
+          throw error;
+        }
+      }
+    }
 
     // Generate array of next 7 days
     const days = Array.from({ length: 7 }, (_, i) => {

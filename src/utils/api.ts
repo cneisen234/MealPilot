@@ -36,7 +36,11 @@ api.interceptors.response.use(
     if (error.response) {
       switch (error.response.status) {
         case 401:
-         console.error('Forbidden request:', error.response.data);
+         console.error('UnAuthorized:', error.response.data);
+         if(window.location.pathname !== "/login") {
+          localStorage.removeItem('token');
+          window.location.href = '/login';
+         }
           break;
         case 403:
           // Forbidden: you might want to handle this differently

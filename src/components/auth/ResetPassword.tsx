@@ -2,6 +2,7 @@ import React, { useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { resetPassword } from "../../utils/api";
 import { InputWithPasswordToggle } from "./InputWithPasswordToggle";
+import { useToast } from "../../context/ToastContext";
 
 const ResetPassword: React.FC = () => {
   const [password, setPassword] = useState("");
@@ -10,6 +11,7 @@ const ResetPassword: React.FC = () => {
   const [showPassword, setShowPassword] = useState(false);
   const { token } = useParams<{ token: string }>();
   const navigate = useNavigate();
+  const { showToast } = useToast();
 
   const togglePasswordVisibility = () => {
     setShowPassword(!showPassword);
@@ -25,11 +27,11 @@ const ResetPassword: React.FC = () => {
       if (!token) {
         throw new Error("Reset token is missing");
       }
-      const response = await resetPassword(token, password);
-      setMessage(response.data.message);
-      setTimeout(() => navigate("/login"), 3000);
+      await resetPassword(token, password);
+      showToast("Password reset successful. Please log in.", "success");
+      setTimeout(() => navigate("/login"), 2000);
     } catch (error) {
-      setMessage("An error occurred. Please try again.");
+      showToast("Error resetting password. Please try again.", "error");
     }
   };
 

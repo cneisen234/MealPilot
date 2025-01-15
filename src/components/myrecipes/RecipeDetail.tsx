@@ -19,6 +19,7 @@ import {
 import ConfirmDeleteModal from "../common/ConfirmDeleteModal";
 import CookingMode from "../cooking/CookingMode";
 import RecipePDF from "./RecipePdf";
+import { useToast } from "../../context/ToastContext";
 
 interface IngredientAnalysis {
   original: string;
@@ -50,10 +51,6 @@ interface Recipe {
   mealType: string;
 }
 
-interface IngredientQuantities {
-  [key: number]: number;
-}
-
 const RecipeDetail: React.FC = () => {
   const [recipe, setRecipe] = useState<Recipe | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -66,6 +63,7 @@ const RecipeDetail: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const routeLocation = useLocation();
+  const { showToast } = useToast();
   const fromMealPlan = routeLocation.state?.fromMealPlan;
   let currentStep = 1;
 
@@ -192,7 +190,6 @@ const RecipeDetail: React.FC = () => {
         prepTime: editedRecipe.prep_time,
         cookTime: editedRecipe.cook_time,
         servings: editedRecipe.servings,
-        //@ts-ignore
         ingredients: ingredientsTitle.filter((item) => item.trim()),
         instructions: editedRecipe.instructions.filter((item) => item.trim()),
         nutritionalInfo: editedRecipe.nutritional_info.filter((item) =>
@@ -201,9 +198,10 @@ const RecipeDetail: React.FC = () => {
         mealType: editedRecipe.mealType,
       });
       await loadRecipe();
+      showToast("Recipe updated successfully", "success");
       setIsEditing(false);
     } catch (error) {
-      console.error("Error updating recipe:", error);
+      showToast("Error updating recipe", "error");
     } finally {
       setIsSaving(false);
     }
@@ -222,9 +220,10 @@ const RecipeDetail: React.FC = () => {
 
     try {
       await deleteRecipe(id);
+      showToast("Recipe deleted successfully", "success");
       navigate("/myrecipes");
     } catch (error) {
-      console.error("Error deleting recipe:", error);
+      showToast("Error deleting recipe", "error");
     }
   };
 

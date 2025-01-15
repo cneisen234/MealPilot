@@ -62,22 +62,48 @@ router.post("/create-recipe", authMiddleware, async (req, res) => {
     );
 
     // Check for matching recipes in global_recipes
-    const threeeDaysAgo = new Date();
-    threeeDaysAgo.setDate(threeeDaysAgo.getDate() - 3);
+    const threeDaysAgo = new Date();
+    threeDaysAgo.setDate(threeDaysAgo.getDate() - 3);
 
     const matchingRecipesQuery = await pool.query(
-      `SELECT * FROM global_recipes 
-       WHERE meal_type = $1 
-       AND last_queried_at < $2
-       AND NOT ($3::text[] && cant_haves)  -- No overlap with cant_haves
-       AND must_haves @> $4::text[]        -- Contains all must_haves
-       AND taste_preferences && $5::text[]  -- Some overlap with taste preferences
-       AND dietary_goals && $6::text[]      -- Some overlap with dietary goals
-       AND cuisine_preferences && $7::text[] -- Some overlap with cuisine preferences
-       AND title NOT IN (SELECT unnest($8::text[]))  -- Not in user's existing recipes`,
+      `SELECT *
+  FROM global_recipes 
+  WHERE meal_type = $1
+  AND last_queried_at < $2
+  AND ($3::text[] = '{}' OR (cant_haves @> $3::text[] AND array_length($3::text[], 1) = array_length(ARRAY(
+     SELECT DISTINCT unnest($3::text[])
+     INTERSECT
+     SELECT DISTINCT unnest(cant_haves)
+   ), 1)))
+
+   AND ($4::text[] = '{}' OR (must_haves @> $4::text[] AND array_length($4::text[], 1) = array_length(ARRAY(
+     SELECT DISTINCT unnest($4::text[])
+     INTERSECT
+     SELECT DISTINCT unnest(must_haves)
+   ), 1)))
+
+   AND ($5::text[] = '{}' OR (taste_preferences @> $5::text[] AND array_length($5::text[], 1) = array_length(ARRAY(
+     SELECT DISTINCT unnest($5::text[])
+     INTERSECT
+     SELECT DISTINCT unnest(taste_preferences)
+   ), 1)))
+
+   AND ($6::text[] = '{}' OR (dietary_goals @> $6::text[] AND array_length($6::text[], 1) = array_length(ARRAY(
+     SELECT DISTINCT unnest($6::text[])
+     INTERSECT
+     SELECT DISTINCT unnest(dietary_goals)
+   ), 1)))
+
+   AND ($7::text[] = '{}' OR (cuisine_preferences @> $7::text[] AND array_length($7::text[], 1) = array_length(ARRAY(
+     SELECT DISTINCT unnest($7::text[])
+     INTERSECT
+     SELECT DISTINCT unnest(cuisine_preferences)
+   ), 1)))
+
+   AND title NOT IN (SELECT unnest($8::text[]));`,
       [
         mealType || "meal",
-        threeeDaysAgo.toISOString(),
+        threeDaysAgo.toISOString(),
         cantHaves,
         mustHaves,
         tastePreferences,
@@ -88,8 +114,6 @@ router.post("/create-recipe", authMiddleware, async (req, res) => {
     );
 
     let recipe;
-
-    console.log(matchingRecipesQuery.rows);
 
     if (matchingRecipesQuery.rows.length > 0) {
       // Randomly select one matching recipe
@@ -227,6 +251,18 @@ router.post("/save-recipe", authMiddleware, async (req, res) => {
     } = req.body;
 
     await pool.query("BEGIN");
+
+    const recipeCount = await pool.query(
+      "SELECT COUNT(*) FROM recipes WHERE user_id = $1",
+      [userId]
+    );
+
+    if (recipeCount.rows[0].count >= 50) {
+      return res.status(400).json({
+        message:
+          "Recipe limit reached. Maximum 50 recipes allowed per account.",
+      });
+    }
 
     const recipeResult = await pool.query(
       `INSERT INTO recipes 
@@ -680,6 +716,20 @@ router.delete("/myrecipes/:id", authMiddleware, async (req, res) => {
 
 router.post("/scrape-recipe", authMiddleware, async (req, res) => {
   try {
+    const userId = req.user.id;
+
+    // Check recipe count
+    const recipeCount = await pool.query(
+      "SELECT COUNT(*) FROM recipes WHERE user_id = $1",
+      [userId]
+    );
+
+    if (recipeCount.rows[0].count >= 50) {
+      return res.status(400).json({
+        message:
+          "Recipe limit reached. Maximum 50 recipes allowed per account.",
+      });
+    }
     const { url } = req.body;
 
     // Fetch the webpage content
@@ -758,6 +808,20 @@ router.post("/scrape-recipe", authMiddleware, async (req, res) => {
 
 router.post("/ocr-recipe", authMiddleware, async (req, res) => {
   try {
+    const userId = req.user.id;
+
+    // Check recipe count
+    const recipeCount = await pool.query(
+      "SELECT COUNT(*) FROM recipes WHERE user_id = $1",
+      [userId]
+    );
+
+    if (recipeCount.rows[0].count >= 50) {
+      return res.status(400).json({
+        message:
+          "Recipe limit reached. Maximum 50 recipes allowed per account.",
+      });
+    }
     const { imageData } = req.body;
 
     // Input validation

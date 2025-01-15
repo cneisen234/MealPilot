@@ -121,7 +121,7 @@ router.post("/forgot-password", async (req, res) => {
         <p>If you did not request this, please ignore this email and your password will remain unchanged.</p>
       </div>
       <div style="text-align: center; font-size: 12px; color: #666;">
-        <p>&copy; 2024 MealPilot. All rights reserved.</p>
+        <p>&copy; 2025 VibeQuest. All rights reserved.</p>
       </div>
     </body>
     </html>

@@ -4,6 +4,7 @@ import { login, checkEmailExists } from "../utils/api";
 import { useAuth } from "../context/AuthContext";
 import { FaExclamationCircle } from "react-icons/fa";
 import { InputWithPasswordToggle } from "../components/auth/InputWithPasswordToggle";
+import { useToast } from "../context/ToastContext";
 
 const Login: React.FC = () => {
   const [email, setEmail] = useState("");
@@ -12,6 +13,7 @@ const Login: React.FC = () => {
   const [loginError, setLoginError] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const navigate = useNavigate();
+  const { showToast } = useToast();
   const { login: authLogin, checkAuthStatus } = useAuth();
 
   const checkEmail = useCallback(async (email: string) => {
@@ -50,11 +52,10 @@ const Login: React.FC = () => {
       localStorage.setItem("token", response.data.token);
       authLogin(response.data.token);
       checkAuthStatus();
-      setLoginError("");
+      showToast("Successfully logged in!", "success");
       navigate("/recipe", { state: { fromLogin: true } });
     } catch (error) {
-      console.error("Login error", error);
-      setLoginError("Invalid email or password. Please try again.");
+      showToast("Invalid email or password", "error");
     }
   };
 

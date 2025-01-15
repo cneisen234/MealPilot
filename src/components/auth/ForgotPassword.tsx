@@ -1,18 +1,23 @@
 import React, { useState } from "react";
 import { Link } from "react-router-dom";
 import { requestPasswordReset } from "../../utils/api";
+import { useToast } from "../../context/ToastContext";
 
 const ForgotPassword: React.FC = () => {
+  const { showToast } = useToast();
   const [email, setEmail] = useState("");
   const [message, setMessage] = useState("");
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
-      const response = await requestPasswordReset(email);
-      setMessage(response.data.message);
+      await requestPasswordReset(email);
+      showToast(
+        "Password reset email sent. Please check your inbox.",
+        "success"
+      );
     } catch (error) {
-      setMessage("An error occurred. Please try again.");
+      showToast("Error sending reset email. Please try again.", "error");
     }
   };
 

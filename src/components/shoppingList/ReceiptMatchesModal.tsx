@@ -2,6 +2,7 @@ import React, { useState } from "react";
 import { FaCheckSquare, FaRegSquare } from "react-icons/fa";
 import AnimatedTechIcon from "../common/AnimatedTechIcon";
 import decimalHelper from "../../helpers/decimalHelper";
+import { useToast } from "../../context/ToastContext";
 
 interface MatchedItem {
   shopping_list_id: number;
@@ -21,6 +22,7 @@ const ReceiptMatchesModal: React.FC<ReceiptMatchesModalProps> = ({
   onClose,
   onAddToInventory,
 }) => {
+  const { showToast } = useToast();
   const [selectedItems, setSelectedItems] = useState<Set<number>>(
     new Set(matches.map((m) => m.shopping_list_id))
   );
@@ -51,9 +53,13 @@ const ReceiptMatchesModal: React.FC<ReceiptMatchesModalProps> = ({
           quantity: quantities[match.shopping_list_id],
         }));
       await onAddToInventory(selectedMatches);
+      showToast(
+        `${selectedMatches.length} items added to inventory`,
+        "success"
+      );
       onClose();
     } catch (error) {
-      console.error("Error adding items to inventory:", error);
+      showToast("Error adding items to inventory", "error");
     } finally {
       setIsProcessing(false);
     }

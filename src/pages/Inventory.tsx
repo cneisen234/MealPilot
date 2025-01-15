@@ -15,6 +15,7 @@ import {
 } from "../utils/api";
 import "../styles/inventory.css";
 import SearchInput from "../components/common/SearchInput";
+import { useToast } from "../context/ToastContext";
 
 interface InventoryItem {
   id: number;
@@ -39,6 +40,7 @@ type ExpiringItemData = {
 };
 
 const Inventory: React.FC = () => {
+  const { showToast } = useToast();
   const [items, setItems] = useState<InventoryItem[]>([]);
   const [filteredItems, setFilteredItems] = useState<InventoryItem[]>([]);
   const [alertDidShow, setAlertDidShow] = useState(false);
@@ -105,8 +107,9 @@ const Inventory: React.FC = () => {
   };
 
   const handleAddItem = async (formData: InventoryFormData) => {
-    if (Number(items.length) > 99) {
-      setError("Inventory can't exceed 100 items");
+    if (items.length >= 200) {
+      showToast("Inventory limit reached. Maximum 200 items allowed.", "error");
+      return;
     }
     try {
       const response = await addInventoryItem(formData);
@@ -130,13 +133,10 @@ const Inventory: React.FC = () => {
       }
 
       setIsFormOpen(false);
+      showToast("Item added successfully!", "success");
     } catch (error) {
-      if (error instanceof Error) {
-        setError(error.message);
-      } else {
-        setError("Failed to add item");
-      }
-      console.error("Error adding item:", error);
+      setError("Failed to add item");
+      showToast("Error adding item. Please try again.", "error");
     }
   };
 
@@ -170,10 +170,10 @@ const Inventory: React.FC = () => {
     try {
       await deleteInventoryItem(deleteItem.id, deleteItem.quantity);
       setItems((prev) => prev.filter((item) => item.id !== deleteItem.id));
+      showToast("Item deleted successfully", "success");
       setDeleteItem(null);
     } catch (error) {
-      setError("Failed to delete item");
-      console.error("Error deleting item:", error);
+      showToast("Error deleting item", "error");
     }
   };
 
@@ -196,8 +196,9 @@ const Inventory: React.FC = () => {
         // No matches, open add form with suggested name
         handleNoMatch();
       }
+      showToast("Item photo processed successfully", "success");
     } catch (error) {
-      throw error;
+      showToast("Error processing item photo", "error");
     }
   };
 
@@ -241,8 +242,6 @@ const Inventory: React.FC = () => {
         onSearch={(filtered) => setFilteredItems(filtered)}
         placeholder="Search your recipes..."
       />
-
-      {error && <div className="error-message">{error}</div>}
 
       <div className="list-grid">
         {filteredItems.map((item) => (

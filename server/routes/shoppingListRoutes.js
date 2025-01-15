@@ -38,6 +38,17 @@ router.get("/", authMiddleware, async (req, res) => {
 router.post("/", authMiddleware, async (req, res) => {
   try {
     const userId = req.user.id;
+    const shoppingListCount = await pool.query(
+      "SELECT COUNT(*) FROM shopping_list WHERE user_id = $1",
+      [userId]
+    );
+
+    if (shoppingListCount.rows[0].count >= 200) {
+      return res.status(400).json({
+        message: "Shopping list limit reached. Maximum 200 items allowed.",
+      });
+    }
+
     const { item_name, quantity, recipe_ids = [] } = req.body;
 
     if (!item_name || quantity === undefined) {
@@ -293,6 +304,18 @@ router.post("/:id/move-to-inventory", authMiddleware, async (req, res) => {
     const userId = req.user.id;
     const itemId = req.params.id;
     let { expiration_date } = req.body;
+    // Check current count plus new items won't exceed limit
+    const currentCount = await pool.query(
+      "SELECT COUNT(*) FROM inventory WHERE user_id = $1",
+      [userId]
+    );
+
+    if (currentCount.rows[0].count + items.length > 200) {
+      return res.status(400).json({
+        message:
+          "Adding these items would exceed the inventory limit of 200 items.",
+      });
+    }
 
     if (expiration_date === "") {
       expiration_date = null;
@@ -367,6 +390,16 @@ router.post(
       const userId = req.user.id;
       const item_name = req.params.item_name;
       let { expiration_date } = req.body;
+      const inventoryCount = await pool.query(
+        "SELECT COUNT(*) FROM inventory WHERE user_id = $1",
+        [userId]
+      );
+
+      if (inventoryCount.rows[0].count >= 200) {
+        return res.status(400).json({
+          message: "Inventory limit reached. Maximum 200 items allowed.",
+        });
+      }
 
       if (expiration_date === "") {
         expiration_date = null;
@@ -441,6 +474,19 @@ router.post("/add-from-receipt", authMiddleware, async (req, res) => {
     const userId = req.user.id;
     const { items } = req.body;
 
+    // Check current count plus new items won't exceed limit
+    const currentCount = await pool.query(
+      "SELECT COUNT(*) FROM inventory WHERE user_id = $1",
+      [userId]
+    );
+
+    if (currentCount.rows[0].count + items.length > 200) {
+      return res.status(400).json({
+        message:
+          "Adding these items would exceed the inventory limit of 200 items.",
+      });
+    }
+
     await pool.query("BEGIN");
 
     let processedItems = 0;
@@ -504,6 +550,18 @@ router.post("/process-receipt", authMiddleware, async (req, res) => {
   try {
     const userId = req.user.id;
     const { imageData } = req.body;
+
+    const currentCount = await pool.query(
+      "SELECT COUNT(*) FROM shopping_list WHERE user_id = $1",
+      [userId]
+    );
+
+    // Since we don't know how many items will be found, we should ensure there's room
+    if (currentCount.rows[0].count >= 200) {
+      return res.status(400).json({
+        message: "Shopping list limit reached. Maximum 200 items allowed.",
+      });
+    }
 
     // Input validation
     if (!imageData) {
@@ -664,6 +722,18 @@ router.post("/bulk-add", authMiddleware, async (req, res) => {
   try {
     const userId = req.user.id;
     const { items } = req.body;
+    // Check current count plus new items won't exceed limit
+    const currentCount = await pool.query(
+      "SELECT COUNT(*) FROM shopping_list WHERE user_id = $1",
+      [userId]
+    );
+
+    if (currentCount.rows[0].count + items.length > 200) {
+      return res.status(400).json({
+        message:
+          "Adding these items would exceed the shopping list limit of 200 items.",
+      });
+    }
 
     if (!Array.isArray(items) || items.length === 0) {
       return res.status(400).json({ message: "No items provided" });

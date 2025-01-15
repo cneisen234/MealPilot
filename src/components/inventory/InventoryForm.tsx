@@ -103,9 +103,6 @@ const InventoryForm: React.FC<InventoryFormProps> = ({
               className={itemNameError ? "error" : ""}
               placeholder="Enter item name"
             />
-            {itemNameError && (
-              <span className="error-message">{itemNameError}</span>
-            )}
           </div>
 
           <div className="form-row">
@@ -126,9 +123,6 @@ const InventoryForm: React.FC<InventoryFormProps> = ({
               onChange={(e) => setExpirationDate(e.target.value)}
               className={expirationDateError ? "error" : ""}
             />
-            {expirationDateError && (
-              <span className="error-message">{expirationDateError}</span>
-            )}
           </div>
 
           <div className="form-actions">

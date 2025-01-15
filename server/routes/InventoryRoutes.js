@@ -34,6 +34,16 @@ const determineExpirationDate = (existingDate, newDate) => {
 router.post("/", authMiddleware, async (req, res) => {
   try {
     const userId = req.user.id;
+    const inventoryCount = await pool.query(
+      "SELECT COUNT(*) FROM inventory WHERE user_id = $1",
+      [userId]
+    );
+
+    if (inventoryCount.rows[0].count >= 200) {
+      return res.status(400).json({
+        message: "Inventory limit reached. Maximum 200 items allowed.",
+      });
+    }
     const { item_name, quantity } = req.body;
     let { expiration_date } = req.body;
 

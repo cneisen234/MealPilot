@@ -38,6 +38,7 @@ import {
 import "../styles/recipe.css";
 import { useLocation, useNavigate } from "react-router-dom";
 import { FaArrowLeft } from "react-icons/fa";
+import { useToast } from "../context/ToastContext";
 
 interface Recipe {
   mealType: any;
@@ -53,6 +54,7 @@ interface Recipe {
 const Recipe = () => {
   const navigate = useNavigate();
   const routeLocation = useLocation();
+  const { showToast } = useToast();
   const [cantHaves, setCantHaves] = useState<CantHave[]>([]);
   const [mustHaves, setMustHaves] = useState<MustHave[]>([]);
   const [tastePreferences, setTastePreferences] = useState<TastePreference[]>(
@@ -257,6 +259,7 @@ const Recipe = () => {
         mealType: recipe.mealType,
       });
       setRecipe(null);
+      showToast("Recipe saved successfully!", "success");
       if (routeLocation.state?.fromMealPlan) {
         navigate("/mealplan", {
           state: {
@@ -269,8 +272,20 @@ const Recipe = () => {
       }
       // Could add success notification here
     } catch (error) {
-      console.error("Error saving recipe:", error);
-      // Could add error notification here
+      //@ts-ignore
+      if (error.response?.data?.message?.includes("Recipe limit reached")) {
+        showToast(
+          "You've reached the limit of 50 recipes. Please delete some recipes to add new ones.",
+          "error"
+        );
+      } else {
+        showToast(
+          //@ts-ignore
+          error.response?.data?.message ||
+            "Error saving recipe. Please try again.",
+          "error"
+        );
+      }
     } finally {
       setIsSaving(false);
     }

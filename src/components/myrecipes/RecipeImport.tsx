@@ -3,6 +3,7 @@ import { FaLink, FaCamera } from "react-icons/fa";
 import { extractRecipeFromImage, scrapeRecipe } from "../../utils/api";
 import AnimatedTechIcon from "../common/AnimatedTechIcon";
 import PhotoCaptureModal from "../common/PhotoCaptureComponent";
+import { useToast } from "../../context/ToastContext";
 
 interface RecipeImportProps {
   onRecipeImported: (recipe: {
@@ -26,6 +27,7 @@ const RecipeImport: React.FC<RecipeImportProps> = ({
   const [isLoading, setIsLoading] = useState(false);
   const [isExpanded, setIsExpanded] = useState(false);
   const [isPhotoModalOpen, setIsPhotoModalOpen] = useState(false);
+  const { showToast } = useToast();
 
   const handleClose = () => {
     setIsExpanded(false);
@@ -40,10 +42,13 @@ const RecipeImport: React.FC<RecipeImportProps> = ({
     try {
       const response = await scrapeRecipe(url);
       onRecipeImported(response.data.recipe);
+      showToast("Recipe imported successfully", "success");
       handleClose();
     } catch (error) {
-      onError("Failed to import recipe. Please check the URL and try again.");
-      console.error("Error importing recipe:", error);
+      showToast(
+        "Error importing recipe. Please check the URL and try again.",
+        "error"
+      );
     } finally {
       setIsLoading(false);
     }

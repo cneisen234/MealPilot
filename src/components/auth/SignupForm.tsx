@@ -1,7 +1,6 @@
 import React, { useState, useEffect, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import { signup, login, checkEmailAvailability } from "../../utils/api";
-import { FaEye, FaEyeSlash } from "react-icons/fa";
 import { useAuth } from "../../context/AuthContext";
 import useDebounce from "../../hooks/useDebounce";
 import { emailFormatValidationHelper } from "../../helpers/emailFormatValidationHelper";
@@ -10,6 +9,7 @@ import {
   passwordValidationHelper,
 } from "../../helpers/passwordValidationHelper";
 import { InputWithPasswordToggle } from "./InputWithPasswordToggle";
+import { useToast } from "../../context/ToastContext";
 
 const SignupForm: React.FC = () => {
   const [name, setName] = useState("");
@@ -19,7 +19,7 @@ const SignupForm: React.FC = () => {
   const [emailError, setEmailError] = useState("");
   const [generalError, setGeneralError] = useState("");
   const [showPassword, setShowPassword] = useState(false);
-  const navigate = useNavigate();
+  const { showToast } = useToast();
   const { checkAuthStatus } = useAuth();
 
   const debouncedEmail = useDebounce(email, 300);
@@ -90,9 +90,13 @@ const SignupForm: React.FC = () => {
 
       // Update auth status
       checkAuthStatus();
+      showToast("Account created successfully!", "success");
     } catch (error) {
-      console.error("Signup error", error);
-      setGeneralError("An error occurred during signup. Please try again.");
+      showToast(
+        //@ts-ignore
+        error.response?.data?.message || "Error creating account",
+        "error"
+      );
     }
   };
 
