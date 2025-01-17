@@ -7,7 +7,13 @@ const axios = require("axios");
 const cheerio = require("cheerio");
 const cleanAIResponse = require("../cleanAiResponse");
 const vision = require("@google-cloud/vision");
-const client = new vision.ImageAnnotatorClient();
+const client = new vision.ImageAnnotatorClient({
+  credentials: {
+    project_id: process.env.GOOGLE_CLOUD_PROJECT_ID,
+    private_key: process.env.GOOGLE_CLOUD_PRIVATE_KEY?.replace(/\\n/g, "\n"),
+    client_email: process.env.GOOGLE_CLOUD_CLIENT_EMAIL,
+  },
+});
 
 // Helper to parse ingredient strings
 const parseIngredientString = (ingredientStr) => {
@@ -611,16 +617,15 @@ router.put("/myrecipes/:id", authMiddleware, async (req, res) => {
     // Update the recipe
     const result = await pool.query(
       `UPDATE recipes 
-       SET title = $1, 
-           prep_time = $2, 
-           cook_time = $3, 
-           servings = $4, 
-           ingredients = $5, 
-           instructions = $6, 
-           nutritional_info = $7
-           mealType = $8
-       WHERE id = $9 AND user_id = $10
-       RETURNING *`,
+   SET title = $1, 
+       prep_time = $2, 
+       cook_time = $3, 
+       servings = $4, 
+       ingredients = $5, 
+       instructions = $6, 
+       nutritional_info = $7,
+       meal_type = $8 WHERE id = $9 AND user_id = $10
+   RETURNING *`,
       [
         title,
         prepTime,
@@ -675,9 +680,18 @@ router.delete("/myrecipes/:id", authMiddleware, async (req, res) => {
       for (const date in meals) {
         for (const mealTime of ["breakfast", "lunch", "dinner"]) {
           if (meals[date][mealTime].recipeId === recipeId) {
-            // Update the meal to be a new recipe instead of saved
-            meals[date][mealTime].recipeId = null;
-            meals[date][mealTime].isNew = true;
+            meals[date][mealTime] = {
+              title: meals[date][mealTime].title,
+              prepTime: meals[date][mealTime].prepTime,
+              cookTime: meals[date][mealTime].cookTime,
+              servings: meals[date][mealTime].servings,
+              ingredients: meals[date][mealTime].ingredients,
+              instructions: meals[date][mealTime].instructions,
+              nutritionalInfo: meals[date][mealTime].nutritionalInfo,
+              mealType: meals[date][mealTime].mealType,
+              recipeId: null,
+              isNew: true,
+            };
           }
         }
       }

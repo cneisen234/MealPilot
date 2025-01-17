@@ -4,7 +4,13 @@ const authMiddleware = require("../middleware/auth");
 const openai = require("../openai");
 const pool = require("../db");
 const vision = require("@google-cloud/vision");
-const client = new vision.ImageAnnotatorClient();
+const client = new vision.ImageAnnotatorClient({
+  credentials: {
+    project_id: process.env.GOOGLE_CLOUD_PROJECT_ID,
+    private_key: process.env.GOOGLE_CLOUD_PRIVATE_KEY?.replace(/\\n/g, "\n"),
+    client_email: process.env.GOOGLE_CLOUD_CLIENT_EMAIL,
+  },
+});
 
 // Get all shopping list items for the logged-in user
 router.get("/", authMiddleware, async (req, res) => {

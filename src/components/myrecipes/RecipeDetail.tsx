@@ -221,7 +221,12 @@ const RecipeDetail: React.FC = () => {
     try {
       await deleteRecipe(id);
       showToast("Recipe deleted successfully", "success");
-      navigate("/myrecipes");
+      // Use the fromMealPlan state to determine where to navigate
+      if (routeLocation.state?.fromMealPlan) {
+        navigate("/mealplan");
+      } else {
+        navigate("/myrecipes");
+      }
     } catch (error) {
       showToast("Error deleting recipe", "error");
     }
