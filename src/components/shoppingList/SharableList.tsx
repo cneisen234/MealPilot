@@ -11,9 +11,10 @@ interface ShoppingListItem {
 interface ShareableListProps {
   items: ShoppingListItem[];
   onMoveToInventory?: (items: ShoppingListItem[]) => Promise<void>;
+  hideChecks?: boolean;
 }
 
-const ShareableList: React.FC<ShareableListProps> = ({ items }) => {
+const ShareableList: React.FC<ShareableListProps> = ({ items, hideChecks }) => {
   const [uncheckedItems, setUncheckedItems] = useState<ShoppingListItem[]>([]);
   const [checkedItems, setCheckedItems] = useState<ShoppingListItem[]>([]);
 
@@ -47,11 +48,13 @@ const ShareableList: React.FC<ShareableListProps> = ({ items }) => {
               <span className="list-item-content">
                 {item.quantity} {item.item_name}
               </span>
-              <button
-                onClick={() => onAction(item)}
-                className="list-item-action">
-                {actionIcon}
-              </button>
+              {!hideChecks && (
+                <button
+                  onClick={() => onAction(item)}
+                  className="list-item-action">
+                  {actionIcon}
+                </button>
+              )}
             </div>
           ))}
         </div>

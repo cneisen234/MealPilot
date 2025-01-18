@@ -1,39 +1,66 @@
 export const COMMON_CANT_HAVES = [
-  'gluten',
+  'corn',
   'dairy',
-  'nuts',
+  'eggs',
+  'gluten',
+  'peanuts',
+  'sesame',
   'soy',
-  'shellfish'
+  'shellfish',
+  'tree nuts',
+  'wheat'
 ];
 
 export const COMMON_MUST_HAVES = [
-  'protein',
-  'vegetables',
-  'rice',
+  'dairy alternatives',
+  'fruits',
+  'fiber',
+  'healthy fats',
   'lean meat',
+  'legumes',
+  'protein',
+  'rice',
+  'vegetables',
   'whole grains'
 ];
 
+
 export const COMMON_TASTE_PREFERENCES = [
-  'sweet',
+  'bitter',
+  'creamy',
+  'salty',
   'savory',
-  'spicy',
+  'smoky',
   'sour',
-  'salty'
+  'spicy',
+  'sweet',
+  'tangy',
+  'umami',
 ];
 
 export const COMMON_DIETARY_GOALS = [
-  'weight management',
+  'boost immunity',
+  'disease prevention',
+  'improved digestion',
   'improved nutrition',
   'increase energy',
   'muscle gain',
-  'boost immunity'
+  'optimize metabolism',
+  'reduce inflammation',
+  'stress reduction',
+  'weight management'
 ];
 
+
 export const COMMON_CUISINE_PREFERENCES = [
-  'italian',
-  'mexican',
-  'asian',
   'african',
+  'asian',
+  'european',
+  'indian',
+  'italian',
+  'japanese',
+  'mediterranean',
+  'mexican',
+  'thai',
   'vegan'
 ];

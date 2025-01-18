@@ -90,7 +90,11 @@ const ShareableListModal: React.FC<ShareableListModalProps> = ({
             </button>
           </div>
 
-          <ShareableList items={items} onMoveToInventory={onMoveToInventory} />
+          <ShareableList
+            items={items}
+            onMoveToInventory={onMoveToInventory}
+            hideChecks={true}
+          />
         </div>
       </div>
     </div>

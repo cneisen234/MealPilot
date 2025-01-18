@@ -93,7 +93,6 @@
     display: flex;
     justify-content: center;
     gap: 2rem;
-    margin-bottom: 4rem;
 }
 
 .mealpilot-home__auth-link {
@@ -119,6 +118,7 @@
 .mealpilot-home__feature {
     background-color: var(--surface-color);
     padding: 2rem;
+    border: 1px solid #FF9D72;
     border-radius: 1rem;
     text-align: center;
     box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);

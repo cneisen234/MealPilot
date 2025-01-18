@@ -18,27 +18,33 @@ const Home: React.FC = () => {
           </div>
 
           <h1 className="mealpilot-home__title">
-            Your Personal Recipe
+            Your Holistic
             <span className="mealpilot-home__title-accent">
-              Adventure Awaits
+              Kitchen Solution
             </span>
           </h1>
 
           <p className="mealpilot-home__description">
-            Your holistic kitchen solution that combines AI-powered suggestions
-            with your own culinary creativity. Plan meals, manage ingredients,
-            and explore new recipes with ease.
+            Unleash the power of AI to effortlessly streamline your kitchen.
+            From custom recipe generation to meal planning and pantry
+            management, our intelligent system brings everything together.
           </p>
 
           <Link to="/signup" className="mealpilot-home__cta">
-            Start Cooking
+            Start your 30 Day Free Trial
           </Link>
 
           <div className="mealpilot-home__auth-links">
-            <Link to="/login" className="mealpilot-home__auth-link">
+            <Link
+              to="/login"
+              className="mealpilot-home__auth-link"
+              style={{ textDecoration: "underline" }}>
               Login
             </Link>
-            <Link to="/signup" className="mealpilot-home__auth-link">
+            <Link
+              to="/signup"
+              className="mealpilot-home__auth-link"
+              style={{ textDecoration: "underline" }}>
               Sign Up
             </Link>
           </div>
