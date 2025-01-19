@@ -142,9 +142,6 @@ const InventoryForm: React.FC<InventoryFormProps> = ({
                 Not This Item
               </button>
             )}
-            <button type="button" onClick={onClose} className="cancel-button">
-              Cancel
-            </button>
             <button type="submit" className="submit-button">
               {item ? "Update Item" : "Add Item"}
             </button>

@@ -342,6 +342,14 @@ ${userItems.rows.map((item) => item.item_name).join("\n")}
 
 Identify the most specific item name and find matches from the inventory list.
 
+Filter out any names that are not food related. 
+
+For example names like "food, fruit, apple, milk" can stay
+But words like "plastic bottle, container, logo" need to be removed.
+
+Try to be as specific as possible. Avoid using general words like "condiment" 
+when a better and more specific word like "sauce" exists.
+
 Return a JSON object with this structure:
 {
   "itemName": "most specific item name",

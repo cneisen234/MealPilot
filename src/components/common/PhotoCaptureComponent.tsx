@@ -275,11 +275,6 @@ const PhotoCaptureModal: React.FC<PhotoCaptureModalProps> = ({
                 className="recipe-action-button back-button">
                 <FaCamera /> Capture
               </button>
-              <button
-                onClick={() => setMode("select")}
-                className="recipe-action-button back-button">
-                <FaTimes /> Cancel
-              </button>
             </div>
           </div>
         );

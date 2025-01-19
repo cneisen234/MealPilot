@@ -46,18 +46,6 @@ const ConfirmDeleteModal: React.FC<ConfirmDeleteModalProps> = ({
         <div
           style={{ display: "flex", justifyContent: "flex-end", gap: "10px" }}>
           <button
-            onClick={onClose}
-            style={{
-              padding: "10px 20px",
-              borderRadius: "5px",
-              border: "none",
-              backgroundColor: "var(--surface-color)",
-              color: "var(--text-color)",
-              cursor: "pointer",
-            }}>
-            Cancel
-          </button>
-          <button
             onClick={onConfirm}
             style={{
               padding: "10px 20px",

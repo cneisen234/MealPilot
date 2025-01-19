@@ -125,12 +125,6 @@ const ReceiptMatchesModal: React.FC<ReceiptMatchesModalProps> = ({
 
         <div className="modal-footer">
           <button
-            onClick={onClose}
-            className="button-cancel"
-            disabled={isProcessing}>
-            Cancel
-          </button>
-          <button
             onClick={handleAddToInventory}
             className="button-add"
             disabled={isProcessing || selectedItems.size === 0}>
