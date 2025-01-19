@@ -351,7 +351,7 @@ Consider common variations and alternative names for grocery items.
 Try to be as specific as possible. (example: try to avoid using general words like "condiment".
 try your best to use more specific words like "ketchup" or "syrup" rather just "condiment").
 
-IMPORTANT: Your guess can't be any these items ${userItems.rows
+IMPORTANT: Your guess has to be a food item can't be any these items ${userItems.rows
         .map((item) => item.item_name)
         .join("\n")} NO MATTER WHAT.
  
