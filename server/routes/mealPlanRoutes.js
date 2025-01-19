@@ -297,12 +297,32 @@ Nutritional Information:
       };
 
       let dayComplete = true;
+      const usedRecipesForDay = new Set(); // Track recipes used for this day
 
       // Try to fill each meal type
       for (const mealType of Object.keys(dayMeals)) {
         if (firstUse[mealType].length > 0) {
-          const recipe = firstUse[mealType].shift();
-          dayMeals[mealType] = formatRecipeForMealPlan(recipe, !recipe.id);
+          // Find first recipe that hasn't been used today
+          let recipeIndex = 0;
+          let found = false;
+
+          while (recipeIndex < firstUse[mealType].length && !found) {
+            const potentialRecipe = firstUse[mealType][recipeIndex];
+            if (!usedRecipesForDay.has(potentialRecipe.title)) {
+              // Use this recipe
+              const recipe = firstUse[mealType].splice(recipeIndex, 1)[0];
+              dayMeals[mealType] = formatRecipeForMealPlan(recipe, !recipe.id);
+              usedRecipesForDay.add(recipe.title);
+              found = true;
+            } else {
+              recipeIndex++;
+            }
+          }
+
+          if (!found) {
+            dayComplete = false;
+            continue;
+          }
         } else {
           dayComplete = false;
           continue;
