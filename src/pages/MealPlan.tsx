@@ -203,7 +203,6 @@ const MealPlan: React.FC = () => {
     return (
       <div className="loading-container">
         <AnimatedTechIcon size={100} speed={4} />
-        <p>This might take some time...</p>
       </div>
     );
   }
