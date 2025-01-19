@@ -311,6 +311,20 @@ const PhotoCaptureModal: React.FC<PhotoCaptureModalProps> = ({
             position: "relative",
           }}>
           <h2 style={{ margin: 0 }}>Take or Upload Photo</h2>
+          <div
+            style={{
+              backgroundColor: "rgba(5, 71, 42, 0.1)",
+              padding: "12px 20px",
+              borderRadius: "8px",
+              marginTop: "-22px",
+              fontSize: "0.9rem",
+              color: "var(--text-color)",
+              maxWidth: "850px",
+              margin: "20px auto",
+            }}>
+            NOTE: Make sure item is fully in frame and there are not other items
+            in view.
+          </div>
           <button
             onClick={onClose}
             style={{
