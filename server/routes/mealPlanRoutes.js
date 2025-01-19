@@ -117,6 +117,11 @@ router.post("/generate", authMiddleware, async (req, res) => {
       dinner: [],
     };
 
+    console.log("Initial recipe counts:", {
+      savedRecipes: savedRecipes.rows.length,
+      globalRecipes: globalRecipesResult.rows.length,
+    });
+
     // Combine and shuffle all recipes
     const allRecipes = [...savedRecipes.rows, ...globalRecipesResult.rows].sort(
       () => Math.random() - 0.5
@@ -146,6 +151,12 @@ router.post("/generate", authMiddleware, async (req, res) => {
           }
         });
       }
+    });
+
+    console.log("FirstUse distribution:", {
+      breakfast: firstUse.breakfast.length,
+      lunch: firstUse.lunch.length,
+      dinner: firstUse.dinner.length,
     });
 
     // Check what meal types we're missing
