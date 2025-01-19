@@ -33,6 +33,7 @@ const Home: React.FC = () => {
           <Link to="/signup" className="mealpilot-home__cta">
             Start your 30 Day Free Trial
           </Link>
+          <p>No credit card required</p>
 
           <div className="mealpilot-home__auth-links">
             <Link
