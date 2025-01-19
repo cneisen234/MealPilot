@@ -1,6 +1,7 @@
 const express = require("express");
 const router = express.Router();
 const authMiddleware = require("../middleware/auth");
+const cleanAIResponse = require("../cleanAiResponse");
 const pool = require("../db");
 const openai = require("../openai");
 
