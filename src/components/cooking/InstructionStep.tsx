@@ -27,9 +27,7 @@ const InstructionStep: React.FC<InstructionStepProps> = ({
   const [timerDuration, setTimerDuration] = useState<number | null>(null);
   const [isTimer, setIsTimer] = useState(false);
   const { timeLeft, isActive, startTimer, pauseTimer, resetTimer, playBeep } =
-    useTimer(() => {
-      playBeep();
-    });
+    useTimer();
 
   // Parse instruction for timing information when component mounts or instruction changes
   useEffect(() => {

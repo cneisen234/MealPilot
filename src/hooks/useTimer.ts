@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 
-export const useTimer = (onComplete: () => void) => {
+export const useTimer = () => {
   const [timeLeft, setTimeLeft] = useState<number>(0);
   const [isActive, setIsActive] = useState(false);
   const [isPaused, setIsPaused] = useState(false);
@@ -85,7 +85,6 @@ export const useTimer = (onComplete: () => void) => {
         setTimeLeft((time) => {
           if (time <= 1) {
             setIsActive(false);
-            onComplete();
             playBeep(); // Play beep when timer completes
             return 0;
           }
@@ -97,7 +96,7 @@ export const useTimer = (onComplete: () => void) => {
     return () => {
       if (interval) clearInterval(interval);
     };
-  }, [isActive, timeLeft, onComplete, playBeep]);
+  }, [isActive, timeLeft, playBeep]);
 
   const startTimer = (duration: number) => {
     if (!isPaused) {
