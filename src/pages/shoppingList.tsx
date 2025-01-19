@@ -28,6 +28,7 @@ import ShareableListModal from "../components/shoppingList/SharableListModal";
 import MatchSelectionModal from "../components/common/MatchSelectionModal";
 import SearchInput from "../components/common/SearchInput";
 import { useToast } from "../context/ToastContext";
+import { useAuth } from "../context/AuthContext";
 
 interface Recipe {
   id: number;
@@ -52,6 +53,7 @@ interface ShoppingListFormData {
 
 const ShoppingList: React.FC = () => {
   const { showToast } = useToast();
+  const { aiActionsRemaining, setAiActionsRemaining } = useAuth();
   const [items, setItems] = useState<ShoppingListItem[]>([]);
   const [filteredItems, setFilteredItems] = useState<ShoppingListItem[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -103,9 +105,9 @@ const ShoppingList: React.FC = () => {
       const response = await getShoppingList();
       setItems(response.data);
     } catch (error) {
-      setError("Failed to load shopping list items");
-      console.error("Error loading shopping list:", error);
+      showToast("Failed to load shopping list items", "error");
     } finally {
+      console.log("I'm running");
       setIsLoading(false);
     }
   };
@@ -114,6 +116,17 @@ const ShoppingList: React.FC = () => {
     try {
       setIsUploadingReceipt(true);
       const response = await processReceipt(imageData);
+      if (aiActionsRemaining === 10) {
+        showToast(`You are running low on AI actions for today`, "warning");
+      }
+      if (aiActionsRemaining <= 0) {
+        showToast(
+          "You've reached your daily AI action limit. Please try again tomorrow.",
+          "error"
+        );
+        setIsUploadingReceipt(false);
+        return;
+      }
       if (!response.data.matches.length) {
         showToast("No matching items found on receipt", "info");
       } else {
@@ -123,6 +136,8 @@ const ShoppingList: React.FC = () => {
         );
         setReceiptMatches(response.data.matches);
       }
+      const remainingActions = aiActionsRemaining - 1;
+      setAiActionsRemaining(remainingActions);
     } catch (error) {
       throw error;
     } finally {
@@ -133,6 +148,16 @@ const ShoppingList: React.FC = () => {
   const handleItemPhotoProcessing = async (imageData: string) => {
     try {
       const response = await processShoppingItemPhoto(imageData);
+      if (aiActionsRemaining === 10) {
+        showToast(`You are running low on AI actions for today`, "warning");
+      }
+      if (aiActionsRemaining <= 0) {
+        showToast(
+          "You've reached your daily AI action limit. Please try again tomorrow.",
+          "error"
+        );
+        return;
+      }
       setNewItemFromPhoto(response.data.suggestedName);
       if (response.data.exists) {
         if (response.data.matches.length === 1) {
@@ -146,6 +171,8 @@ const ShoppingList: React.FC = () => {
         // No matches, open add form with suggested name
         handleNoMatch();
       }
+      const remainingActions = aiActionsRemaining - 1;
+      setAiActionsRemaining(remainingActions);
     } catch (error) {
       throw error;
     }
@@ -284,8 +311,12 @@ const ShoppingList: React.FC = () => {
           <button
             onClick={handleShareList}
             className="add-item-button-list"
-            style={{ backgroundColor: "var(--primary-color)" }}>
-            <FaShare /> Share List
+            disabled={selectedItems.size === 0}
+            style={{
+              backgroundColor:
+                selectedItems.size === 0 ? "grey" : "var(--primary-color)",
+            }}>
+            <FaShare /> Share Shopping List
           </button>
         </div>
       </div>
@@ -294,7 +325,7 @@ const ShoppingList: React.FC = () => {
           backgroundColor: "rgba(5, 71, 42, 0.1)",
           padding: "12px 20px",
           borderRadius: "8px",
-          marginTop: "-20px",
+          marginTop: "-22px",
           fontSize: "0.9rem",
           color: "var(--text-color)",
           maxWidth: "850px",
@@ -308,7 +339,7 @@ const ShoppingList: React.FC = () => {
           name: item.item_name,
         }))}
         onSearch={(filtered) => setFilteredItems(filtered)}
-        placeholder="Search your recipes..."
+        placeholder="Search your shopping list..."
       />
 
       <div className="list-grid">
@@ -368,6 +399,10 @@ const ShoppingList: React.FC = () => {
       {(isFormOpen || editingItem) && (
         <ShoppingListForm
           item={editingItem}
+          onSwitchToAdd={() => {
+            setIsFormOpen(true);
+            setEditingItem(null);
+          }}
           onSubmit={editingItem ? handleUpdateItem : handleAddItem}
           onClose={() => {
             setIsFormOpen(false);
@@ -413,7 +448,7 @@ const ShoppingList: React.FC = () => {
           ...item,
           isSelected: selectedItems.has(item.id),
         }))}
-        onMoveToInventory={handleMultiAddToInventory}
+        setIsLoading={setIsLoading}
       />
       {matches && (
         <MatchSelectionModal

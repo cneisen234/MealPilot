@@ -1,5 +1,4 @@
 import React, { useState, useEffect } from "react";
-import decimalHelper from "../../helpers/decimalHelper";
 import { FaTimes, FaTags, FaBoxOpen } from "react-icons/fa";
 import { getUserRecipes } from "../../utils/api";
 import "../../styles/shoppingList.css";
@@ -22,6 +21,7 @@ interface ShoppingListItem {
 
 interface ShoppingListFormProps {
   item?: ShoppingListItem | null;
+  onSwitchToAdd?: any;
   onSubmit: (item: {
     item_name: string;
     quantity: number;
@@ -29,11 +29,13 @@ interface ShoppingListFormProps {
   }) => Promise<void>;
   onClose: () => void;
   onMoveToInventory?: (id: number, expiration_date: string) => Promise<void>;
+  onNoMatch?: () => void;
   newItemFromPhoto?: string | null;
 }
 
 const ShoppingListForm: React.FC<ShoppingListFormProps> = ({
   item,
+  onSwitchToAdd,
   onSubmit,
   onClose,
   onMoveToInventory,
@@ -42,9 +44,9 @@ const ShoppingListForm: React.FC<ShoppingListFormProps> = ({
   const [itemName, setItemName] = useState("");
   const [quantity, setQuantity] = useState(1);
   const [recipeIds, setRecipeIds] = useState<number[]>([]);
-  const [availableRecipes, setAvailableRecipes] = useState<Recipe[]>([]);
   const [showInventoryTransfer, setShowInventoryTransfer] = useState(false);
   const [expirationDate, setExpirationDate] = useState("");
+  const [availableRecipes, setAvailableRecipes] = useState<Recipe[]>([]);
 
   // Error states
   const [itemNameError, setItemNameError] = useState("");
@@ -114,6 +116,8 @@ const ShoppingListForm: React.FC<ShoppingListFormProps> = ({
         : [...prev, recipeId]
     );
   };
+
+  const showNotThisItemButton = item && newItemFromPhoto;
 
   return (
     <div className="modal-overlay">
@@ -192,6 +196,20 @@ const ShoppingListForm: React.FC<ShoppingListFormProps> = ({
           )}
 
           <div className="form-actions">
+            {showNotThisItemButton && (
+              <button
+                type="button"
+                onClick={() => {
+                  onSwitchToAdd();
+                  setItemName(newItemFromPhoto || "");
+                  setQuantity(1);
+                  setRecipeIds([]);
+                }}
+                className="cancel-button"
+                style={{ marginRight: "auto" }}>
+                Not This Item
+              </button>
+            )}
             <button
               type="button"
               onClick={() => {

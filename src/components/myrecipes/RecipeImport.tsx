@@ -1,9 +1,10 @@
 import React, { useState } from "react";
-import { FaLink, FaCamera } from "react-icons/fa";
+import { FaLink, FaCamera, FaArrowLeft } from "react-icons/fa";
 import { extractRecipeFromImage, scrapeRecipe } from "../../utils/api";
 import AnimatedTechIcon from "../common/AnimatedTechIcon";
 import PhotoCaptureModal from "../common/PhotoCaptureComponent";
 import { useToast } from "../../context/ToastContext";
+import { useAuth } from "../../context/AuthContext";
 
 interface RecipeImportProps {
   onRecipeImported: (recipe: {
@@ -16,13 +17,10 @@ interface RecipeImportProps {
     instructions: string[];
     nutritionalInfo: string[];
   }) => void;
-  onError: (error: string) => void;
 }
 
-const RecipeImport: React.FC<RecipeImportProps> = ({
-  onRecipeImported,
-  onError,
-}) => {
+const RecipeImport: React.FC<RecipeImportProps> = ({ onRecipeImported }) => {
+  const { aiActionsRemaining, setAiActionsRemaining } = useAuth();
   const [url, setUrl] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [isExpanded, setIsExpanded] = useState(false);
@@ -39,10 +37,24 @@ const RecipeImport: React.FC<RecipeImportProps> = ({
     if (!url.trim()) return;
 
     setIsLoading(true);
+
     try {
       const response = await scrapeRecipe(url);
+      if (aiActionsRemaining === 10) {
+        showToast(`You are running low on AI actions for today`, "warning");
+      }
+      if (aiActionsRemaining <= 0) {
+        showToast(
+          "You've reached your daily AI action limit. Please try again tomorrow.",
+          "error"
+        );
+        setIsLoading(false);
+        return;
+      }
       onRecipeImported(response.data.recipe);
       showToast("Recipe imported successfully", "success");
+      const actionsRemaining = aiActionsRemaining - 1;
+      setAiActionsRemaining(actionsRemaining);
       handleClose();
     } catch (error) {
       showToast(
@@ -57,7 +69,19 @@ const RecipeImport: React.FC<RecipeImportProps> = ({
   const handleImageProcessing = async (imageData: string) => {
     try {
       const response = await extractRecipeFromImage(imageData);
+      if (aiActionsRemaining === 10) {
+        showToast(`You are running low on AI actions for today`, "warning");
+      }
+      if (aiActionsRemaining < 1) {
+        showToast(
+          "You've reached your daily AI action limit. Please try again tomorrow.",
+          "error"
+        );
+        return;
+      }
       onRecipeImported(response.data.recipe);
+      const remainingActions = aiActionsRemaining - 1;
+      setAiActionsRemaining(remainingActions);
     } catch (error) {
       throw error;
     }
@@ -65,13 +89,28 @@ const RecipeImport: React.FC<RecipeImportProps> = ({
 
   return (
     <div className="recipe-import-container">
+      <div
+        style={{
+          backgroundColor: "rgba(5, 71, 42, 0.1)",
+          padding: "12px 20px",
+          borderRadius: "8px",
+          marginTop: "-20px",
+          fontSize: "0.7rem",
+          color: "var(--text-color)",
+          maxWidth: "850px",
+          margin: "20px auto",
+        }}>
+        DISCLAIMER: Please review recipes from web and photo imports before
+        saving as minor adjustments may be needed.
+      </div>
       <div className="import-method-toggle">
         {isExpanded ? (
           <button
             type="button"
             onClick={handleClose}
-            className="toggle-import-button active">
-            Close
+            className="toggle-import-button active"
+            style={{ marginBottom: 20 }}>
+            <FaArrowLeft className="button-icon" />
           </button>
         ) : (
           <>
@@ -82,14 +121,15 @@ const RecipeImport: React.FC<RecipeImportProps> = ({
               }}
               className="toggle-import-button">
               <FaLink />
-              Import from URL
+              Upload from URL
             </button>
             <button
               type="button"
               onClick={() => setIsPhotoModalOpen(true)}
-              className="toggle-import-button">
+              className="toggle-import-button"
+              style={{ marginLeft: 12 }}>
               <FaCamera />
-              Take or Upload Photo
+              Take Photo
             </button>
           </>
         )}
@@ -107,19 +147,20 @@ const RecipeImport: React.FC<RecipeImportProps> = ({
               className="url-input"
               disabled={isLoading}
             />
-            <button
-              type="submit"
-              className="import-button"
-              disabled={isLoading || !url.trim()}>
-              {isLoading ? (
-                <div>
-                  <AnimatedTechIcon size={20} speed={4} />
-                </div>
-              ) : (
-                "Import"
-              )}
-            </button>
           </div>
+          <br />
+          <button
+            type="submit"
+            className="import-button"
+            disabled={isLoading || !url.trim()}>
+            {isLoading ? (
+              <div>
+                <AnimatedTechIcon size={20} speed={4} />
+              </div>
+            ) : (
+              "Import"
+            )}
+          </button>
         </form>
       )}
 

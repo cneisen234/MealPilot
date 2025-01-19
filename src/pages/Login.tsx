@@ -50,7 +50,7 @@ const Login: React.FC = () => {
     try {
       const response = await login({ email: email.toLowerCase(), password });
       localStorage.setItem("token", response.data.token);
-      authLogin(response.data.token);
+      authLogin(response.data.token, response.data.user.ai_actions);
       checkAuthStatus();
       showToast("Successfully logged in!", "success");
       navigate("/recipe", { state: { fromLogin: true } });
@@ -63,7 +63,33 @@ const Login: React.FC = () => {
     <div className="center-container">
       <div className="content-wrapper">
         <div className="auth-form">
-          <h2>Login to Your Account</h2>
+          <div
+            style={{
+              textAlign: "center",
+              marginBottom: "24px",
+            }}>
+            <img
+              src="/MealPilot-icon-transparent.png"
+              alt="MealPilot"
+              style={{
+                width: "64px",
+                height: "64px",
+                marginBottom: "12px",
+              }}
+            />
+            <h2
+              style={{
+                background:
+                  "linear-gradient(45deg, var(--primary-color) 35%, var(--secondary-color) 85%)",
+                WebkitBackgroundClip: "text",
+                WebkitTextFillColor: "transparent",
+                backgroundClip: "text",
+                color: "transparent",
+                marginBottom: "0",
+              }}>
+              MealPilot
+            </h2>
+          </div>
           <form onSubmit={(e) => handleSubmit(e)}>
             <div className="form-group">
               <input

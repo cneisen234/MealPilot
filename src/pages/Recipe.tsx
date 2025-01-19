@@ -39,6 +39,7 @@ import "../styles/recipe.css";
 import { useLocation, useNavigate } from "react-router-dom";
 import { FaArrowLeft } from "react-icons/fa";
 import { useToast } from "../context/ToastContext";
+import { useAuth } from "../context/AuthContext";
 
 interface Recipe {
   mealType: any;
@@ -55,6 +56,8 @@ const Recipe = () => {
   const navigate = useNavigate();
   const routeLocation = useLocation();
   const { showToast } = useToast();
+  //@ts-ignore
+  const { aiActionsRemaining, setAiActionsRemaining } = useAuth();
   const [cantHaves, setCantHaves] = useState<CantHave[]>([]);
   const [mustHaves, setMustHaves] = useState<MustHave[]>([]);
   const [tastePreferences, setTastePreferences] = useState<TastePreference[]>(
@@ -75,6 +78,12 @@ const Recipe = () => {
   useEffect(() => {
     loadPreferences();
   }, []);
+
+  useEffect(() => {
+    if (preferencesCount > 6) {
+      showToast("Can't have more than 7 items selected", "warning");
+    }
+  }, [preferencesCount]);
 
   useEffect(() => {
     const cantHavesCount = cantHaves.length;
@@ -234,10 +243,24 @@ const Recipe = () => {
     setIsLoading(true);
     try {
       const response = await generateRecipe(selectedMealType);
+      if (aiActionsRemaining === 10) {
+        showToast(`You are running low on AI actions for today`, "warning");
+      }
+      if (aiActionsRemaining <= 0) {
+        showToast(
+          "You've reached your daily AI action limit. Please try again tomorrow.",
+          "error"
+        );
+        setIsLoading(false);
+        return;
+      }
       setRecipe(response.data.recipe);
-      setIsLoading(false);
+      const remainingActions = aiActionsRemaining - 1;
+      setAiActionsRemaining(remainingActions);
     } catch (error) {
+      showToast("Error generating recipe", "error");
       console.error("Error generating recipe:", error);
+    } finally {
       setIsLoading(false);
     }
   };
@@ -316,7 +339,7 @@ const Recipe = () => {
             padding: "12px 20px",
             borderRadius: "8px",
             marginTop: "-20px",
-            fontSize: "0.9rem",
+            fontSize: "0.6rem",
             color: "var(--text-color)",
             maxWidth: "850px",
             margin: "20px auto",
@@ -412,7 +435,7 @@ const Recipe = () => {
   return (
     <div className="recipe-container">
       <div className="recipe-header">
-        <h1>Recipe Preferences</h1>
+        <h1>Generate a Recipe</h1>
         <p>
           Choose up to 7 dietary preferences to get personalized recipe
           recommendations.
@@ -422,8 +445,8 @@ const Recipe = () => {
             backgroundColor: "rgba(5, 71, 42, 0.1)",
             padding: "12px 20px",
             borderRadius: "8px",
-            marginTop: "-20px",
-            fontSize: "0.9rem",
+            marginTop: "-30px",
+            fontSize: "0.6rem",
             color: "var(--text-color)",
             maxWidth: "800px",
             margin: "20px auto",
@@ -445,8 +468,8 @@ const Recipe = () => {
           disabled={false}
         />
         <PreferenceInput
-          label="Can't Haves"
-          description="Select from common restrictions or add your own ingredients that you cannot eat."
+          label="Can't-Haves"
+          description="Select from common restrictions or add your own ingredients that you unable to eat."
           placeholder="Enter an ingredient you can't eat..."
           items={cantHaves}
           onAdd={handleAddCantHave}
@@ -457,7 +480,7 @@ const Recipe = () => {
         />
 
         <PreferenceInput
-          label="Must Haves"
+          label="Must-Haves"
           description="Select from common ingredients or add your own that you want in your recipes."
           placeholder="Enter an ingredient you must have..."
           items={mustHaves}
@@ -470,7 +493,7 @@ const Recipe = () => {
 
         <PreferenceInput
           label="Taste"
-          description="How do you want the item to taste?."
+          description="How do you want the item to taste?"
           placeholder="Enter a taste preference..."
           items={tastePreferences}
           onAdd={handleAddTastePreference}
@@ -482,7 +505,7 @@ const Recipe = () => {
 
         <PreferenceInput
           label="Dietary Goals"
-          description="Do you have any goals for your diet?."
+          description="Do you have any goals for your diet?"
           placeholder="Enter a goal..."
           items={dietaryGoals}
           onAdd={handleAddDietaryGoal}
@@ -494,7 +517,7 @@ const Recipe = () => {
 
         <PreferenceInput
           label="Cuisine"
-          description="Do you prefer a specific cuisine style?."
+          description="Do you prefer a specific cuisine style?"
           placeholder="Enter a cuisine preference..."
           items={cuisinePreferences}
           onAdd={handleAddCuisinePreference}

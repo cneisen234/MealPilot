@@ -436,7 +436,8 @@ const RecipeDetail: React.FC = () => {
         </button>
         <button
           onClick={() => setIsCookingMode(true)}
-          className="recipe-action-button back-button">
+          className="recipe-action-button back-button"
+          style={{ fontSize: 12.5 }}>
           Start Cooking
         </button>
         <button
@@ -478,10 +479,30 @@ const RecipeDetail: React.FC = () => {
           <button
             onClick={handleAnalyzeIngredients}
             className="analyze-button"
-            disabled={isAnalyzing}>
+            style={
+              recipe?.ingredients?.length > 11
+                ? { backgroundColor: "grey" }
+                : {}
+            }
+            disabled={isAnalyzing || recipe?.ingredients?.length > 11}>
             {isAnalyzing && <AnimatedTechIcon size={20} speed={4} />}
-            {isAnalyzing ? "Analyzing..." : "Check Stock"}
+            {isAnalyzing ? "Analyzing..." : "Check Pantry"}
           </button>
+          {recipe?.ingredients?.length > 11 && (
+            <div
+              style={{
+                backgroundColor: "rgba(5, 71, 42, 0.1)",
+                padding: "12px 20px",
+                borderRadius: "8px",
+                marginTop: "-20px",
+                fontSize: "0.75rem",
+                color: "var(--text-color)",
+                maxWidth: "850px",
+                margin: "20px auto",
+              }}>
+              Ingredients list is too large to check pantry.
+            </div>
+          )}
         </div>
         <ul className="recipe-list">
           {recipe.ingredients.map((ingredient, index) => (
@@ -495,7 +516,9 @@ const RecipeDetail: React.FC = () => {
                     style={{ width: 215 }}>
                     <div className="ingredient-status sufficient">
                       <FaCheck />
-                      <span>In Stock</span>
+                      <span>
+                        Current Stock: {ingredient.status.available?.quantity}
+                      </span>
                     </div>
                   </div>
                 )}

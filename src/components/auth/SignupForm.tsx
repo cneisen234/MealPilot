@@ -1,5 +1,4 @@
 import React, { useState, useEffect, useCallback } from "react";
-import { useNavigate } from "react-router-dom";
 import { signup, login, checkEmailAvailability } from "../../utils/api";
 import { useAuth } from "../../context/AuthContext";
 import useDebounce from "../../hooks/useDebounce";

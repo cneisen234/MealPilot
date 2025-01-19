@@ -4,9 +4,11 @@ import React, { createContext, useState, useEffect, useContext } from "react";
 
 interface AuthContextType {
   isAuthenticated: boolean;
-  login: (token: string) => void;
+  login: (token: string, ai_actions: number) => void;
   logout: () => void;
   checkAuthStatus: () => void;
+  setAiActionsRemaining: (aiActionsRemaining: number) => void;
+  aiActionsRemaining: number;
 }
 
 const AuthContext = createContext<AuthContextType | null>(null);
@@ -15,6 +17,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
   children,
 }) => {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [aiActionsRemaining, setAiActionsRemaining] = useState(40);
 
   const checkAuthStatus = () => {
     const token = localStorage.getItem("token");
@@ -25,8 +28,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
     checkAuthStatus();
   }, []);
 
-  const login = (token: string) => {
+  const login = (token: string, ai_actions: number) => {
     localStorage.setItem("token", token);
+    setAiActionsRemaining(ai_actions);
     setIsAuthenticated(true);
   };
 
@@ -37,7 +41,14 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
 
   return (
     <AuthContext.Provider
-      value={{ isAuthenticated, login, logout, checkAuthStatus }}>
+      value={{
+        isAuthenticated,
+        login,
+        logout,
+        checkAuthStatus,
+        setAiActionsRemaining,
+        aiActionsRemaining,
+      }}>
       {children}
     </AuthContext.Provider>
   );

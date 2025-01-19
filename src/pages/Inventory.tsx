@@ -16,6 +16,7 @@ import {
 import "../styles/inventory.css";
 import SearchInput from "../components/common/SearchInput";
 import { useToast } from "../context/ToastContext";
+import { useAuth } from "../context/AuthContext";
 
 interface InventoryItem {
   id: number;
@@ -41,6 +42,7 @@ type ExpiringItemData = {
 
 const Inventory: React.FC = () => {
   const { showToast } = useToast();
+  const { aiActionsRemaining, setAiActionsRemaining } = useAuth();
   const [items, setItems] = useState<InventoryItem[]>([]);
   const [filteredItems, setFilteredItems] = useState<InventoryItem[]>([]);
   const [alertDidShow, setAlertDidShow] = useState(false);
@@ -54,7 +56,6 @@ const Inventory: React.FC = () => {
     suggestedName: string;
   } | null>(null);
   const [newItemFromPhoto, setNewItemFromPhoto] = useState<string | null>(null);
-  const [error, setError] = useState("");
   const [showExpirationAlert, setShowExpirationAlert] = useState(false);
   const [expiringItems, setExpiringItems] = useState<ExpiringItemData[]>([]);
   const threeDaysFromNow = new Date();
@@ -99,7 +100,7 @@ const Inventory: React.FC = () => {
       const response = await getInventoryItems();
       setItems(response.data);
     } catch (error) {
-      setError("Failed to load inventory items");
+      showToast("Failed to load inventory items", "error");
       console.error("Error loading inventory:", error);
     } finally {
       setIsLoading(false);
@@ -135,7 +136,7 @@ const Inventory: React.FC = () => {
       setIsFormOpen(false);
       showToast("Item added successfully!", "success");
     } catch (error) {
-      setError("Failed to add item");
+      showToast("Failed to add item", "error");
       showToast("Error adding item. Please try again.", "error");
     }
   };
@@ -160,7 +161,7 @@ const Inventory: React.FC = () => {
 
       setEditingItem(null);
     } catch (error) {
-      setError("Failed to update item");
+      showToast("Failed to update item", "error");
       console.error("Error updating item:", error);
     }
   };
@@ -180,6 +181,16 @@ const Inventory: React.FC = () => {
   const handleItemPhotoProcessing = async (imageData: string) => {
     try {
       const response = await processInventoryItemPhoto(imageData);
+      if (aiActionsRemaining === 10) {
+        showToast(`You are running low on AI actions for today`, "warning");
+      }
+      if (aiActionsRemaining < 1) {
+        showToast(
+          "You've reached your daily AI action limit. Please try again tomorrow.",
+          "error"
+        );
+        return;
+      }
       setNewItemFromPhoto(response.data.suggestedName);
       if (response.data.exists) {
         if (response.data.matches.length === 1) {
@@ -197,6 +208,8 @@ const Inventory: React.FC = () => {
         handleNoMatch();
       }
       showToast("Item photo processed successfully", "success");
+      const remainingActions = aiActionsRemaining - 1;
+      setAiActionsRemaining(remainingActions);
     } catch (error) {
       showToast("Error processing item photo", "error");
     }
@@ -240,7 +253,7 @@ const Inventory: React.FC = () => {
           name: item.item_name,
         }))}
         onSearch={(filtered) => setFilteredItems(filtered)}
-        placeholder="Search your recipes..."
+        placeholder="Search your inventory..."
       />
 
       <div className="list-grid">
@@ -286,6 +299,10 @@ const Inventory: React.FC = () => {
       {(isFormOpen || editingItem) && (
         <InventoryForm
           item={editingItem}
+          onSwitchToAdd={() => {
+            setIsFormOpen(true);
+            setEditingItem(null);
+          }}
           initialItemName={newItemFromPhoto}
           onSubmit={editingItem ? handleUpdateItem : handleAddItem}
           onClose={() => {

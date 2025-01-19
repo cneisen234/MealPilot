@@ -209,11 +209,6 @@
     transition: all 0.3s ease;
 }
 
-.add-item-button-list:hover {
-    opacity: 0.9;
-    transform: scale(1.05);
-}
-
 .modal-overlay {
   position: fixed;
   top: 0;

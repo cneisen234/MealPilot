@@ -110,12 +110,12 @@
     align-items: center;
     gap: 8px;
     background: none;
-    border: none;
+    border: 2px solid var(--primary-color);
     color: var(--primary-color);
     font-weight: 600;
     cursor: pointer;
     padding: 8px;
-    border-radius: 6px;
+    border-radius: 10px;
     transition: all 0.3s ease;
 }
 

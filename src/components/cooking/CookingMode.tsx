@@ -18,28 +18,43 @@ interface CookingModeProps {
 const CookingMode: React.FC<CookingModeProps> = ({ recipe, onClose }) => {
   const { showToast } = useToast();
   const [currentStep, setCurrentStep] = useState(-1);
-  const [analyzedIngredients, setAnalyzedIngredients] = useState<any[]>([]);
-  const [isAnalyzing, setIsAnalyzing] = useState(true);
+  const [state, setState] = useState({
+    ingredients: [],
+    isLoading: true,
+  });
 
   useEffect(() => {
-    analyzeRecipeIngredients();
-  }, [recipe.id]);
+    const controller = new AbortController();
 
-  const analyzeRecipeIngredients = async () => {
-    try {
-      //@ts-ignore
-      const response = await getRecipeInventory(recipe.id);
-      const inStockIngredients = response.data.ingredients.filter(
-        (ing: any) => ing.status.type === "in-inventory"
-      );
-      setAnalyzedIngredients(inStockIngredients);
-      showToast("Ingredients checked successfully", "success");
-    } catch (error) {
-      showToast("Error checking ingredients", "error");
-    } finally {
-      setIsAnalyzing(false);
-    }
-  };
+    const analyzeRecipeIngredients = async () => {
+      try {
+        const response = await getRecipeInventory(String(recipe.id));
+        if (controller.signal.aborted) return;
+
+        const inStockIngredients = response.data.ingredients.filter(
+          (ing: any) => ing.status.type === "in-inventory"
+        );
+
+        setState({
+          ingredients: inStockIngredients,
+          isLoading: false,
+        });
+
+        showToast("Ingredients checked successfully", "success");
+      } catch (error) {
+        if (!controller.signal.aborted) {
+          setState((prev) => ({ ...prev, isLoading: false }));
+          showToast("Error checking ingredients", "error");
+        }
+      }
+    };
+
+    analyzeRecipeIngredients();
+
+    return () => {
+      controller.abort();
+    };
+  }, [recipe.id, showToast]);
 
   const handleExitClick = () => {
     onClose();
@@ -47,7 +62,7 @@ const CookingMode: React.FC<CookingModeProps> = ({ recipe, onClose }) => {
 
   const renderContent = () => {
     if (currentStep === -1) {
-      if (isAnalyzing) {
+      if (state.isLoading) {
         return (
           <div className="loading-container">
             <AnimatedTechIcon size={100} speed={4} />
@@ -58,7 +73,7 @@ const CookingMode: React.FC<CookingModeProps> = ({ recipe, onClose }) => {
 
       return (
         <InventoryCheckStep
-          analyzedIngredients={analyzedIngredients}
+          analyzedIngredients={state.ingredients}
           onComplete={() => setCurrentStep(0)}
         />
       );

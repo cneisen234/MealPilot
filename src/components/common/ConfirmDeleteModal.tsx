@@ -63,7 +63,7 @@ const ConfirmDeleteModal: React.FC<ConfirmDeleteModalProps> = ({
               padding: "10px 20px",
               borderRadius: "5px",
               border: "none",
-              backgroundColor: "var(--primary-color)",
+              backgroundColor: "red",
               color: "white",
               cursor: "pointer",
             }}>

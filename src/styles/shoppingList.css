@@ -542,7 +542,7 @@
     }
 
     .share-link-section {
-        flex-direction: column;
+        flex-direction: row;
         align-items: stretch;
         gap: 8px;
     }
@@ -561,4 +561,8 @@
     .list-item-action {
         align-self: flex-end;
     }
+
+        .link-icon {
+            margin-top: 10px
+        }
 }

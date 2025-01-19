@@ -12,7 +12,7 @@ router.post("/login", async (req, res) => {
   try {
     // Fetch the user from the database, excluding the password
     const result = await pool.query(
-      "SELECT id, email, name, password FROM users WHERE email = $1",
+      "SELECT id, email, name, ai_actions, password FROM users WHERE email = $1",
       [email]
     );
 
@@ -39,7 +39,12 @@ router.post("/login", async (req, res) => {
     return res.json({
       message: "Login successful",
       token,
-      user: { id: user.id, email: user.email, name: user.name },
+      user: {
+        id: user.id,
+        email: user.email,
+        name: user.name,
+        ai_actions: user.ai_actions,
+      },
     });
   } catch (error) {
     console.error("Error during login:", error);

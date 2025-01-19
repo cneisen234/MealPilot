@@ -29,7 +29,7 @@ export const ToastProvider: React.FC<{ children: React.ReactNode }> = ({
     // Auto-remove toast after 5 seconds
     setTimeout(() => {
       setToasts((prevToasts) => prevToasts.filter((toast) => toast.id !== id));
-    }, 5000);
+    }, 2000);
   }, []);
 
   const removeToast = useCallback((id: string) => {

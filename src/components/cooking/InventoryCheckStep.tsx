@@ -130,21 +130,30 @@ const InventoryCheckStep: React.FC<InventoryCheckStepProps> = ({
         </div>
 
         <div className="button-stack">
+          {selectedIngredients.length === 0 ? (
+            <div style={{ marginBottom: 20, fontSize: 18 }}>
+              No ingredients were found.
+            </div>
+          ) : (
+            <button
+              onClick={handleRemoveFromInventory}
+              disabled={selectedIngredients.length === 0 || isProcessing}
+              className="primary-button"
+              style={{ padding: 10, marginBottom: 15 }}>
+              {isProcessing ? (
+                <div className="processing-indicator">
+                  <AnimatedTechIcon size={20} speed={4} />
+                  <span>Processing...</span>
+                </div>
+              ) : (
+                "Remove From Inventory"
+              )}
+            </button>
+          )}
           <button
-            onClick={handleRemoveFromInventory}
-            disabled={selectedIngredients.length === 0 || isProcessing}
-            className="primary-button">
-            {isProcessing ? (
-              <div className="processing-indicator">
-                <AnimatedTechIcon size={20} speed={4} />
-                <span>Processing...</span>
-              </div>
-            ) : (
-              "Remove From Inventory"
-            )}
-          </button>
-          <button onClick={onComplete} className="secondary-button">
-            Start Cooking
+            onClick={onComplete}
+            className="recipe-action-button back-button">
+            Start Cooking!
           </button>
         </div>
       </div>

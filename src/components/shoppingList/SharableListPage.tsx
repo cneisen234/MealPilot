@@ -77,7 +77,36 @@ const ShareableListPage: React.FC = () => {
 
   return (
     <div className="shareable-list-container">
-      <h1 className="shareable-list-title">Shopping List</h1>
+      <div
+        style={{
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          marginBottom: "32px",
+          gap: "16px",
+        }}>
+        <img
+          src="/MealPilot-icon-transparent.png"
+          alt="MealPilot"
+          style={{
+            width: "48px",
+            height: "48px",
+          }}
+        />
+        <h1
+          style={{
+            background:
+              "linear-gradient(45deg, var(--primary-color) 35%, var(--secondary-color) 85%)",
+            WebkitBackgroundClip: "text",
+            WebkitTextFillColor: "transparent",
+            backgroundClip: "text",
+            color: "transparent",
+            margin: "0",
+            fontSize: "2.5rem",
+          }}>
+          MealPilot
+        </h1>
+      </div>
 
       <div className="list-section">
         <h2 className="section-title">Items to Get</h2>

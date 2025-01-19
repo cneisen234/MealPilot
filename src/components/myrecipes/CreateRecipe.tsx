@@ -108,14 +108,13 @@ const CreateRecipe: React.FC = () => {
             mealType: recipe.meaType,
           });
         }}
-        onError={(error) => setError(error)}
       />
       <form onSubmit={handleSubmit}>
         <div className="recipe-actions">
           <button
             type="button"
             onClick={() => navigate("/myrecipes")}
-            style={{ display: "flex", alignItems: "center" }}
+            style={{ display: "flex", alignItems: "center", marginRight: 45 }}
             className="recipe-action-button back-button">
             <FaTimes style={{ marginRight: 8 }} /> Cancel
           </button>
@@ -129,7 +128,7 @@ const CreateRecipe: React.FC = () => {
           </button>
         </div>
 
-        <div className="recipe-form-title">
+        <div className="recipe-form-title" style={{ marginTop: 30 }}>
           <input
             type="text"
             name="title"

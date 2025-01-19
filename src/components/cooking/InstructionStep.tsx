@@ -6,7 +6,7 @@ import {
   FaPause,
   FaRedo,
 } from "react-icons/fa";
-import { useTimer } from "../../hooks/useTimer"; // We'll create this hook next
+import { useTimer } from "../../hooks/useTimer";
 
 interface InstructionStepProps {
   instruction: string;
@@ -31,22 +31,23 @@ const InstructionStep: React.FC<InstructionStepProps> = ({
       playBeep();
     });
 
-  // Parse instruction for timing information when component mounts
+  // Parse instruction for timing information when component mounts or instruction changes
   useEffect(() => {
+    // Reset timer states when instruction changes
+    setIsTimer(false);
+    setTimerDuration(null);
+    resetTimer(0);
+
+    // Parse new instruction for timing information
     const timeInfo = parseTimeFromInstruction(instruction);
-    console.log(timeInfo);
+
     if (timeInfo) {
-      if (isTimer) {
-        resetTimer(timeInfo.minTime);
-      } else {
-        setTimerDuration(timeInfo.minTime);
-      }
+      const newDuration = timeInfo.minTime;
+      setTimerDuration(newDuration);
+      resetTimer(newDuration);
       setIsTimer(true);
-    } else {
-      setTimerDuration(0);
-      setIsTimer(false);
     }
-  }, [instruction]);
+  }, [instruction]); // Only depend on instruction changes
 
   // Function to parse time information from instruction text
   const parseTimeFromInstruction = (text: string) => {
@@ -95,6 +96,24 @@ const InstructionStep: React.FC<InstructionStepProps> = ({
     return <p className="instruction-text">{text}</p>;
   };
 
+  // Handle timer reset
+  const handleResetTimer = () => {
+    if (timerDuration !== null) {
+      resetTimer(timerDuration);
+    }
+  };
+
+  // Handle timer start/pause
+  const handleTimerToggle = () => {
+    if (timerDuration === null) return;
+
+    if (isActive) {
+      pauseTimer();
+    } else {
+      startTimer(timerDuration);
+    }
+  };
+
   return (
     <div className="recipe-result">
       <p className="step-counter">
@@ -120,23 +139,21 @@ const InstructionStep: React.FC<InstructionStepProps> = ({
         {renderInstruction(instruction)}
 
         {/* Timer section */}
-        {isTimer && (
+        {isTimer && timerDuration !== null && (
           <div className="timer-container">
             <div className="timer-content">
               <div className="timer-display">
-                {formatTime(timeLeft || timerDuration!)}
+                {formatTime(timeLeft || timerDuration)}
               </div>
 
               <div className="timer-controls">
                 <button
-                  onClick={() =>
-                    isActive ? pauseTimer() : startTimer(timerDuration!)
-                  }
+                  onClick={handleTimerToggle}
                   className="recipe-action-button">
                   {isActive ? <FaPause /> : <FaPlay />}
                 </button>
                 <button
-                  onClick={() => resetTimer(timerDuration!)}
+                  onClick={handleResetTimer}
                   className="recipe-action-button">
                   <FaRedo />
                 </button>

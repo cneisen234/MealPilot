@@ -1,5 +1,4 @@
-import React, { useState, useEffect } from "react";
-import decimalHelper from "../../helpers/decimalHelper";
+import React, { useState, useEffect, Dispatch, SetStateAction } from "react";
 import { FaTimes } from "react-icons/fa";
 import QtyInput from "../common/QtyInput";
 
@@ -14,6 +13,7 @@ interface InventoryItem {
 
 interface InventoryFormProps {
   item?: InventoryItem | null;
+  onSwitchToAdd?: any;
   initialItemName?: string | null;
   onSubmit: (item: {
     item_name: string;
@@ -25,6 +25,7 @@ interface InventoryFormProps {
 
 const InventoryForm: React.FC<InventoryFormProps> = ({
   item,
+  onSwitchToAdd,
   initialItemName = "",
   onSubmit,
   onClose,
@@ -32,7 +33,6 @@ const InventoryForm: React.FC<InventoryFormProps> = ({
   const [itemName, setItemName] = useState("");
   const [quantity, setQuantity] = useState(1);
   const [expirationDate, setExpirationDate] = useState("");
-
   const [itemNameError, setItemNameError] = useState("");
   const [quantityError] = useState("");
   const [expirationDateError] = useState("");
@@ -82,6 +82,8 @@ const InventoryForm: React.FC<InventoryFormProps> = ({
     }
   };
 
+  const showNotThisItemButton = item && initialItemName;
+
   return (
     <div className="modal-overlay">
       <div className="modal-content">
@@ -126,6 +128,20 @@ const InventoryForm: React.FC<InventoryFormProps> = ({
           </div>
 
           <div className="form-actions">
+            {showNotThisItemButton && (
+              <button
+                type="button"
+                onClick={() => {
+                  onSwitchToAdd();
+                  setItemName(initialItemName || "");
+                  setQuantity(1);
+                  setExpirationDate("");
+                }}
+                className="cancel-button"
+                style={{ marginRight: "auto" }}>
+                Not This Item
+              </button>
+            )}
             <button type="button" onClick={onClose} className="cancel-button">
               Cancel
             </button>

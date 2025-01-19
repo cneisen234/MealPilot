@@ -1,7 +1,7 @@
 .recipe-container {
     max-width: 1200px;
     margin: 0 auto;
-    padding: 60px 20px;
+    padding: 20px;
 }
 
 .recipe-content {
@@ -44,6 +44,7 @@
 
 .preference-section {
     background: #FFFFFF;
+    border: 1px solid var(--secondary-color);
     border-radius: 15px;
     padding: 30px;
     box-shadow: 0 10px 20px rgba(0, 0, 0, 0.1);
@@ -201,8 +202,9 @@
     color: white;
     border: none;
     padding: 12px 30px;
+    margin-bottom: -20px;
     border-radius: 30px;
-    font-size: 1.1rem;
+    font-size: 0.9rem;
     font-weight: 600;
     cursor: pointer;
     transition: background 0.3s ease, transform 0.3s ease;
@@ -233,6 +235,7 @@
     background: white;
     border-radius: 15px;
     padding: 40px;
+    border: 1px solid var(--secondary-color);
     box-shadow: 0 10px 20px rgba(0, 0, 0, 0.1);
 }
 
@@ -249,6 +252,7 @@
     display: flex;
     justify-content: center;
     gap: 30px;
+    margin-top: 40px;
     margin-bottom: 40px;
     flex-wrap: wrap;
 }
@@ -326,7 +330,7 @@
 .recipe-action-button {
     padding: 6px 12px;
     border: none;
-    border-radius: 50px;
+    border-radius: 10px;
     font-weight: 600;
     cursor: pointer;
     transition: all 0.3s ease;
@@ -430,7 +434,7 @@
     background-color: var(--primary-color);
     color: white;
     padding: 0.75rem;
-    border-radius: 4px;
+    border-radius: 10px;
     font-weight: 500;
     border: none;
 }
@@ -439,7 +443,7 @@
     background-color: white;
     color: var(--primary-color);
     padding: 0.75rem;
-    border-radius: 4px;
+    border-radius: 10px;
     font-weight: 500;
     border: 1px solid var(--primary-color);
 }
@@ -684,10 +688,6 @@
 
     .preference-section {
         padding: 20px;
-    }
-
-    .input-group {
-        flex-direction: column;
     }
 
     .add-button,

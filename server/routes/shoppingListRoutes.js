@@ -1,6 +1,7 @@
 const express = require("express");
 const router = express.Router();
 const authMiddleware = require("../middleware/auth");
+const checkAiActions = require("../middleware/aiActions");
 const openai = require("../openai");
 const pool = require("../db");
 const vision = require("@google-cloud/vision");
@@ -316,7 +317,7 @@ router.post("/:id/move-to-inventory", authMiddleware, async (req, res) => {
       [userId]
     );
 
-    if (currentCount.rows[0].count + items.length > 200) {
+    if (currentCount.rows[0].count > 200) {
       return res.status(400).json({
         message:
           "Adding these items would exceed the inventory limit of 200 items.",
@@ -552,80 +553,83 @@ router.post("/add-from-receipt", authMiddleware, async (req, res) => {
   }
 });
 
-router.post("/process-receipt", authMiddleware, async (req, res) => {
-  try {
-    const userId = req.user.id;
-    const { imageData } = req.body;
+router.post(
+  "/process-receipt",
+  [authMiddleware, checkAiActions],
+  async (req, res) => {
+    try {
+      const userId = req.user.id;
+      const { imageData } = req.body;
 
-    const currentCount = await pool.query(
-      "SELECT COUNT(*) FROM shopping_list WHERE user_id = $1",
-      [userId]
-    );
+      const currentCount = await pool.query(
+        "SELECT COUNT(*) FROM shopping_list WHERE user_id = $1",
+        [userId]
+      );
 
-    // Since we don't know how many items will be found, we should ensure there's room
-    if (currentCount.rows[0].count >= 200) {
-      return res.status(400).json({
-        message: "Shopping list limit reached. Maximum 200 items allowed.",
+      // Since we don't know how many items will be found, we should ensure there's room
+      if (currentCount.rows[0].count >= 200) {
+        return res.status(400).json({
+          message: "Shopping list limit reached. Maximum 200 items allowed.",
+        });
+      }
+
+      // Input validation
+      if (!imageData) {
+        return res.status(400).json({ message: "Image data is required" });
+      }
+
+      // Validate base64 image format
+      if (!/^data:image\/[a-z]+;base64,/.test(imageData)) {
+        return res.status(400).json({ message: "Invalid image data format" });
+      }
+
+      // Clean up base64 image data
+      const base64Image = imageData.replace(/^data:image\/[a-z]+;base64,/, "");
+
+      // Get user's shopping list items
+      const shoppingListResult = await pool.query(
+        `SELECT id, item_name, quantity FROM shopping_list WHERE user_id = $1`,
+        [userId]
+      );
+      const shoppingList = shoppingListResult.rows;
+
+      // 1. Use Google Vision API for text detection (OCR)
+      const [result] = await client.documentTextDetection({
+        image: { content: Buffer.from(base64Image, "base64") },
       });
-    }
 
-    // Input validation
-    if (!imageData) {
-      return res.status(400).json({ message: "Image data is required" });
-    }
+      const fullText = result.fullTextAnnotation;
+      if (!fullText) {
+        return res.status(400).json({ message: "No text detected in receipt" });
+      }
 
-    // Validate base64 image format
-    if (!/^data:image\/[a-z]+;base64,/.test(imageData)) {
-      return res.status(400).json({ message: "Invalid image data format" });
-    }
+      // 2. Extract structured data from the text
+      // Get each line from the OCR result
+      const receiptLines = fullText.text.split("\n");
 
-    // Clean up base64 image data
-    const base64Image = imageData.replace(/^data:image\/[a-z]+;base64,/, "");
+      // Pre-process receipt lines to extract potential items and prices
+      const receiptItems = receiptLines
+        .map((line) => {
+          // Common receipt item patterns
+          const pricePattern = /\d+\.\d{2}/; // Matches prices like 12.99
+          const price = line.match(pricePattern)?.[0];
 
-    // Get user's shopping list items
-    const shoppingListResult = await pool.query(
-      `SELECT id, item_name, quantity FROM shopping_list WHERE user_id = $1`,
-      [userId]
-    );
-    const shoppingList = shoppingListResult.rows;
+          // Remove price and common receipt prefixes/suffixes
+          let itemText = line
+            .replace(pricePattern, "")
+            .replace(/^[0-9]+\s/, "") // Remove leading numbers
+            .replace(/\s+@\s+.*$/, "") // Remove @ price indicators
+            .trim();
 
-    // 1. Use Google Vision API for text detection (OCR)
-    const [result] = await client.documentTextDetection({
-      image: { content: Buffer.from(base64Image, "base64") },
-    });
+          return {
+            text: itemText,
+            price: price,
+          };
+        })
+        .filter((item) => item.text && item.text.length > 1); // Filter out empty or single-char lines
 
-    const fullText = result.fullTextAnnotation;
-    if (!fullText) {
-      return res.status(400).json({ message: "No text detected in receipt" });
-    }
-
-    // 2. Extract structured data from the text
-    // Get each line from the OCR result
-    const receiptLines = fullText.text.split("\n");
-
-    // Pre-process receipt lines to extract potential items and prices
-    const receiptItems = receiptLines
-      .map((line) => {
-        // Common receipt item patterns
-        const pricePattern = /\d+\.\d{2}/; // Matches prices like 12.99
-        const price = line.match(pricePattern)?.[0];
-
-        // Remove price and common receipt prefixes/suffixes
-        let itemText = line
-          .replace(pricePattern, "")
-          .replace(/^[0-9]+\s/, "") // Remove leading numbers
-          .replace(/\s+@\s+.*$/, "") // Remove @ price indicators
-          .trim();
-
-        return {
-          text: itemText,
-          price: price,
-        };
-      })
-      .filter((item) => item.text && item.text.length > 1); // Filter out empty or single-char lines
-
-    // 3. Use GPT to match receipt items with shopping list
-    const gptPrompt = `Given these receipt items:
+      // 3. Use GPT to match receipt items with shopping list
+      const gptPrompt = `Given these receipt items:
 ${receiptItems
   .map((item) => `${item.text} - $${item.price || "N/A"}`)
   .join("\n")}
@@ -653,76 +657,77 @@ Return a JSON object with this structure:
   ]
 }`;
 
-    const completion = await openai.chat.completions.create({
-      model: "gpt-3.5-turbo",
-      messages: [
-        {
-          role: "system",
-          content:
-            "You are a receipt analysis expert that specializes in matching shopping list items with receipt entries. Be precise and conservative in making matches.",
-        },
-        {
-          role: "user",
-          content: gptPrompt,
-        },
-      ],
-      max_tokens: 500,
-      temperature: 0.3,
-      response_format: { type: "json_object" },
-    });
-
-    const analysis = JSON.parse(completion.choices[0].message.content);
-
-    // 4. Validate and clean up matches
-    const validatedMatches = {
-      matches: analysis.matches.filter((match) => {
-        // Ensure all required fields are present
-        if (
-          !match.shopping_list_id ||
-          !match.shopping_list_item ||
-          !match.receipt_match ||
-          !match.quantity
-        ) {
-          return false;
-        }
-
-        // Verify shopping_list_id exists in original shopping list
-        const validItem = shoppingList.find(
-          (item) => item.id === match.shopping_list_id
-        );
-        if (!validItem) {
-          return false;
-        }
-
-        // Verify quantity is reasonable (not zero or negative)
-        if (match.quantity <= 0) {
-          match.quantity = validItem.quantity; // Use original quantity if invalid
-        }
-
-        return true;
-      }),
-    };
-
-    // 5. Return the processed matches
-    res.json(validatedMatches);
-  } catch (error) {
-    console.error("Error processing receipt:", error);
-    // Handle specific types of errors
-    if (error.response) {
-      // API-specific errors (Google Vision or OpenAI)
-      return res.status(error.response.status).json({
-        message: "Error processing receipt",
-        details: error.response.data.message,
+      const completion = await openai.chat.completions.create({
+        model: "gpt-3.5-turbo",
+        messages: [
+          {
+            role: "system",
+            content:
+              "You are a receipt analysis expert that specializes in matching shopping list items with receipt entries. Be precise and conservative in making matches.",
+          },
+          {
+            role: "user",
+            content: gptPrompt,
+          },
+        ],
+        max_tokens: 500,
+        temperature: 0.3,
+        response_format: { type: "json_object" },
       });
-    } else {
-      // Other errors (network, parsing, etc.)
-      return res.status(500).json({
-        message: "Error processing receipt image",
-        error: error.message,
-      });
+
+      const analysis = JSON.parse(completion.choices[0].message.content);
+
+      // 4. Validate and clean up matches
+      const validatedMatches = {
+        matches: analysis.matches.filter((match) => {
+          // Ensure all required fields are present
+          if (
+            !match.shopping_list_id ||
+            !match.shopping_list_item ||
+            !match.receipt_match ||
+            !match.quantity
+          ) {
+            return false;
+          }
+
+          // Verify shopping_list_id exists in original shopping list
+          const validItem = shoppingList.find(
+            (item) => item.id === match.shopping_list_id
+          );
+          if (!validItem) {
+            return false;
+          }
+
+          // Verify quantity is reasonable (not zero or negative)
+          if (match.quantity <= 0) {
+            match.quantity = validItem.quantity; // Use original quantity if invalid
+          }
+
+          return true;
+        }),
+      };
+
+      // 5. Return the processed matches
+      res.json(validatedMatches);
+    } catch (error) {
+      console.error("Error processing receipt:", error);
+      // Handle specific types of errors
+      if (error.response) {
+        // API-specific errors (Google Vision or OpenAI)
+        return res.status(error.response.status).json({
+          message: "Error processing receipt",
+          details: error.response.data.message,
+        });
+      } else {
+        // Other errors (network, parsing, etc.)
+        return res.status(500).json({
+          message: "Error processing receipt image",
+          error: error.message,
+        });
+      }
     }
   }
-});
+);
 
 router.post("/bulk-add", authMiddleware, async (req, res) => {
   try {
@@ -904,57 +909,62 @@ router.put("/update-by-name/:item_name", authMiddleware, async (req, res) => {
   }
 });
 
-router.post("/analyze-item", authMiddleware, async (req, res) => {
-  try {
-    const userId = req.user.id;
-    const { imageData } = req.body;
+router.post(
+  "/analyze-item",
+  [authMiddleware, checkAiActions],
+  async (req, res) => {
+    try {
+      const userId = req.user.id;
+      const { imageData } = req.body;
 
-    // Input validation
-    if (!imageData) {
-      return res.status(400).json({ message: "Image data is required" });
-    }
+      // Input validation
+      if (!imageData) {
+        return res.status(400).json({ message: "Image data is required" });
+      }
 
-    // Validate base64 image format
-    if (!/^data:image\/[a-z]+;base64,/.test(imageData)) {
-      return res.status(400).json({ message: "Invalid image data format" });
-    }
+      // Validate base64 image format
+      if (!/^data:image\/[a-z]+;base64,/.test(imageData)) {
+        return res.status(400).json({ message: "Invalid image data format" });
+      }
 
-    // Clean up base64 image data
-    const base64Image = imageData.replace(/^data:image\/[a-z]+;base64,/, "");
+      // Clean up base64 image data
+      const base64Image = imageData.replace(/^data:image\/[a-z]+;base64,/, "");
 
-    // Get user's shopping list items
-    const userItems = await pool.query(
-      "SELECT * FROM shopping_list WHERE user_id = $1",
-      [userId]
-    );
+      // Get user's shopping list items
+      const userItems = await pool.query(
+        "SELECT * FROM shopping_list WHERE user_id = $1",
+        [userId]
+      );
 
-    // 1. Use Google Vision API for image analysis
-    const [result] = await client.labelDetection({
-      image: { content: Buffer.from(base64Image, "base64") },
-    });
+      // 1. Use Google Vision API for image analysis
+      const [result] = await client.labelDetection({
+        image: { content: Buffer.from(base64Image, "base64") },
+      });
 
-    const labels = result.labelAnnotations;
+      const labels = result.labelAnnotations;
 
-    if (!labels || labels.length === 0) {
-      return res
-        .status(400)
-        .json({ message: "No labels detected in the image" });
-    }
+      if (!labels || labels.length === 0) {
+        return res
+          .status(400)
+          .json({ message: "No labels detected in the image" });
+      }
 
-    // Filter for high-confidence labels (above 30%)
-    const concepts = labels
-      .filter((label) => label.score > 0.3)
-      .map((label) => ({
-        name: label.description,
-        confidence: (label.score * 100).toFixed(1),
-      }));
+      // Filter for high-confidence labels (above 30%)
+      const concepts = labels
+        .filter((label) => label.score > 0.3)
+        .map((label) => ({
+          name: label.description,
+          confidence: (label.score * 100).toFixed(1),
+        }));
 
-    if (concepts.length === 0) {
-      return res.status(400).json({ message: "No relevant concepts detected" });
-    }
+      if (concepts.length === 0) {
+        return res
+          .status(400)
+          .json({ message: "No relevant concepts detected" });
+      }
 
-    // 2. Use GPT to analyze Vision API results and find shopping list matches
-    const gptPrompt = `Based on these image recognition results:
+      // 2. Use GPT to analyze Vision API results and find shopping list matches
+      const gptPrompt = `Based on these image recognition results:
 ${concepts.map((c) => `${c.name} (${c.confidence}% confidence)`).join("\n")}
 
 And these shopping list items:
@@ -969,55 +979,56 @@ Return a JSON object with this structure:
   "shoppingListMatches": ["exact", "matches", "from", "shopping list"]
 }`;
 
-    const completion = await openai.chat.completions.create({
-      model: "gpt-3.5-turbo",
-      messages: [
-        {
-          role: "system",
-          content: "You are a precise shopping list matching expert.",
-        },
-        {
-          role: "user",
-          content: gptPrompt,
-        },
-      ],
-      max_tokens: 150,
-      temperature: 0.3,
-      response_format: { type: "json_object" },
-    });
-
-    const analysis = JSON.parse(completion.choices[0].message.content);
-
-    if (!analysis.itemName || !analysis.shoppingListMatches) {
-      return res.status(400).json({ message: "Error parsing GPT response" });
-    }
-
-    // 3. Find actual shopping list items that match
-    const matches = userItems.rows.filter((item) =>
-      analysis.shoppingListMatches.includes(item.item_name)
-    );
-
-    // Return results
-    res.json({
-      exists: matches.length > 0,
-      matches,
-      suggestedName: analysis.itemName,
-    });
-  } catch (error) {
-    console.error("Error analyzing item photo:", error);
-    if (error.response) {
-      // Handle API-specific errors
-      return res.status(error.response.status).json({
-        message: error.response.data.message,
+      const completion = await openai.chat.completions.create({
+        model: "gpt-3.5-turbo",
+        messages: [
+          {
+            role: "system",
+            content: "You are a precise shopping list matching expert.",
+          },
+          {
+            role: "user",
+            content: gptPrompt,
+          },
+        ],
+        max_tokens: 150,
+        temperature: 0.3,
+        response_format: { type: "json_object" },
       });
-    } else {
-      // Handle other errors (network, parsing, etc.)
-      return res.status(500).json({
-        message: "Error analyzing photo",
-        error: error.message,
+
+      const analysis = JSON.parse(completion.choices[0].message.content);
+
+      if (!analysis.itemName || !analysis.shoppingListMatches) {
+        return res.status(400).json({ message: "Error parsing GPT response" });
+      }
+
+      // 3. Find actual shopping list items that match
+      const matches = userItems.rows.filter((item) =>
+        analysis.shoppingListMatches.includes(item.item_name)
+      );
+
+      // Return results
+      res.json({
+        exists: matches.length > 0,
+        matches,
+        suggestedName: analysis.itemName,
       });
+    } catch (error) {
+      console.error("Error analyzing item photo:", error);
+      if (error.response) {
+        // Handle API-specific errors
+        return res.status(error.response.status).json({
+          message: error.response.data.message,
+        });
+      } else {
+        // Handle other errors (network, parsing, etc.)
+        return res.status(500).json({
+          message: "Error analyzing photo",
+          error: error.message,
+        });
+      }
     }
   }
-});
+);
 
 module.exports = router;

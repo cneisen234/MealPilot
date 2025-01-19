@@ -205,7 +205,7 @@ const MealPlan: React.FC = () => {
           padding: "12px 20px",
           borderRadius: "8px",
           marginTop: "-20px",
-          fontSize: "0.9rem",
+          fontSize: "0.7rem",
           color: "var(--text-color)",
           maxWidth: "850px",
           margin: "20px auto",
@@ -219,7 +219,7 @@ const MealPlan: React.FC = () => {
       {mealPlan && filteredMealPlan && filteredMealPlan.length > 0 ? (
         <div className="meal-plan-grid">
           {filteredMealPlan.map(([date, meals]) => (
-            <div key={date} className="day-card">
+            <div key={date} className="day-card" style={{ borderRadius: 10 }}>
               <h2>{formatDate(date)}</h2>
               <div className="meals-list">
                 <MealItem
@@ -255,14 +255,13 @@ const MealPlan: React.FC = () => {
         </div>
       ) : (
         <div className="empty-state">
-          <p>No meal plan generated yet.</p>
-          <p>Generate a new plan to get started!</p>
+          <p>No meal plan created.</p>
+          <p>Select "Generate New Plan" to get started!</p>
           <br />
           <p>
-            For the best results, ensure you have recipes saved. Our meal plan
-            generator will grab from both your saved recipes as well as
-            recommend new ones. The more it has to pick from, the more diverse
-            your results will be.
+            Our meal plan generator will grab from your saved recipes as well as
+            recommend new ones. The more saved recipes it has to pick from, the
+            more diverse your results will be.
           </p>
         </div>
       )}

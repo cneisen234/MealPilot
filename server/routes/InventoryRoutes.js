@@ -1,6 +1,7 @@
 const express = require("express");
 const router = express.Router();
 const authMiddleware = require("../middleware/auth");
+const checkAiActions = require("../middleware/aiActions");
 const openai = require("../openai");
 const pool = require("../db");
 const vision = require("@google-cloud/vision");
@@ -279,56 +280,61 @@ router.put("/delete-by-name/:itemName", authMiddleware, async (req, res) => {
   }
 });
 
-router.post("/analyze-item", authMiddleware, async (req, res) => {
-  try {
-    const userId = req.user.id;
-    const { imageData } = req.body;
+router.post(
+  "/analyze-item",
+  [authMiddleware, checkAiActions],
+  async (req, res) => {
+    try {
+      const userId = req.user.id;
+      const { imageData } = req.body;
 
-    if (!imageData) {
-      return res.status(400).json({ message: "Image data is required" });
-    }
+      if (!imageData) {
+        return res.status(400).json({ message: "Image data is required" });
+      }
 
-    // Check if imageData is a valid base64 string
-    if (!/^data:image\/[a-z]+;base64,/.test(imageData)) {
-      return res.status(400).json({ message: "Invalid image data format" });
-    }
+      // Check if imageData is a valid base64 string
+      if (!/^data:image\/[a-z]+;base64,/.test(imageData)) {
+        return res.status(400).json({ message: "Invalid image data format" });
+      }
 
-    // Clean up base64 image data
-    const base64Image = imageData.replace(/^data:image\/[a-z]+;base64,/, "");
+      // Clean up base64 image data
+      const base64Image = imageData.replace(/^data:image\/[a-z]+;base64,/, "");
 
-    // Get inventory items from the database
-    const userItems = await pool.query(
-      "SELECT * FROM inventory WHERE user_id = $1",
-      [userId]
-    );
+      // Get inventory items from the database
+      const userItems = await pool.query(
+        "SELECT * FROM inventory WHERE user_id = $1",
+        [userId]
+      );
 
-    // 1. Use Google Vision API to analyze the image
-    const [result] = await client.labelDetection({
-      image: { content: Buffer.from(base64Image, "base64") },
-    });
+      // 1. Use Google Vision API to analyze the image
+      const [result] = await client.labelDetection({
+        image: { content: Buffer.from(base64Image, "base64") },
+      });
 
-    const labels = result.labelAnnotations;
+      const labels = result.labelAnnotations;
 
-    if (!labels || labels.length === 0) {
-      return res
-        .status(400)
-        .json({ message: "No labels detected in the image" });
-    }
+      if (!labels || labels.length === 0) {
+        return res
+          .status(400)
+          .json({ message: "No labels detected in the image" });
+      }
 
-    // Filter the labels to only include high-confidence ones
-    const concepts = labels
-      .filter((label) => label.score > 0.3) // You can adjust the threshold (0.3) as needed
-      .map((label) => ({
-        name: label.description,
-        confidence: (label.score * 100).toFixed(1),
-      }));
+      // Filter the labels to only include high-confidence ones
+      const concepts = labels
+        .filter((label) => label.score > 0.3) // You can adjust the threshold (0.3) as needed
+        .map((label) => ({
+          name: label.description,
+          confidence: (label.score * 100).toFixed(1),
+        }));
 
-    if (concepts.length === 0) {
-      return res.status(400).json({ message: "No relevant concepts detected" });
-    }
+      if (concepts.length === 0) {
+        return res
+          .status(400)
+          .json({ message: "No relevant concepts detected" });
+      }
 
-    // 2. Use GPT to find inventory matches based on Google Vision results
-    const gptPrompt = `Based on these image recognition results:
+      // 2. Use GPT to find inventory matches based on Google Vision results
+      const gptPrompt = `Based on these image recognition results:
 ${concepts.map((c) => `${c.name} (${c.confidence}% confidence)`).join("\n")}
 
 And these inventory items:
@@ -342,53 +348,54 @@ Return a JSON object with this structure:
   "inventoryMatches": ["exact", "matches", "from", "inventory"]
 }`;
 
-    const completion = await openai.chat.completions.create({
-      model: "gpt-3.5-turbo",
-      messages: [
-        {
-          role: "system",
-          content: "You are a precise inventory matching expert.",
-        },
-        {
-          role: "user",
-          content: gptPrompt,
-        },
-      ],
-      max_tokens: 150,
-      temperature: 0.3,
-      response_format: { type: "json_object" },
-    });
+      const completion = await openai.chat.completions.create({
+        model: "gpt-3.5-turbo",
+        messages: [
+          {
+            role: "system",
+            content: "You are a precise inventory matching expert.",
+          },
+          {
+            role: "user",
+            content: gptPrompt,
+          },
+        ],
+        max_tokens: 150,
+        temperature: 0.3,
+        response_format: { type: "json_object" },
+      });
 
-    const analysis = JSON.parse(completion.choices[0].message.content);
+      const analysis = JSON.parse(completion.choices[0].message.content);
 
-    if (!analysis.itemName || !analysis.inventoryMatches) {
-      return res.status(400).json({ message: "Error parsing GPT response" });
-    }
+      if (!analysis.itemName || !analysis.inventoryMatches) {
+        return res.status(400).json({ message: "Error parsing GPT response" });
+      }
 
-    // 3. Find the actual inventory items that match
-    const matches = userItems.rows.filter((item) =>
-      analysis.inventoryMatches.includes(item.item_name)
-    );
+      // 3. Find the actual inventory items that match
+      const matches = userItems.rows.filter((item) =>
+        analysis.inventoryMatches.includes(item.item_name)
+      );
 
-    res.json({
-      exists: matches.length > 0,
-      matches,
-      suggestedName: analysis.itemName,
-    });
-  } catch (error) {
-    console.error("Error analyzing item photo:", error);
-    if (error.response) {
-      // Error coming from an API
-      return res
-        .status(error.response.status)
-        .json({ message: error.response.data.message });
-    } else {
-      // Other errors (e.g., network or GPT errors)
-      return res
-        .status(500)
-        .json({ message: "Error analyzing photo", error: error.message });
+      res.json({
+        exists: matches.length > 0,
+        matches,
+        suggestedName: analysis.itemName,
+      });
+    } catch (error) {
+      console.error("Error analyzing item photo:", error);
+      if (error.response) {
+        // Error coming from an API
+        return res
+          .status(error.response.status)
+          .json({ message: error.response.data.message });
+      } else {
+        // Other errors (e.g., network or GPT errors)
+        return res
+          .status(500)
+          .json({ message: "Error analyzing photo", error: error.message });
+      }
     }
   }
-});
+);
 
 module.exports = router;

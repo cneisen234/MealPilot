@@ -24,8 +24,7 @@ router.post("/create/:shareid", async (req, res) => {
         shareId,
       ]);
     }, 24 * 60 * 60 * 1000);
-
-    res.status(200);
+    res.sendStatus(200);
   } catch (error) {
     console.error("Error creating shared list:", error);
     res.status(500).json({ message: "Server error" });
