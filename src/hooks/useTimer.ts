@@ -4,8 +4,6 @@ export const useTimer = (onComplete: () => void) => {
   const [timeLeft, setTimeLeft] = useState<number>(0);
   const [isActive, setIsActive] = useState(false);
   const [isPaused, setIsPaused] = useState(false);
-    const [startTime, setStartTime] = useState<number | null>(null);
-  const [savedTimeLeft, setSavedTimeLeft] = useState<number | null>(null);
 
   // Create audio context for beeper sound
   const playBeep = useCallback(() => {
@@ -80,58 +78,43 @@ export const useTimer = (onComplete: () => void) => {
   }, []);
 
   useEffect(() => {
-    let animationFrameId: number;
-    let lastUpdateTime: number;
+    let interval: NodeJS.Timeout | null = null;
 
-    const updateTimer = () => {
-      if (isActive && startTime !== null && !isPaused) {
-        const currentTime = Date.now();
-        const elapsedTime = Math.floor((currentTime - startTime) / 1000);
-        const newTimeLeft = savedTimeLeft! - elapsedTime;
-
-        if (newTimeLeft <= 0) {
-          setTimeLeft(0);
-          setIsActive(false);
-          onComplete();
-          playBeep();
-        } else {
-          setTimeLeft(newTimeLeft);
-          animationFrameId = requestAnimationFrame(updateTimer);
-        }
-      }
-    };
-
-    if (isActive && !isPaused) {
-      lastUpdateTime = Date.now();
-      animationFrameId = requestAnimationFrame(updateTimer);
+    if (isActive && timeLeft > 0) {
+      interval = setInterval(() => {
+        setTimeLeft((time) => {
+          if (time <= 1) {
+            setIsActive(false);
+            onComplete();
+            playBeep(); // Play beep when timer completes
+            return 0;
+          }
+          return time - 1;
+        });
+      }, 1000);
     }
 
     return () => {
-      if (animationFrameId) {
-        cancelAnimationFrame(animationFrameId);
-      }
+      if (interval) clearInterval(interval);
     };
-  }, [isActive, isPaused, startTime, savedTimeLeft, onComplete]);
+  }, [isActive, timeLeft, onComplete, playBeep]);
 
   const startTimer = (duration: number) => {
-    setTimeLeft(duration);
-    setSavedTimeLeft(duration);
-    setStartTime(Date.now());
+    if (!isPaused) {
+      setTimeLeft(duration);
+    }
     setIsPaused(false);
     setIsActive(true);
   };
 
   const pauseTimer = () => {
     setIsPaused(true);
-    setSavedTimeLeft(timeLeft);
+    setIsActive(false);
   };
 
   const resetTimer = (duration: number) => {
     setIsActive(false);
     setTimeLeft(duration);
-    setSavedTimeLeft(duration);
-    setStartTime(null);
-    setIsPaused(false);
   };
 
   return { timeLeft, isActive, startTimer, pauseTimer, resetTimer, playBeep };

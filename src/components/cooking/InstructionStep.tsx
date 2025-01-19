@@ -158,6 +158,19 @@ const InstructionStep: React.FC<InstructionStepProps> = ({
                   <FaRedo />
                 </button>
               </div>
+              <div
+                style={{
+                  backgroundColor: "rgba(5, 71, 42, 0.1)",
+                  padding: "12px 20px",
+                  borderRadius: "8px",
+                  marginTop: "-22px",
+                  fontSize: "0.9rem",
+                  color: "var(--text-color)",
+                  maxWidth: "850px",
+                  margin: "20px auto",
+                }}>
+                NOTE: Keep this window open while the timer is running.
+              </div>
             </div>
           </div>
         )}
