@@ -972,20 +972,25 @@ ${concepts.map((c) => `${c.name} (${c.confidence}% confidence)`).join("\n")}
 And these shopping list items:
 ${userItems.rows.map((item) => item.item_name).join("\n")}
 
-Identify the most specific item name and find matches from the shopping list.
+Identify and find matches from the shopping list. Be very general about this. If something is even similar, then it's a match.
+
+Place these matches in the shoppingListMatches key on the json response you'll be responding with.
+
+Also take your best guess at what the item is based on the list of names given to you
 Consider common variations and alternative names for grocery items.
 
-Don't include any names that are not food related. 
+Try to be as specific as possible. (example: try to avoid using general words like "condiment".
+try your best to use more specific words like "ketchup" or "syrup" rather just "condiment").
 
-For example names like "food, fruit, apple, milk" can stay
-But words like "plastic bottle, container, logo" need to be removed.
-
-Try to be as specific as possible. Avoid using general words like "condiment" 
-when a better and more specific word like "sauce" exists.
+IMPORTANT: Your guess can't be any these items ${userItems.rows
+        .map((item) => item.item_name)
+        .join("\n")} NO MATTER WHAT.
+ 
+Place this guess inside of the itemName key in the JSON response.
 
 Return a JSON object with this structure:
 {
-  "itemName": "most specific item name",
+  "itemName": "your best guess at what the item is based on the words from the image recognition results",
   "shoppingListMatches": ["exact", "matches", "from", "shopping list"]
 }`;
 
@@ -1001,7 +1006,7 @@ Return a JSON object with this structure:
             content: gptPrompt,
           },
         ],
-        max_tokens: 150,
+        max_tokens: 500,
         temperature: 0.3,
         response_format: { type: "json_object" },
       });

@@ -340,20 +340,27 @@ ${concepts.map((c) => `${c.name} (${c.confidence}% confidence)`).join("\n")}
 And these inventory items:
 ${userItems.rows.map((item) => item.item_name).join("\n")}
 
-Identify the most specific item name and find matches from the inventory list.
+Identify and find matches from the inventory list. Be very general about this. If something is even similar, then it's a match.
 
-Filter out any names that are not food related. 
+Place these matches in the inventoryMatches key on the json response you'll be responding with.
 
-For example names like "food, fruit, apple, milk" can stay
-But words like "plastic bottle, container, logo" need to be removed.
+Also take your best guess at what the item is 
+based on the list of names given to you in the image recognition results. 
+Consider common variations and alternative names for grocery items.
 
-Try to be as specific as possible. Avoid using general words like "condiment" 
-when a better and more specific word like "sauce" exists.
+Try to be as specific as possible. (example: try to avoid using general words like "condiment".
+try your best to use more specific words like "ketchup" or "syrup" rather just "condiment").
+
+IMPORTANT: Your guess can't be any these items ${userItems.rows
+        .map((item) => item.item_name)
+        .join("\n")} NO MATTER WHAT.
+ 
+Place this guess inside of the itemName key in the JSON response.
 
 Return a JSON object with this structure:
 {
-  "itemName": "most specific item name",
-  "inventoryMatches": ["exact", "matches", "from", "inventory"]
+  "itemName": "your best guess at what the item is based on the words from the image recognition results",
+  "inventoryMatches": ["exact", "matches", "from", "shopping list"]
 }`;
 
       const completion = await openai.chat.completions.create({
@@ -368,7 +375,7 @@ Return a JSON object with this structure:
             content: gptPrompt,
           },
         ],
-        max_tokens: 150,
+        max_tokens: 500,
         temperature: 0.3,
         response_format: { type: "json_object" },
       });
