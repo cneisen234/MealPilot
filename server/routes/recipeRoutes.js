@@ -472,17 +472,13 @@ router.get(
       const userId = req.user.id;
       const recipeId = req.params.id;
 
-      const [recipeResult, inventoryResult, shoppingListResult] =
-        await Promise.all([
-          pool.query("SELECT * FROM recipes WHERE id = $1 AND user_id = $2", [
-            recipeId,
-            userId,
-          ]),
-          pool.query("SELECT * FROM inventory WHERE user_id = $1", [userId]),
-          pool.query("SELECT * FROM shopping_list WHERE user_id = $1", [
-            userId,
-          ]),
-        ]);
+      const [recipeResult, inventoryResult] = await Promise.all([
+        pool.query("SELECT * FROM recipes WHERE id = $1 AND user_id = $2", [
+          recipeId,
+          userId,
+        ]),
+        pool.query("SELECT * FROM inventory WHERE user_id = $1", [userId]),
+      ]);
 
       if (recipeResult.rows.length === 0) {
         return res.status(404).json({ message: "Recipe not found" });
@@ -490,7 +486,26 @@ router.get(
 
       const recipe = recipeResult.rows[0];
       const inventory = inventoryResult.rows;
-      const shoppingList = shoppingListResult.rows;
+
+      if (inventory.length === 0) {
+        // If inventory is empty, all ingredients should be marked as missing
+        const missingIngredients = recipe.ingredients.map((ingredient) => ({
+          original: ingredient,
+          parsed: {
+            quantity: 0,
+            name: ingredient,
+          },
+          status: {
+            type: "missing",
+            hasEnough: false,
+          },
+        }));
+
+        return res.json({
+          ...recipe,
+          ingredients: missingIngredients,
+        });
+      }
 
       const analysisPrompt = `Analyze these recipe ingredients and match against inventory database items.
 Your task is to parse quantities and match ingredients exactly.
@@ -502,11 +517,6 @@ ${inventory
 
 RECIPE INGREDIENTS TO ANALYZE:
 ${recipe.ingredients.join("\n")}
-
-CURRENT SHOPPING LIST:
-${shoppingList
-  .map((item) => `${item.item_name} (qty: ${item.quantity})`)
-  .join("\n")}
 
 CRITICAL RULES:
 1. Analyze each ingredient for quantity and exact match

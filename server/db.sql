@@ -58,7 +58,7 @@ CREATE TABLE recipes
     [],
     instructions TEXT[],
     nutritional_info TEXT[],
-    mealType VARCHAR
+    meal_type VARCHAR
     (50)
 );
 
