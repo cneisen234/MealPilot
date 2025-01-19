@@ -412,6 +412,16 @@ main {
 
 /* Responsive styles */
 @media (max-width: 768px) {
+       .main-content {
+        margin-top: 50px; /* Only add margin-top on mobile */
+    }
+
+    main {
+        padding: 15px;
+        height: calc(100vh - 50px);
+        -webkit-overflow-scrolling: touch;
+        padding-bottom: calc(70px + env(safe-area-inset-bottom, 20px));
+    }
     h1 {
         font-size: 2.5rem !important;
     }

@@ -211,7 +211,9 @@ const MealPlan: React.FC = () => {
   const filteredMealPlan = getFilteredMealPlan();
 
   return (
-    <div className="meal-plan-container" style={{ marginBottom: 150 }}>
+    <div
+      className="meal-plan-container"
+      style={{ marginBottom: 150, marginTop: 50 }}>
       <div className="meal-plan-header">
         <div className="meal-plan-title">
           <h1>Weekly Meal Plan</h1>
