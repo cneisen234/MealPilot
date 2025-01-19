@@ -152,7 +152,7 @@ const ShoppingListForm: React.FC<ShoppingListFormProps> = ({
                 />
               </div>
 
-              <div className="form-group">
+              <div className="form-group" style={{ marginTop: "-20px" }}>
                 <label className="recipe-tag-label">
                   <FaTags /> Tag Recipes (Optional)
                 </label>
