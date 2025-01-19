@@ -5,11 +5,13 @@ import {
   generateMealPlan,
   swapMealWithSaved,
   getUserRecipes,
+  deleteMealPlan,
 } from "../utils/api";
 import AnimatedTechIcon from "../components/common/AnimatedTechIcon";
 import ConfirmationModal from "../components/common/ConfirmationModal";
 import MealItem from "../components/MealPlan/MealItem";
 import { useToast } from "../context/ToastContext";
+
 import "../styles/mealplan.css";
 
 interface Meal {
@@ -39,6 +41,7 @@ const MealPlan: React.FC = () => {
   const [mealPlan, setMealPlan] = useState<MealPlan | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [showConfirmModal, setShowConfirmModal] = useState(false);
+  const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
   const [userRecipes, setUserRecipes] = useState([]);
 
   useEffect(() => {
@@ -118,6 +121,28 @@ const MealPlan: React.FC = () => {
     }
   };
 
+  const handleDeleteClick = () => {
+    setIsDeleteModalOpen(true);
+  };
+
+  const handleDeleteConfirm = async () => {
+    try {
+      setIsLoading(true);
+      await deleteMealPlan();
+      setMealPlan(null);
+      setIsDeleteModalOpen(false);
+      showToast("Meal plan deleted successfully", "success");
+    } catch (error) {
+      showToast("Error deleting meal plan", "error");
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleDeleteCancel = () => {
+    setIsDeleteModalOpen(false);
+  };
+
   const getFilteredMealPlan = () => {
     if (!mealPlan) return null;
 
@@ -194,8 +219,22 @@ const MealPlan: React.FC = () => {
         {mealPlan && (
           <p className="days-remaining">{getDaysRemaining()} days remaining</p>
         )}
-        <button onClick={handleGeneratePlan} className="regenerate-button">
-          {mealPlan ? "Regenerate Plan" : "Generate New Plan"}
+        <button
+          onClick={mealPlan ? handleDeleteClick : handleGeneratePlan}
+          className={`${
+            mealPlan ? "mealplan-delete-button" : "generate-button"
+          }`}
+          disabled={isLoading}>
+          {isLoading ? (
+            <div className="loading-indicator">
+              <AnimatedTechIcon size={20} speed={4} />
+              <span>Processing...</span>
+            </div>
+          ) : mealPlan ? (
+            "Delete Plan"
+          ) : (
+            "Generate New Plan"
+          )}
         </button>
       </div>
 
@@ -275,6 +314,14 @@ const MealPlan: React.FC = () => {
             setShowConfirmModal(false);
             await generateNewPlan();
           }}
+        />
+      )}
+      {isDeleteModalOpen && (
+        <ConfirmationModal
+          message="Are you sure you want to delete your current meal plan?"
+          additionalInfo="This action cannot be undone."
+          onClose={handleDeleteCancel}
+          onConfirm={handleDeleteConfirm}
         />
       )}
     </div>

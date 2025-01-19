@@ -115,6 +115,28 @@
     color: var(--text-color);
 }
 
+.mealplan-delete-button {
+    background: #dc3545;
+    color: white;
+    border: none;
+    padding: 12px 24px;
+    border-radius: 8px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.3s ease;
+}
+
+.mealplan-delete-button:hover {
+    opacity: 0.9;
+    transform: scale(1.05);
+}
+
+.loading-indicator {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
 @media (max-width: 768px) {
     .meal-plan-header {
         flex-direction: column;

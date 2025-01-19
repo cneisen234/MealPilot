@@ -150,3 +150,6 @@ ON global_recipes(meal_type, cant_haves, must_haves, taste_preferences, dietary_
             -- Index on title for quick duplicate checks
             CREATE INDEX idx_global_recipes_title 
 ON global_recipes(title);
+
+            CREATE INDEX idx_global_recipes_restrictions ON global_recipes (cant_haves, must_haves);
+            CREATE INDEX idx_recipes_title ON recipes (title);

@@ -414,5 +414,9 @@ export const analyzeImageWithHuggingFace = async (file: File): Promise<string> =
   return makeRequest();
 };
 
+export const deleteMealPlan = () => {
+  return api.delete('/mealplan/current');
+};
+
 export default api;
 

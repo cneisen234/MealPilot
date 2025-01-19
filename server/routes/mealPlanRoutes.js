@@ -54,9 +54,8 @@ router.post("/generate", authMiddleware, async (req, res) => {
     const userId = req.user.id;
 
     await pool.query("BEGIN");
-    await pool.query("DELETE FROM meal_plans WHERE user_id = $1", [userId]);
 
-    // Get all restrictions
+    // Get all restrictions - keeping this parallel query as it's efficient
     const [
       savedRecipes,
       cantHavesResult,
@@ -67,9 +66,9 @@ router.post("/generate", authMiddleware, async (req, res) => {
     ] = await Promise.all([
       pool.query(
         `SELECT * FROM recipes 
-   WHERE user_id = $1 
-   AND (meal_type IS NULL 
-    OR LOWER(meal_type) IN ('breakfast', 'brunch', 'lunch', 'dinner', 'main course', 'meal'))`,
+         WHERE user_id = $1 
+         AND (meal_type IS NULL 
+          OR LOWER(meal_type) IN ('breakfast', 'brunch', 'lunch', 'dinner', 'main course', 'meal'))`,
         [userId]
       ),
       pool.query("SELECT item FROM cant_haves WHERE user_id = $1", [userId]),
@@ -92,45 +91,26 @@ router.post("/generate", authMiddleware, async (req, res) => {
       cuisinePreferences: cuisinePrefsResult.rows.map((row) => row.item),
     };
 
-    // Now get global recipes with modified query
+    // Optimized global recipes query
     const globalRecipesResult = await pool.query(
-      `SELECT title, 
-    prep_time, 
-    cook_time, 
-    servings, 
-    ingredients, 
-    instructions, 
-    nutritional_info, 
-    created_at, 
-    last_queried_at, 
-    cant_haves, 
-    must_haves, 
-    taste_preferences, 
-    dietary_goals, 
-    cuisine_preferences, 
-    meal_type FROM global_recipes 
-  WHERE 
-    ($1::text[] = '{}' OR (cant_haves @> $1::text[] AND array_length($1::text[], 1) = array_length(ARRAY(
-      SELECT DISTINCT unnest($1::text[])
-      INTERSECT
-      SELECT DISTINCT unnest(cant_haves)
-    ), 1)))
-
-    AND ($2::text[] = '{}' OR (must_haves @> $2::text[] AND array_length($2::text[], 1) = array_length(ARRAY(
-      SELECT DISTINCT unnest($2::text[])
-      INTERSECT
-      SELECT DISTINCT unnest(must_haves)
-    ), 1)))
-
-    AND title NOT IN (SELECT title FROM recipes)
-  ORDER BY RANDOM();`,
-      [
-        restrictions.cantHaves, // $1: array of cant_haves restrictions
-        restrictions.mustHaves, // $2: array of must_haves restrictions
-      ]
+      `WITH filtered_recipes AS (
+        SELECT title, prep_time, cook_time, servings, ingredients, 
+               instructions, nutritional_info, created_at, last_queried_at,
+               cant_haves, must_haves, taste_preferences, dietary_goals, 
+               cuisine_preferences, meal_type
+        FROM global_recipes
+        WHERE 
+          ($1::text[] = '{}' OR cant_haves @> $1) 
+          AND ($2::text[] = '{}' OR must_haves @> $2)
+          AND title NOT IN (SELECT title FROM recipes WHERE user_id = $3)
+      )
+      SELECT * FROM filtered_recipes
+      ORDER BY random()
+      LIMIT 21`,
+      [restrictions.cantHaves, restrictions.mustHaves, userId]
     );
 
-    // Initialize arrays for first and second uses
+    // Initialize arrays for first use
     const firstUse = {
       breakfast: [],
       lunch: [],
@@ -142,7 +122,7 @@ router.post("/generate", authMiddleware, async (req, res) => {
       () => Math.random() - 0.5
     );
 
-    // Define meal type rules
+    // Define meal type rules - keeping these unchanged
     const VALID_MEAL_TYPES = {
       breakfast: ["breakfast", "brunch"],
       lunch: ["brunch", "lunch", "main course", "meal"],
@@ -154,15 +134,12 @@ router.post("/generate", authMiddleware, async (req, res) => {
       const mealType = recipe.meal_type?.toLowerCase();
 
       if (!mealType || mealType === "meal" || mealType === "main course") {
-        // If no specific meal type or generic, add to lunch and dinner
         firstUse.lunch.push(recipe);
         firstUse.dinner.push(recipe);
       } else if (mealType === "brunch") {
-        // Brunch can be breakfast or lunch
         firstUse.breakfast.push(recipe);
         firstUse.lunch.push(recipe);
       } else {
-        // Add to specific meal type if valid
         Object.entries(VALID_MEAL_TYPES).forEach(([type, validTypes]) => {
           if (validTypes.includes(mealType)) {
             firstUse[type].push(recipe);
@@ -179,8 +156,8 @@ router.post("/generate", authMiddleware, async (req, res) => {
 
     // Generate missing recipes if needed
     if (missingMealTypes.length > 0) {
-      for (const mealType of missingMealTypes) {
-        // Create prompt
+      // Generate all missing recipes in parallel
+      const recipePromises = missingMealTypes.map(async (mealType) => {
         let prompt = `Generate a detailed recipe for ${mealType}.\n\n`;
 
         if (restrictions.cantHaves.length > 0) {
@@ -234,35 +211,58 @@ Nutritional Information:
           });
 
           const recipeText = completion.choices[0].message.content;
-          const recipe = cleanAIResponse(recipeText);
-          recipe.mealType = mealType;
+          return {
+            recipe: cleanAIResponse(recipeText),
+            mealType,
+          };
+        } catch (error) {
+          console.error(`Error generating recipe for ${mealType}:`, error);
+          throw error;
+        }
+      });
 
-          // Save to global_recipes
-          await pool.query(
-            `INSERT INTO global_recipes (
-              title, prep_time, cook_time, servings, 
-              ingredients, instructions, nutritional_info,
-              cant_haves, must_haves, taste_preferences, 
-              dietary_goals, cuisine_preferences, meal_type
-            ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)`,
-            [
-              recipe.title,
-              recipe.prepTime,
-              recipe.cookTime,
-              recipe.servings,
-              recipe.ingredients,
-              recipe.instructions,
-              recipe.nutritionalInfo,
-              restrictions.cantHaves,
-              restrictions.mustHaves,
-              restrictions.tastePreferences,
-              restrictions.dietaryGoals,
-              restrictions.cuisinePreferences,
-              mealType,
-            ]
-          );
+      // Wait for all recipes to be generated
+      const generatedRecipes = await Promise.all(recipePromises);
 
-          // Add to firstUse array
+      // Batch insert all recipes at once
+      if (generatedRecipes.length > 0) {
+        const values = generatedRecipes
+          .map(
+            (_, i) =>
+              `($${i * 13 + 1}, $${i * 13 + 2}, $${i * 13 + 3}, $${i * 13 + 4}, 
+            $${i * 13 + 5}, $${i * 13 + 6}, $${i * 13 + 7}, $${i * 13 + 8}, 
+            $${i * 13 + 9}, $${i * 13 + 10}, $${i * 13 + 11}, $${i * 13 + 12}, 
+            $${i * 13 + 13})`
+          )
+          .join(", ");
+
+        const flatParams = generatedRecipes.flatMap(({ recipe, mealType }) => [
+          recipe.title,
+          recipe.prepTime,
+          recipe.cookTime,
+          recipe.servings,
+          recipe.ingredients,
+          recipe.instructions,
+          recipe.nutritionalInfo,
+          restrictions.cantHaves,
+          restrictions.mustHaves,
+          restrictions.tastePreferences,
+          restrictions.dietaryGoals,
+          restrictions.cuisinePreferences,
+          mealType,
+        ]);
+
+        await pool.query(
+          `INSERT INTO global_recipes (
+            title, prep_time, cook_time, servings, ingredients, instructions, 
+            nutritional_info, cant_haves, must_haves, taste_preferences, 
+            dietary_goals, cuisine_preferences, meal_type
+          ) VALUES ${values}`,
+          flatParams
+        );
+
+        // Add to firstUse arrays
+        generatedRecipes.forEach(({ recipe, mealType }) => {
           firstUse[mealType].push({
             title: recipe.title,
             prep_time: recipe.prepTime,
@@ -271,12 +271,9 @@ Nutritional Information:
             ingredients: recipe.ingredients,
             instructions: recipe.instructions,
             nutritional_info: recipe.nutritionalInfo,
-            meal_type: recipe.mealType,
+            meal_type: mealType,
           });
-        } catch (error) {
-          console.error(`Error generating recipe for ${mealType}:`, error);
-          throw error;
-        }
+        });
       }
     }
 
@@ -304,9 +301,7 @@ Nutritional Information:
       // Try to fill each meal type
       for (const mealType of Object.keys(dayMeals)) {
         if (firstUse[mealType].length > 0) {
-          // Get and remove first recipe from array
           const recipe = firstUse[mealType].shift();
-          // Add to meal plan
           dayMeals[mealType] = formatRecipeForMealPlan(recipe, !recipe.id);
         } else {
           dayComplete = false;
@@ -325,11 +320,12 @@ Nutritional Information:
     const expiresAt = new Date();
     expiresAt.setDate(expiresAt.getDate() + completeDays);
 
+    // Update meal plan
     await pool.query(
       `INSERT INTO meal_plans (user_id, expires_at, meals) 
-         VALUES ($1, $2, $3)
-         ON CONFLICT (user_id) 
-         DO UPDATE SET meals = $3, expires_at = $2`,
+       VALUES ($1, $2, $3)
+       ON CONFLICT (user_id) 
+       DO UPDATE SET meals = $3, expires_at = $2`,
       [userId, expiresAt, mealPlan]
     );
 
@@ -412,6 +408,35 @@ router.post("/update", authMiddleware, async (req, res) => {
     res.status(500).json({
       success: false,
       message: "Server error",
+    });
+  }
+});
+
+// Delete meal plan endpoint
+router.delete("/current", authMiddleware, async (req, res) => {
+  try {
+    const userId = req.user.id;
+
+    await pool.query("BEGIN");
+
+    const result = await pool.query(
+      "DELETE FROM meal_plans WHERE user_id = $1 RETURNING id",
+      [userId]
+    );
+
+    await pool.query("COMMIT");
+
+    if (result.rows.length === 0) {
+      return res.status(404).json({ message: "No meal plan found" });
+    }
+
+    res.json({ message: "Meal plan deleted successfully" });
+  } catch (error) {
+    await pool.query("ROLLBACK");
+    console.error("Error deleting meal plan:", error);
+    res.status(500).json({
+      message: "Error deleting meal plan",
+      error: error.message,
     });
   }
 });
