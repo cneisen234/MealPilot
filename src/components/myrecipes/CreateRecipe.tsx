@@ -93,7 +93,7 @@ const CreateRecipe: React.FC = () => {
   };
 
   return (
-    <div className="recipe-result">
+    <div className="recipe-result" style={{ marginBottom: 150 }}>
       <RecipeImport
         onRecipeImported={(recipe) => {
           setFormData({

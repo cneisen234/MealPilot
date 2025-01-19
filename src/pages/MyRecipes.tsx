@@ -48,7 +48,7 @@ const MyRecipes: React.FC = () => {
   }
 
   return (
-    <div className="my-recipes-container">
+    <div className="my-recipes-container" style={{ marginBottom: 150 }}>
       <div className="page-header">
         <h1>My Recipes</h1>
         <button

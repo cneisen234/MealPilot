@@ -332,7 +332,7 @@ const Recipe = () => {
 
   if (recipe) {
     return (
-      <>
+      <div style={{ marginBottom: 150 }}>
         <div
           style={{
             backgroundColor: "rgba(5, 71, 42, 0.1)",
@@ -428,12 +428,12 @@ const Recipe = () => {
             </ul>
           </div>
         </div>
-      </>
+      </div>
     );
   }
 
   return (
-    <div className="recipe-container">
+    <div className="recipe-container" style={{ marginBottom: 150 }}>
       <div className="recipe-header">
         <h1>Generate a Recipe</h1>
         <p>

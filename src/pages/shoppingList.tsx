@@ -282,7 +282,7 @@ const ShoppingList: React.FC = () => {
   };
 
   return (
-    <div className="inventory-container">
+    <div className="inventory-container" style={{ marginBottom: 150 }}>
       <div className="inventory-header">
         <h1>Shopping List</h1>
         <div className="multi-button-list">
