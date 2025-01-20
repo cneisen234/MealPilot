@@ -322,8 +322,9 @@ const PhotoCaptureModal: React.FC<PhotoCaptureModalProps> = ({
               maxWidth: "850px",
               margin: "20px auto",
             }}>
-            NOTE: Make sure item is fully in frame and there are not other items
-            in view.
+            NOTE: Position the item so it's completely visible and centered in
+            frame, with no other items visible. If the item has text, ensure
+            it's clearly readable in the photo.
           </div>
           <button
             onClick={onClose}

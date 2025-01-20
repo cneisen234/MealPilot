@@ -193,16 +193,10 @@ const Inventory: React.FC = () => {
       }
       setNewItemFromPhoto(response.data.suggestedName);
       if (response.data.exists) {
-        if (response.data.matches.length === 1) {
-          // If only one match, open edit directly
-          setEditingItem(response.data.matches[0]);
-        } else {
-          // If multiple matches, show selection modal with suggested name
-          setMatches({
-            items: response.data.matches,
-            suggestedName: response.data.suggestedName,
-          });
-        }
+        setMatches({
+          items: response.data.matches,
+          suggestedName: response.data.suggestedName,
+        });
       } else {
         // No matches, open add form with suggested name
         handleNoMatch();
@@ -301,10 +295,6 @@ const Inventory: React.FC = () => {
       {(isFormOpen || editingItem) && (
         <InventoryForm
           item={editingItem}
-          onSwitchToAdd={() => {
-            setIsFormOpen(true);
-            setEditingItem(null);
-          }}
           initialItemName={newItemFromPhoto}
           onSubmit={editingItem ? handleUpdateItem : handleAddItem}
           onClose={() => {

@@ -159,13 +159,7 @@ const ShoppingList: React.FC = () => {
       }
       setNewItemFromPhoto(response.data.suggestedName);
       if (response.data.exists) {
-        if (response.data.matches.length === 1) {
-          // If only one match, open edit directly
-          setEditingItem(response.data.matches[0]);
-        } else {
-          // If multiple matches, show selection modal
-          setMatches(response.data.matches);
-        }
+        setMatches(response.data.matches);
       } else {
         // No matches, open add form with suggested name
         handleNoMatch();
@@ -399,10 +393,6 @@ const ShoppingList: React.FC = () => {
       {(isFormOpen || editingItem) && (
         <ShoppingListForm
           item={editingItem}
-          onSwitchToAdd={() => {
-            setIsFormOpen(true);
-            setEditingItem(null);
-          }}
           onSubmit={editingItem ? handleUpdateItem : handleAddItem}
           onClose={() => {
             setIsFormOpen(false);

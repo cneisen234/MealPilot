@@ -21,7 +21,6 @@ interface ShoppingListItem {
 
 interface ShoppingListFormProps {
   item?: ShoppingListItem | null;
-  onSwitchToAdd?: any;
   onSubmit: (item: {
     item_name: string;
     quantity: number;
@@ -35,7 +34,6 @@ interface ShoppingListFormProps {
 
 const ShoppingListForm: React.FC<ShoppingListFormProps> = ({
   item,
-  onSwitchToAdd,
   onSubmit,
   onClose,
   onMoveToInventory,
@@ -201,20 +199,6 @@ const ShoppingListForm: React.FC<ShoppingListFormProps> = ({
           )}
 
           <div className="form-actions">
-            {showNotThisItemButton && (
-              <button
-                type="button"
-                onClick={() => {
-                  onSwitchToAdd();
-                  setItemName(newItemFromPhoto || "");
-                  setQuantity(1);
-                  setRecipeIds([]);
-                }}
-                className="cancel-button"
-                style={{ marginRight: "auto" }}>
-                Not This Item
-              </button>
-            )}
             <button
               type="button"
               onClick={() => {
