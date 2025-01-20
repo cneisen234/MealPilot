@@ -280,6 +280,35 @@ router.put("/delete-by-name/:itemName", authMiddleware, async (req, res) => {
   }
 });
 
+// Constants for product categories and exclusions
+const PRODUCT_CATEGORIES = [
+  "beverages",
+  "dairy",
+  "produce",
+  "meat",
+  "pantry",
+  "snacks",
+  "condiments",
+  "baking",
+  "canned goods",
+];
+
+const EXCLUSION_CATEGORIES = [
+  "packaging",
+  "plastic",
+  "container",
+  "brand",
+  "logo",
+  "label",
+  "wrapper",
+  "product",
+  "material",
+  "merchandise",
+  "bottle",
+  "box",
+  "jar",
+];
+
 router.post(
   "/analyze-item",
   [authMiddleware, checkAiActions],
@@ -292,7 +321,7 @@ router.post(
         return res.status(400).json({ message: "Image data is required" });
       }
 
-      // Check if imageData is a valid base64 string
+      // Validate base64 image format
       if (!/^data:image\/[a-z]+;base64,/.test(imageData)) {
         return res.status(400).json({ message: "Invalid image data format" });
       }
@@ -306,61 +335,81 @@ router.post(
         [userId]
       );
 
-      // 1. Use Google Vision API to analyze the image
-      const [result] = await client.labelDetection({
-        image: { content: Buffer.from(base64Image, "base64") },
-      });
+      // Step 1: Run both OCR and Label Detection in parallel
+      const [textResult, labelResult] = await Promise.all([
+        client.textDetection({
+          image: { content: Buffer.from(base64Image, "base64") },
+        }),
+        client.labelDetection({
+          image: { content: Buffer.from(base64Image, "base64") },
+        }),
+      ]);
 
-      const labels = result.labelAnnotations;
+      // Step 2: Structure the analysis data
+      const imageAnalysis = {
+        detectedText: textResult[0].fullTextAnnotation
+          ? textResult[0].fullTextAnnotation.text
+              .split("\n")
+              .filter((text) => text.trim())
+              .map((text) => text.toLowerCase())
+          : [],
+        detectedLabels: labelResult[0].labelAnnotations
+          .filter((label) => label.score > 0.3)
+          .filter(
+            (label) =>
+              !EXCLUSION_CATEGORIES.includes(label.description.toLowerCase())
+          )
+          .map((label) => ({
+            name: label.description.toLowerCase(),
+            confidence: (label.score * 100).toFixed(1),
+          })),
+      };
 
-      if (!labels || labels.length === 0) {
-        return res
-          .status(400)
-          .json({ message: "No labels detected in the image" });
+      console.log(imageAnalysis);
+
+      // Calculate confidence score
+      const confidenceScore = calculateConfidence(imageAnalysis);
+
+      // If confidence is too low, return early
+      if (confidenceScore < 0.3) {
+        return res.status(400).json({
+          message: "Unable to identify item with sufficient confidence",
+          confidence: confidenceScore,
+        });
       }
 
-      // Filter the labels to only include high-confidence ones
-      const concepts = labels
-        .filter((label) => label.score > 0.3) // You can adjust the threshold (0.3) as needed
-        .map((label) => ({
-          name: label.description,
-          confidence: (label.score * 100).toFixed(1),
-        }));
+      // Format GPT prompt with all gathered information
+      const gptPrompt = `You are analyzing a photo of a food item. You have two separate tasks:
 
-      if (concepts.length === 0) {
-        return res
-          .status(400)
-          .json({ message: "No relevant concepts detected" });
-      }
+TASK 1 - IDENTIFY THE ITEM:
+Using this detected information from the image:
+Text found in image: ${imageAnalysis.detectedText.join(", ")}
+Visual labels: ${imageAnalysis.detectedLabels
+        .map((l) => `${l.name} (${l.confidence}% confidence)`)
+        .join(", ")}
 
-      // 2. Use GPT to find inventory matches based on Google Vision results
-      const gptPrompt = `Based on these image recognition results:
-${concepts.map((c) => `${c.name} (${c.confidence}% confidence)`).join("\n")}
+Product must fall into one of these categories: ${PRODUCT_CATEGORIES.join(", ")}
 
-And these inventory items:
+Your job is to identify what food item this is. Rules for identification:
+1. Must be a specific food item (e.g., "ketchup" not "condiment")
+2. Must NOT be any of these items: ${userItems.rows
+        .map((item) => item.item_name)
+        .join(", ")}
+3. Must be a food or beverage item
+4. Use the text found in the image as primary identifier if available
+5. Use visual labels as secondary confirmation
+6. Ignore any labels related to: ${EXCLUSION_CATEGORIES.join(", ")}
+
+TASK 2 - FIND MATCHES:
+After identifying the item, compare it against this inventory list to find potential matches:
 ${userItems.rows.map((item) => item.item_name).join("\n")}
 
-Identify and find matches from the inventory list. Be very general about this. If something is even similar, then it's a match.
-
-Place these matches in the inventoryMatches key on the json response you'll be responding with.
-
-Also take your best guess at what the item is 
-based on the list of names given to you in the image recognition results. 
-Consider common variations and alternative names for grocery items.
-
-Try to be as specific as possible. (example: try to avoid using general words like "condiment".
-try your best to use more specific words like "ketchup" or "syrup" rather just "condiment").
-
-IMPORTANT: Your guess has to be a food item and can't be any these items ${userItems.rows
-        .map((item) => item.item_name)
-        .join("\n")} NO MATTER WHAT.
- 
-Place this guess inside of the itemName key in the JSON response.
-
-Return a JSON object with this structure:
+Respond with a JSON object in this format:
 {
-  "itemName": "your best guess at what the item is based on the words from the image recognition results",
-  "inventoryMatches": ["exact", "matches", "from", "shopping list"]
+  "itemName": "specific food item name based on rules above",
+  "itemCategory": "one of the product categories listed above",
+  "confidence": "high/medium/low based on available information",
+  "inventoryMatches": ["exact matches from inventory list"]
 }`;
 
       const completion = await openai.chat.completions.create({
@@ -368,7 +417,8 @@ Return a JSON object with this structure:
         messages: [
           {
             role: "system",
-            content: "You are a precise inventory matching expert.",
+            content:
+              "You are a precise food item identification expert. You excel at identifying specific food items from image analysis data.",
           },
           {
             role: "user",
@@ -382,35 +432,77 @@ Return a JSON object with this structure:
 
       const analysis = JSON.parse(completion.choices[0].message.content);
 
-      if (!analysis.itemName || !analysis.inventoryMatches) {
-        return res.status(400).json({ message: "Error parsing GPT response" });
+      if (
+        !analysis.itemName ||
+        !analysis.inventoryMatches ||
+        !analysis.itemCategory
+      ) {
+        return res
+          .status(400)
+          .json({ message: "Error parsing item identification" });
       }
 
-      // 3. Find the actual inventory items that match
+      // Verify the identified item category is valid
+      if (!PRODUCT_CATEGORIES.includes(analysis.itemCategory.toLowerCase())) {
+        return res
+          .status(400)
+          .json({ message: "Invalid product category identified" });
+      }
+
+      // Find actual inventory items that match
       const matches = userItems.rows.filter((item) =>
         analysis.inventoryMatches.includes(item.item_name)
       );
 
+      // Return results with confidence information
       res.json({
         exists: matches.length > 0,
         matches,
         suggestedName: analysis.itemName,
+        category: analysis.itemCategory,
+        confidence: {
+          score: confidenceScore,
+          level: analysis.confidence,
+          textFound: imageAnalysis.detectedText.length > 0,
+          labelCount: imageAnalysis.detectedLabels.length,
+        },
       });
     } catch (error) {
       console.error("Error analyzing item photo:", error);
       if (error.response) {
-        // Error coming from an API
-        return res
-          .status(error.response.status)
-          .json({ message: error.response.data.message });
+        return res.status(error.response.status).json({
+          message: error.response.data.message,
+        });
       } else {
-        // Other errors (e.g., network or GPT errors)
-        return res
-          .status(500)
-          .json({ message: "Error analyzing photo", error: error.message });
+        return res.status(500).json({
+          message: "Error analyzing photo",
+          error: error.message,
+        });
       }
     }
   }
 );
+
+// Helper function to calculate confidence score
+function calculateConfidence(analysis) {
+  let confidence = 0;
+
+  // Text detection adds significant confidence
+  if (analysis.detectedText.length > 0) {
+    confidence += 0.5;
+  }
+
+  // High confidence labels add confidence
+  const highConfidenceLabels = analysis.detectedLabels.filter(
+    (l) => parseFloat(l.confidence) > 80
+  );
+  confidence += highConfidenceLabels.length * 0.1;
+
+  // More labels (up to 5) add some confidence
+  confidence += Math.min(analysis.detectedLabels.length * 0.05, 0.25);
+
+  // Cap at 1.0
+  return Math.min(confidence, 1.0);
+}
 
 module.exports = router;
