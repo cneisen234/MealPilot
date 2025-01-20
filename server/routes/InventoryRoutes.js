@@ -406,15 +406,25 @@ Your job is to identify what food item this is. Rules for identification:
 6. Ignore any labels related to: ${EXCLUSION_CATEGORIES.join(", ")}
 
 TASK 2 - FIND MATCHES:
-After identifying the item, compare it against this inventory list to find potential matches:
+Based on these image recognition results:
+${imageAnalysis.detectedLabels
+  .map((l) => `${l.name} (${l.confidence}% confidence)`)
+  .join(", ")}
+
+And these inventory list items:
 ${userItems.rows.map((item) => item.item_name).join("\n")}
+
+Identify the most specific item name and find matches from the inventory list.
+Consider common variations and alternative names for grocery items.
+
+Find ANY match, there can and should be more then one. If it's even somewhat similar, it's a match.
 
 Respond with a JSON object in this format:
 {
   "itemName": "specific food item name based on rules above",
   "itemCategory": "one of the product categories listed above",
   "confidence": "high/medium/low based on available information",
-  "inventoryMatches": ["exact matches from inventory list"]
+  "inventoryMatches": ["potential matches from inventory list"]
 }`;
 
       const completion = await openai.chat.completions.create({
