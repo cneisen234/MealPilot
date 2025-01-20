@@ -68,7 +68,6 @@ const ShoppingList: React.FC = () => {
   const [isItemPhotoModalOpen, setIsItemPhotoModalOpen] = useState(false);
   const [newItemFromPhoto, setNewItemFromPhoto] = useState<string | null>(null);
   const [matches, setMatches] = useState<any[] | null>(null);
-  const [error, setError] = useState("");
 
   useEffect(() => {
     loadShoppingList();
@@ -206,7 +205,6 @@ const ShoppingList: React.FC = () => {
       setIsFormOpen(false);
       showToast("Item added successfully!", "success");
     } catch (error) {
-      setError("Failed to add item");
       showToast("Error adding item. Please try again.", "error");
       console.error("Error adding item:", error);
     }
@@ -217,7 +215,7 @@ const ShoppingList: React.FC = () => {
       await addMultiItemsToInventory(multiItems);
       await loadShoppingList();
     } catch (error) {
-      setError("Failed to add items to inventory");
+      showToast("Failed to add items to inventory", "error");
       console.error("Error adding to inventory:", error);
     }
   };
@@ -237,7 +235,7 @@ const ShoppingList: React.FC = () => {
       }
       setEditingItem(null);
     } catch (error) {
-      setError("Failed to update item");
+      showToast("Failed to update item", "error");
       console.error("Error updating item:", error);
     }
   };
@@ -249,7 +247,7 @@ const ShoppingList: React.FC = () => {
       setItems((prev) => prev.filter((item) => item.id !== deleteItem.id));
       setDeleteItem(null);
     } catch (error) {
-      setError("Failed to delete item");
+      showToast("Failed to delete item", "error");
       console.error("Error deleting item:", error);
     }
   };

@@ -388,6 +388,11 @@ Visual labels: ${imageAnalysis.detectedLabels
         .map((l) => `${l.name} (${l.confidence}% confidence)`)
         .join(", ")}
 
+Think carefully about all words and labels above, no matter their confidence score:
+- What product names, ingredients, or descriptions do you see in the text?
+- How do the visual labels support or add context to the text?
+- What specific food item would have these characteristics?
+
 Product must fall into one of these categories: ${PRODUCT_CATEGORIES.join(", ")}
 
 Your job is to identify what food item this is. Rules for identification:

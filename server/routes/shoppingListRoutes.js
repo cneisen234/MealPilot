@@ -1018,6 +1018,11 @@ Visual labels: ${imageAnalysis.detectedLabels
         .map((l) => `${l.name} (${l.confidence}% confidence)`)
         .join(", ")}
 
+Think carefully about all words and labels above, no matter their confidence score:
+- What product names, ingredients, or descriptions do you see in the text?
+- How do the visual labels support or add context to the text?
+- What specific food item would have these characteristics?
+
 Product must fall into one of these categories: ${PRODUCT_CATEGORIES.join(", ")}
 
 Your job is to identify what food item this is. Rules for identification:
@@ -1034,14 +1039,12 @@ TASK 2 - FIND MATCHES:
 After identifying the item, compare it against this shopping list to find potential matches:
 ${userItems.rows.map((item) => item.item_name).join("\n")}
 
-Look for items that could be the same or similar to what you identified.
-
 Respond with a JSON object in this format:
 {
   "itemName": "specific food item name based on rules above",
   "itemCategory": "one of the product categories listed above",
   "confidence": "high/medium/low based on available information",
-  "shoppingListMatches": ["array of matching items from shopping list"]
+  "shoppingListMatches": ["exact matches from shopping list"]
 }`;
 
       const completion = await openai.chat.completions.create({

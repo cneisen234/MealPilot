@@ -124,7 +124,12 @@ const ShoppingListForm: React.FC<ShoppingListFormProps> = ({
       <div className="modal-content">
         <div className="modal-header-form">
           <h2>{item ? "Edit Item" : "Add New Item"}</h2>
-          <button onClick={onClose} className="modal-close-btn">
+          <button
+            onClick={() => {
+              setItemName("");
+              onClose();
+            }}
+            className="modal-close-btn">
             <FaTimes />
           </button>
         </div>

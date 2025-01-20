@@ -145,7 +145,8 @@
     gap: 8px;
     width: 100%;
     padding: 12px;
-    margin: 20px 0;
+    margin-top: -35px;
+    margin-bottom: -25px;
     background-color: var(--primary-color);
     color: white;
     border: none;
