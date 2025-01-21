@@ -73,6 +73,7 @@ const Recipe = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [recipe, setRecipe] = useState<Recipe | null>(null);
   const [isSaving, setIsSaving] = useState(false);
+  const [selectedServings, setSelectedServings] = useState<string>("4");
   let currentStep = 1;
 
   useEffect(() => {
@@ -242,7 +243,7 @@ const Recipe = () => {
   const handleGenerateRecipe = async () => {
     setIsLoading(true);
     try {
-      const response = await generateRecipe(selectedMealType);
+      const response = await generateRecipe(selectedMealType, selectedServings);
       if (aiActionsRemaining === 10) {
         showToast(`You are running low on AI actions for today`, "warning");
       }
@@ -467,6 +468,15 @@ const Recipe = () => {
           options={MEAL_TYPES}
           selectedItem={selectedMealType}
           onSelect={setSelectedMealType}
+          disabled={false}
+        />
+        <PreferenceInput
+          label="Servings"
+          description="How many servings do you want to make?"
+          type="select"
+          options={["1", "2", "3", "4", "5", "6", "7", "8"]}
+          selectedItem={selectedServings}
+          onSelect={setSelectedServings}
           disabled={false}
         />
         <PreferenceInput

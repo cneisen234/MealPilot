@@ -104,7 +104,7 @@ router.post(
   async (req, res) => {
     try {
       const userId = req.user.id;
-      const { mealType } = req.body;
+      const { mealType, servings } = req.body; // Add servings to destructuring
 
       // Fetch user data and preferences in parallel
       const [
@@ -149,40 +149,35 @@ router.post(
 
       const matchingRecipesQuery = await pool.query(
         `SELECT *
-  FROM global_recipes 
-  WHERE meal_type = $1
-  AND last_queried_at < $2
-  AND ($3::text[] = '{}' OR (cant_haves @> $3::text[] AND array_length($3::text[], 1) = array_length(ARRAY(
-     SELECT DISTINCT unnest($3::text[])
-     INTERSECT
-     SELECT DISTINCT unnest(cant_haves)
-   ), 1)))
-
-   AND ($4::text[] = '{}' OR (must_haves @> $4::text[] AND array_length($4::text[], 1) = array_length(ARRAY(
-     SELECT DISTINCT unnest($4::text[])
-     INTERSECT
-     SELECT DISTINCT unnest(must_haves)
-   ), 1)))
-
-   AND ($5::text[] = '{}' OR (taste_preferences @> $5::text[] AND array_length($5::text[], 1) = array_length(ARRAY(
-     SELECT DISTINCT unnest($5::text[])
-     INTERSECT
-     SELECT DISTINCT unnest(taste_preferences)
-   ), 1)))
-
-   AND ($6::text[] = '{}' OR (dietary_goals @> $6::text[] AND array_length($6::text[], 1) = array_length(ARRAY(
-     SELECT DISTINCT unnest($6::text[])
-     INTERSECT
-     SELECT DISTINCT unnest(dietary_goals)
-   ), 1)))
-
-   AND ($7::text[] = '{}' OR (cuisine_preferences @> $7::text[] AND array_length($7::text[], 1) = array_length(ARRAY(
-     SELECT DISTINCT unnest($7::text[])
-     INTERSECT
-     SELECT DISTINCT unnest(cuisine_preferences)
-   ), 1)))
-
-   AND title NOT IN (SELECT unnest($8::text[]));`,
+        FROM global_recipes 
+        WHERE meal_type = $1
+        AND last_queried_at < $2
+        AND ($3::text[] = '{}' OR (cant_haves @> $3::text[] AND array_length($3::text[], 1) = array_length(ARRAY(
+          SELECT DISTINCT unnest($3::text[])
+          INTERSECT
+          SELECT DISTINCT unnest(cant_haves)
+        ), 1)))
+        AND ($4::text[] = '{}' OR (must_haves @> $4::text[] AND array_length($4::text[], 1) = array_length(ARRAY(
+          SELECT DISTINCT unnest($4::text[])
+          INTERSECT
+          SELECT DISTINCT unnest(must_haves)
+        ), 1)))
+        AND ($5::text[] = '{}' OR (taste_preferences @> $5::text[] AND array_length($5::text[], 1) = array_length(ARRAY(
+          SELECT DISTINCT unnest($5::text[])
+          INTERSECT
+          SELECT DISTINCT unnest(taste_preferences)
+        ), 1)))
+        AND ($6::text[] = '{}' OR (dietary_goals @> $6::text[] AND array_length($6::text[], 1) = array_length(ARRAY(
+          SELECT DISTINCT unnest($6::text[])
+          INTERSECT
+          SELECT DISTINCT unnest(dietary_goals)
+        ), 1)))
+        AND ($7::text[] = '{}' OR (cuisine_preferences @> $7::text[] AND array_length($7::text[], 1) = array_length(ARRAY(
+          SELECT DISTINCT unnest($7::text[])
+          INTERSECT
+          SELECT DISTINCT unnest(cuisine_preferences)
+        ), 1)))
+        AND title NOT IN (SELECT unnest($8::text[]));`,
         [
           mealType || "meal",
           threeDaysAgo.toISOString(),
@@ -204,6 +199,39 @@ router.post(
         );
         recipe = matchingRecipesQuery.rows[randomIndex];
 
+        // If servings is different, adjust ingredients proportionally
+        if (servings && recipe.servings !== servings) {
+          const ratio = parseInt(servings) / parseInt(recipe.servings);
+          // Adjust ingredients
+          recipe.ingredients = recipe.ingredients.map((ingredient) => {
+            const match = ingredient.match(/^([\d.]+)\s+(.+)$/);
+            if (match) {
+              const amount = parseFloat(match[1]);
+              const rest = match[2];
+              return `${(amount * ratio).toFixed(2)} ${rest}`;
+            }
+            return ingredient;
+          });
+
+          // Adjust nutritional info proportionally
+          recipe.nutritionalInfo = recipe.nutritionalInfo.map((info) => {
+            const match = info.match(/^(.*?):\s*([\d.]+)\s*([a-zA-Z]+)$/);
+            if (match) {
+              const [_, label, amount, unit] = match;
+              const newAmount = (parseFloat(amount) * ratio).toFixed(2);
+              return `${label}: ${newAmount} ${unit}`;
+            }
+            return info;
+          });
+
+          // Update servings
+          recipe.servings = servings;
+
+          // Keep the time fields (they don't need to change with servings)
+          recipe.prepTime = recipe.prepTime || "0 minutes";
+          recipe.cookTime = recipe.cookTime || "0 minutes";
+        }
+
         // Update last_queried_at for the selected recipe only
         await pool.query(
           "UPDATE global_recipes SET last_queried_at = NOW() WHERE id = $1",
@@ -216,7 +244,9 @@ router.post(
       // If no matching recipe found, generate new one using AI
       let prompt = `Generate a detailed recipe for ${
         user.name
-      }. This should be a ${mealType || "meal"} recipe.`;
+      }. This should be a ${mealType || "meal"} recipe for ${
+        servings || "4"
+      } servings.`;
 
       // Add dietary restrictions
       if (cantHaves.length > 0) {
@@ -251,15 +281,15 @@ router.post(
       }
 
       // Add formatting instructions
-      prompt += `\nPlease format the recipe exactly as follows:
+      prompt += `\nPlease format the recipe exactly as follows and include ALL fields:
 
 Name: [Recipe Name]
-Prep Time: [Time in minutes]
-Cook Time: [Time in minutes]
-Servings: [Number]
+Prep Time: [Exact time in minutes, e.g. "20 minutes"]
+Cook Time: [Exact time in minutes, e.g. "30 minutes"]
+Servings: ${servings || "4"}
 
 Ingredients:
-[List each ingredient on a new line with measurements]
+[List each ingredient on a new line with precise measurements]
 
 Instructions:
 **[Main Step Title]:**
@@ -270,7 +300,14 @@ Instructions:
 [Continue pattern for all steps]
 
 Nutritional Information:
-[Nutritional details]`;
+- Calories: [number] kcal
+- Protein: [number]g
+- Carbohydrates: [number]g
+- Fat: [number]g
+- Fiber: [number]g
+- Sodium: [number]mg
+
+IMPORTANT: All fields must be included and properly formatted as shown above, especially the prep time, cook time, and complete nutritional information.`;
 
       // Generate recipe using OpenAI
       const completion = await openai.chat.completions.create({
@@ -287,11 +324,11 @@ Nutritional Information:
       // Save to global_recipes table
       await pool.query(
         `INSERT INTO global_recipes (
-        title, prep_time, cook_time, servings, 
-        ingredients, instructions, nutritional_info,
-        cant_haves, must_haves, taste_preferences, 
-        dietary_goals, cuisine_preferences, meal_type
-      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)`,
+          title, prep_time, cook_time, servings, 
+          ingredients, instructions, nutritional_info,
+          cant_haves, must_haves, taste_preferences, 
+          dietary_goals, cuisine_preferences, meal_type
+        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)`,
         [
           recipe.title,
           recipe.prepTime,
@@ -340,10 +377,10 @@ router.post("/save-recipe", authMiddleware, async (req, res) => {
       [userId]
     );
 
-    if (recipeCount.rows[0].count >= 50) {
+    if (recipeCount.rows[0].count >= 100) {
       return res.status(400).json({
         message:
-          "Recipe limit reached. Maximum 50 recipes allowed per account.",
+          "Recipe limit reached. Maximum 100 recipes allowed per account.",
       });
     }
 
@@ -466,7 +503,7 @@ router.get("/myrecipes/:id", authMiddleware, async (req, res) => {
 
 router.get(
   "/myrecipesinventory/:id",
-  [authMiddleware, checkAiActions],
+  [authMiddleware], // Removed checkAiActions since we don't need it anymore
   async (req, res) => {
     try {
       const userId = req.user.id;
@@ -487,162 +524,155 @@ router.get(
       const recipe = recipeResult.rows[0];
       const inventory = inventoryResult.rows;
 
-      if (inventory.length === 0) {
-        // If inventory is empty, all ingredients should be marked as missing
-        const missingIngredients = recipe.ingredients.map((ingredient) => ({
+      // Function to extract item name (same as shopping list modal)
+      const extractItemName = (original) => {
+        // First, convert everything to lowercase for consistent matching
+        let processed = original.toLowerCase();
+
+        // Remove numbers and fractions (including decimals)
+        processed = processed.replace(/\d+(\.\d+)?(\s*\/\s*\d+)?/g, "");
+
+        // Remove all measurement terms
+        const measurements = [
+          "cup",
+          "cups",
+          "tablespoon",
+          "tablespoons",
+          "tbsp",
+          "teaspoon",
+          "teaspoons",
+          "tsp",
+          "pound",
+          "pounds",
+          "lb",
+          "lbs",
+          "ounce",
+          "ounces",
+          "oz",
+          "gram",
+          "grams",
+          "g",
+          "ml",
+          "milliliter",
+          "milliliters",
+          "pinch",
+          "pinches",
+          "dash",
+          "dashes",
+          "handful",
+          "handfuls",
+          "piece",
+          "pieces",
+          "slice",
+          "slices",
+          "can",
+          "cans",
+          "package",
+          "packages",
+          "bottle",
+          "bottles",
+        ];
+
+        measurements.forEach((measure) => {
+          const measureRegex = new RegExp(`\\b${measure}s?\\b`, "g");
+          processed = processed.replace(measureRegex, "");
+        });
+
+        // Remove common connectors and prepositions
+        const connectors = [
+          "of",
+          "the",
+          "a",
+          "an",
+          "fresh",
+          "chopped",
+          "diced",
+          "sliced",
+        ];
+        connectors.forEach((connector) => {
+          const connectorRegex = new RegExp(`\\b${connector}\\b`, "g");
+          processed = processed.replace(connectorRegex, "");
+        });
+
+        // Clean up whitespace and commas
+        return processed.replace(/,/g, "").replace(/\s+/g, " ").trim();
+      };
+
+      // Function to extract quantity
+      const extractQuantity = (original) => {
+        const match = original.match(/\d+(\.\d+)?(\s*\/\s*\d+)?/);
+        if (!match) return 1;
+
+        const numStr = match[0];
+        if (numStr.includes("/")) {
+          const [num, denom] = numStr
+            .split("/")
+            .map((n) => parseFloat(n.trim()));
+          return num / denom;
+        }
+        return parseFloat(numStr);
+      };
+
+      const ingredients = recipe.ingredients.map((ingredient) => {
+        const parsedName = extractItemName(ingredient);
+        const parsedQuantity = extractQuantity(ingredient);
+
+        // Look for exact match in inventory (case-insensitive)
+        const inventoryMatch = inventory.find((item) => {
+          const inventoryName = extractItemName(item.item_name).toLowerCase();
+          const ingredientName = parsedName.toLowerCase();
+
+          // Split both names into words
+          const inventoryWords = inventoryName.split(" ");
+          const ingredientWords = ingredientName.split(" ");
+
+          // Check if either name contains all the words of the other
+          const inventoryContainsIngredient = ingredientWords.every((word) =>
+            inventoryWords.some(
+              (invWord) => invWord.includes(word) || word.includes(invWord)
+            )
+          );
+
+          const ingredientContainsInventory = inventoryWords.every((word) =>
+            ingredientWords.some(
+              (ingWord) => ingWord.includes(word) || word.includes(ingWord)
+            )
+          );
+
+          return inventoryContainsIngredient || ingredientContainsInventory;
+        });
+
+        if (inventoryMatch) {
+          return {
+            original: ingredient,
+            parsed: {
+              quantity: parsedQuantity,
+              name: inventoryMatch.item_name,
+            },
+            status: {
+              type: "in-inventory",
+              hasEnough: inventoryMatch.quantity >= parsedQuantity,
+              available: {
+                quantity: inventoryMatch.quantity,
+                id: inventoryMatch.id,
+              },
+            },
+          };
+        }
+
+        // No match found
+        return {
           original: ingredient,
           parsed: {
-            quantity: 0,
-            name: ingredient,
+            quantity: parsedQuantity,
+            name: parsedName,
           },
           status: {
             type: "missing",
             hasEnough: false,
           },
-        }));
-
-        return res.json({
-          ...recipe,
-          ingredients: missingIngredients,
-        });
-      }
-
-      const analysisPrompt = `Analyze these recipe ingredients and match against inventory database items.
-Your task is to parse quantities and match ingredients exactly.
-
-INVENTORY DATABASE (ONLY USE THESE EXACT NAMES):
-${inventory
-  .map((item) => `"${item.item_name}" (id: ${item.id}, qty: ${item.quantity})`)
-  .join("\n")}
-
-RECIPE INGREDIENTS TO ANALYZE:
-${recipe.ingredients.join("\n")}
-
-CRITICAL RULES:
-1. Analyze each ingredient for quantity and exact match
-2. Convert all fractions to decimals (1/2 → 0.5, 1 1/2 → 1.5)
-3. For matches, use EXACT inventory item names (e.g., "Fresh Eggs" not "eggs")
-4. If unsure of match, mark as "missing"
-5. Be conservative - "fresh lemon" ≠ "lemon juice"
-
-FORMAT REQUIRED:
-Return a JSON object with this structure:
-{
-  "ingredients": [
-    {
-      "original": "original ingredient text",
-      "parsed": {
-        "quantity": number,
-        "name": "exact inventory item name"
-      },
-      "status": {
-        "type": "in-inventory|in-shopping-list|missing|unparseable",
-        "hasEnough": boolean,
-        "available": {
-          "quantity": number,
-          "id": number
-        }
-      }
-    }
-  ]
-}
-
-EXAMPLE OUTPUT:
-{
-  "ingredients": [
-    {
-      "original": "2 cups milk",
-      "parsed": {
-        "quantity": 2,
-        "name": "Whole Milk"
-      },
-      "status": {
-        "type": "in-inventory",
-        "hasEnough": true,
-        "available": {
-          "quantity": 4,
-          "id": 123
-        }
-      }
-    }
-  ]
-}`;
-
-      const completion = await openai.chat.completions.create({
-        model: "gpt-3.5-turbo",
-        messages: [
-          {
-            role: "system",
-            content:
-              "You are a precise ingredient matching system. Always maintain exact format and structure.",
-          },
-          {
-            role: "user",
-            content: analysisPrompt,
-          },
-        ],
-        temperature: 0.2,
-        max_tokens: 1000,
-        response_format: { type: "json_object" },
+        };
       });
-
-      let ingredients;
-      try {
-        const parsedResponse = JSON.parse(
-          completion.choices[0].message.content
-        );
-
-        if (
-          !parsedResponse.ingredients ||
-          !Array.isArray(parsedResponse.ingredients)
-        ) {
-          throw new Error("Invalid response structure");
-        }
-
-        ingredients = parsedResponse.ingredients.map((ingredient) => {
-          // Validate and ensure correct structure
-          if (
-            !ingredient.original ||
-            !ingredient.parsed ||
-            !ingredient.status
-          ) {
-            return {
-              original: ingredient.original || "Unknown ingredient",
-              status: {
-                type: "unparseable",
-                hasEnough: false,
-                notes: "Invalid ingredient format",
-              },
-            };
-          }
-
-          return {
-            original: ingredient.original,
-            parsed: {
-              quantity: Number(ingredient.parsed.quantity) || 0,
-              name: ingredient.parsed.name,
-            },
-            status: {
-              type: ingredient.status.type,
-              hasEnough: ingredient.status.hasEnough || false,
-              available: ingredient.status.available || null,
-              notes: ingredient.status.notes,
-            },
-          };
-        });
-      } catch (error) {
-        console.error("Error processing GPT response:", error);
-        console.error("Raw response:", completion.choices[0].message.content);
-
-        ingredients = recipe.ingredients.map((ing) => ({
-          original: typeof ing === "string" ? ing : ing.original,
-          status: {
-            type: "unparseable",
-            hasEnough: false,
-            notes: "Failed to analyze ingredient",
-          },
-        }));
-      }
 
       res.json({
         ...recipe,
@@ -841,10 +871,10 @@ router.post(
         [userId]
       );
 
-      if (recipeCount.rows[0].count >= 50) {
+      if (recipeCount.rows[0].count >= 100) {
         return res.status(400).json({
           message:
-            "Recipe limit reached. Maximum 50 recipes allowed per account.",
+            "Recipe limit reached. Maximum 100 recipes allowed per account.",
         });
       }
       const { url } = req.body;
@@ -945,10 +975,10 @@ router.post(
         [userId]
       );
 
-      if (recipeCount.rows[0].count >= 50) {
+      if (recipeCount.rows[0].count >= 100) {
         return res.status(400).json({
           message:
-            "Recipe limit reached. Maximum 50 recipes allowed per account.",
+            "Recipe limit reached. Maximum 100 recipes allowed per account.",
         });
       }
       const { imageData } = req.body;

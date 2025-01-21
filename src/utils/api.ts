@@ -172,8 +172,8 @@ export const removeCuisinePreference = (id: number) => {
 };
 
 // Recipe Generation
-export const generateRecipe = (mealType?: string) => {
-  return api.post('/recipe/create-recipe', { mealType });
+export const generateRecipe = (mealType?: string, servings?: string) => {
+  return api.post('/recipe/create-recipe', { mealType, servings });
 };
 
 export const saveRecipe = (recipeData: {
@@ -318,6 +318,13 @@ export const processReceipt = (imageData: string) => {
   return api.post('/shopping-list/process-receipt', { imageData });
 };
 
+export const addMultipleToShoppingList = async (items: Array<{
+  item_name: string;
+  quantity: number;
+}>) => {
+  return api.post('/shopping-list/bulk-add-shopping', { items });
+};
+
 export const addMultiItemsToInventory = (items: Array<{
   shopping_list_id: number;
   shopping_list_item: string;
@@ -416,6 +423,10 @@ export const analyzeImageWithHuggingFace = async (file: File): Promise<string> =
 
 export const deleteMealPlan = () => {
   return api.delete('/mealplan/current');
+};
+
+export const moveToShoppingList = async (itemId: number) => {
+  return await api.post(`/shopping-list/from-inventory/${itemId}`);
 };
 
 export default api;

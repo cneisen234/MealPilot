@@ -19,6 +19,7 @@ import {
 import ConfirmDeleteModal from "../common/ConfirmDeleteModal";
 import CookingMode from "../cooking/CookingMode";
 import RecipePDF from "./RecipePdf";
+import MultiAddToShoppingList from "../shoppingList/MultiAddToShoppingList";
 import { useToast } from "../../context/ToastContext";
 
 interface IngredientAnalysis {
@@ -60,6 +61,8 @@ const RecipeDetail: React.FC = () => {
   const [editedRecipe, setEditedRecipe] = useState<Recipe | null>(null);
   const [isDeleteConfirmOpen, setIsDeleteConfirmOpen] = useState(false);
   const [isCookingMode, setIsCookingMode] = useState(false);
+  const [isShoppingListModalOpen, setIsShoppingListModalOpen] = useState(false);
+  const [analysisRun, setAnalysisRun] = useState(false);
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const routeLocation = useLocation();
@@ -115,6 +118,7 @@ const RecipeDetail: React.FC = () => {
     try {
       const response = await getRecipeInventory(id);
       setRecipe(response.data);
+      setAnalysisRun(true);
     } catch (error) {
       console.error("Error analyzing ingredients:", error);
     } finally {
@@ -479,29 +483,21 @@ const RecipeDetail: React.FC = () => {
           <button
             onClick={handleAnalyzeIngredients}
             className="analyze-button"
-            style={
-              recipe?.ingredients?.length > 11
-                ? { backgroundColor: "grey" }
-                : {}
-            }
-            disabled={isAnalyzing || recipe?.ingredients?.length > 11}>
+            disabled={isAnalyzing}>
             {isAnalyzing && <AnimatedTechIcon size={20} speed={4} />}
             {isAnalyzing ? "Analyzing..." : "Check Pantry"}
           </button>
-          {recipe?.ingredients?.length > 11 && (
-            <div
+          {recipe.ingredients.length > 0 && analysisRun && (
+            <button
+              onClick={() => setIsShoppingListModalOpen(true)}
+              className="analyze-button"
               style={{
-                backgroundColor: "rgba(5, 71, 42, 0.1)",
-                padding: "12px 20px",
-                borderRadius: "8px",
-                marginTop: "-20px",
-                fontSize: "0.75rem",
-                color: "var(--text-color)",
-                maxWidth: "850px",
-                margin: "20px auto",
+                marginLeft: window.innerWidth > 768 ? "12px" : "0",
+                marginTop: window.innerWidth <= 768 ? "12px" : "0",
+                backgroundColor: "var(--secondary-color)",
               }}>
-              Ingredients list is too large to check pantry.
-            </div>
+              Add to Shopping List
+            </button>
           )}
         </div>
         <ul className="recipe-list">
@@ -593,6 +589,13 @@ const RecipeDetail: React.FC = () => {
       )}
       {isCookingMode && (
         <CookingMode recipe={recipe} onClose={() => setIsCookingMode(false)} />
+      )}
+
+      {isShoppingListModalOpen && (
+        <MultiAddToShoppingList
+          ingredients={recipe.ingredients}
+          onClose={() => setIsShoppingListModalOpen(false)}
+        />
       )}
     </div>
   );

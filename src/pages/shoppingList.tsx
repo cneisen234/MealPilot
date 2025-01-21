@@ -27,6 +27,8 @@ import ReceiptMatchesModal from "../components/shoppingList/ReceiptMatchesModal"
 import ShareableListModal from "../components/shoppingList/SharableListModal";
 import MatchSelectionModal from "../components/common/MatchSelectionModal";
 import SearchInput from "../components/common/SearchInput";
+import SortInput from "../components/common/SortInput";
+import { sortHelper, SortConfig } from "../helpers/sortHelper";
 import { useToast } from "../context/ToastContext";
 import { useAuth } from "../context/AuthContext";
 
@@ -69,21 +71,40 @@ const ShoppingList: React.FC = () => {
   const [newItemFromPhoto, setNewItemFromPhoto] = useState<string | null>(null);
   const [matches, setMatches] = useState<any[] | null>(null);
 
+  const sortOptions = [
+    { label: "Recently Added", value: "id", type: "number" },
+    { label: "Name", value: "item_name", type: "string" },
+    { label: "Quantity", value: "quantity", type: "number" },
+  ];
+
+  const [sortConfig, setSortConfig] = useState<SortConfig>({
+    field: "id",
+    direction: "desc",
+    type: "number",
+  });
+
   useEffect(() => {
     loadShoppingList();
   }, []);
 
   useEffect(() => {
-    setFilteredItems(items);
-  }, [items]);
-
-  useEffect(() => {
     if (items.length > 0) {
-      setSelectedItems(new Set(items.map((item) => item.id)));
-    } else {
-      setSelectedItems(new Set());
+      const sorted = sortHelper(items, sortConfig);
+      setFilteredItems(sorted);
     }
-  }, [items]);
+  }, [items, sortConfig]);
+
+  const handleSearch = (filtered: ShoppingListItem[]) => {
+    const sorted = sortHelper(filtered, sortConfig);
+    setFilteredItems(sorted);
+  };
+
+  const handleSort = (field: string, direction: "asc" | "desc") => {
+    const type =
+      sortOptions.find((opt) => opt.value === field)?.type || "string";
+    //@ts-ignore
+    setSortConfig({ field, direction, type });
+  };
 
   const handleToggleSelect = (itemId: number) => {
     const newSelectedItems = new Set(selectedItems);
@@ -287,14 +308,14 @@ const ShoppingList: React.FC = () => {
             style={{ backgroundColor: "var(--secondary-color)" }}>
             <>
               <FaReceipt />
-              <span>Add Photo of Receipt</span>
+              <span>Update list from Receipt</span>
             </>
           </button>
           <button
             onClick={() => setIsItemPhotoModalOpen(true)}
             className="add-item-button-list"
             style={{ backgroundColor: "var(--primary-color)" }}>
-            <FaCamera /> Add Item from Photo
+            <FaCamera /> Add/Edit from Photo
           </button>
           <button
             onClick={() => setIsFormOpen(true)}
@@ -332,9 +353,17 @@ const ShoppingList: React.FC = () => {
           ...item,
           name: item.item_name,
         }))}
-        onSearch={(filtered) => setFilteredItems(filtered)}
+        onSearch={handleSearch}
         placeholder="Search your shopping list..."
       />
+      <div className="inventory-filters">
+        <SortInput
+          //@ts-ignore
+          options={sortOptions}
+          onSort={handleSort}
+          defaultSort={{ field: "id", direction: "desc" }}
+        />
+      </div>
 
       <div className="list-grid">
         {filteredItems.map((item) => (
@@ -365,26 +394,6 @@ const ShoppingList: React.FC = () => {
                   <FaTrash />
                 </button>
               </div>
-            </div>
-
-            <div className="card-content">
-              <div className="quantity-info">QTY: {item.quantity}</div>
-
-              {item.tagged_recipes.length > 0 &&
-                item.tagged_recipes[0].id !== null && (
-                  <div className="recipe-tags">
-                    <div className="tagged-recipes-header">
-                      <FaTags /> For recipes:
-                    </div>
-                    {item.tagged_recipes
-                      .filter((r) => r.id)
-                      .map((recipe) => (
-                        <div key={recipe.id} className="recipe-tag">
-                          {recipe.title}
-                        </div>
-                      ))}
-                  </div>
-                )}
             </div>
           </div>
         ))}

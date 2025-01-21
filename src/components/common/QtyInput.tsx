@@ -17,8 +17,6 @@ interface QtyInputProps {
 const QtyInput: React.FC<QtyInputProps> = ({
   value,
   onChange,
-  label = "Quantity",
-  error,
   id = "quantity",
   min = 0,
   max,
@@ -88,32 +86,12 @@ const QtyInput: React.FC<QtyInputProps> = ({
     outline: "none",
   };
 
-  const errorStyles: React.CSSProperties = {
-    color: "#dc3545",
-    fontSize: "0.875rem",
-    marginTop: "6px",
-  };
-
-  const labelStyles: React.CSSProperties = {
-    display: "block",
-    marginBottom: "6px",
-    color: "#4A5568",
-    fontSize: "0.95rem",
-    fontWeight: "500",
-  };
-
   const groupStyles: React.CSSProperties = {
     marginBottom: "24px",
   };
 
   return (
     <div style={groupStyles}>
-      {label && (
-        <label htmlFor={id} style={labelStyles}>
-          {label}
-        </label>
-      )}
-
       <div style={containerStyles}>
         <button
           type="button"

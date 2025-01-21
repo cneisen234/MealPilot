@@ -29,6 +29,7 @@ const Signup: React.FC = () => {
                 backgroundClip: "text",
                 color: "transparent",
                 marginBottom: "0",
+                marginTop: "11px",
               }}>
               MealPilot
             </h2>

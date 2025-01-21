@@ -1150,4 +1150,129 @@ function calculateConfidence(analysis) {
   return Math.min(confidence, 1.0);
 }
 
+// Add multiple items to shopping list
+router.post("/bulk-add-shopping", authMiddleware, async (req, res) => {
+  try {
+    const userId = req.user.id;
+    const { items } = req.body;
+
+    if (!Array.isArray(items) || items.length === 0) {
+      return res.status(400).json({ message: "No items provided" });
+    }
+
+    const shoppingListCount = await pool.query(
+      "SELECT COUNT(*) FROM shopping_list WHERE user_id = $1",
+      [userId]
+    );
+
+    if (shoppingListCount.rows[0].count > 200) {
+      return res.status(400).json({
+        message:
+          "Adding these items would exceed the shopping list limit of 200 items.",
+      });
+    }
+
+    await pool.query("BEGIN");
+
+    // Process each item
+    for (const item of items) {
+      // Check for existing item with same name
+      const existingItem = await pool.query(
+        "SELECT id, quantity FROM shopping_list WHERE user_id = $1 AND LOWER(item_name) = LOWER($2)",
+        [userId, item.item_name.trim()]
+      );
+
+      if (existingItem.rows.length > 0) {
+        // Update existing item quantity
+        await pool.query(
+          `UPDATE shopping_list 
+           SET quantity = quantity + $1, updated_at = NOW()
+           WHERE id = $2`,
+          [item.quantity, existingItem.rows[0].id]
+        );
+      } else {
+        // Add new item
+        await pool.query(
+          `INSERT INTO shopping_list (user_id, item_name, quantity) 
+           VALUES ($1, $2, $3)`,
+          [userId, item.item_name.trim(), item.quantity]
+        );
+      }
+    }
+
+    await pool.query("COMMIT");
+
+    res.json({
+      message: `Successfully added ${items.length} items to shopping list`,
+      itemsProcessed: items.length,
+    });
+  } catch (error) {
+    await pool.query("ROLLBACK");
+    console.error("Error processing shopping list update:", error);
+    res.status(500).json({
+      message: "Error processing shopping list update",
+      error: error.message,
+    });
+  }
+});
+
+router.post("/from-inventory/:id", authMiddleware, async (req, res) => {
+  try {
+    const userId = req.user.id;
+    const itemId = req.params.id;
+
+    await pool.query("BEGIN");
+
+    // Get inventory item
+    const inventoryItem = await pool.query(
+      "SELECT * FROM inventory WHERE id = $1 AND user_id = $2",
+      [itemId, userId]
+    );
+
+    if (inventoryItem.rows.length === 0) {
+      await pool.query("ROLLBACK");
+      return res.status(404).json({ message: "Item not found" });
+    }
+
+    const item = inventoryItem.rows[0];
+
+    // Check for existing shopping list item
+    const existingItem = await pool.query(
+      "SELECT id, quantity FROM shopping_list WHERE user_id = $1 AND LOWER(item_name) = LOWER($2)",
+      [userId, item.item_name]
+    );
+
+    if (existingItem.rows.length > 0) {
+      // Update existing shopping list item
+      const currentItem = existingItem.rows[0];
+      const newQuantity = Number(item.quantity) + Number(currentItem.quantity);
+
+      // Update quantity in shopping list
+      await pool.query(
+        `UPDATE shopping_list 
+         SET quantity = $1, updated_at = NOW()
+         WHERE id = $2`,
+        [newQuantity, currentItem.id]
+      );
+    } else {
+      // Add new shopping list item
+      await pool.query(
+        `INSERT INTO shopping_list (user_id, item_name, quantity) 
+         VALUES ($1, $2, $3)`,
+        [userId, item.item_name, item.quantity]
+      );
+    }
+
+    // Delete from inventory
+    await pool.query("DELETE FROM inventory WHERE id = $1", [itemId]);
+
+    await pool.query("COMMIT");
+    res.json({ message: "Item moved to shopping list successfully" });
+  } catch (error) {
+    await pool.query("ROLLBACK");
+    console.error("Error moving item to shopping list:", error);
+    res.status(500).json({ message: "Server error" });
+  }
+});
+
 module.exports = router;

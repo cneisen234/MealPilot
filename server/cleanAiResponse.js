@@ -24,6 +24,17 @@ function cleanAIResponse(response) {
       .trim();
   };
 
+  // Helper function to extract time
+  const extractTime = (line) => {
+    const timeStr = line.split(":")[1]?.trim() || "";
+    // Ensure we capture the time value even if formatted differently
+    const timeMatch = timeStr.match(/(\d+)\s*(minutes?|mins?)?/i);
+    if (timeMatch) {
+      return `${timeMatch[1]} minutes`;
+    }
+    return timeStr;
+  };
+
   // First pass - get title and metadata
   for (let line of lines) {
     line = line.trim();
@@ -38,9 +49,8 @@ function cleanAIResponse(response) {
       !line.toLowerCase().includes("cook time") &&
       !line.toLowerCase().includes("servings")
     ) {
-      console.log(line);
       recipe.title = line
-        .replace(/Name:?/i, "")
+        .replace(/name:?/i, "")
         .replace(/:/g, "")
         .trim();
       continue;
@@ -48,13 +58,13 @@ function cleanAIResponse(response) {
 
     // Extract prep time
     if (line.toLowerCase().includes("prep time")) {
-      recipe.prepTime = line.split(":")[1]?.trim() || "";
+      recipe.prepTime = extractTime(line);
       continue;
     }
 
     // Extract cook time
     if (line.toLowerCase().includes("cook time")) {
-      recipe.cookTime = line.split(":")[1]?.trim() || "";
+      recipe.cookTime = extractTime(line);
       continue;
     }
 
@@ -107,9 +117,12 @@ function cleanAIResponse(response) {
 
       // Special handling for nutritional information
       if (currentSection === "nutritionalInfo") {
-        // Only add if it looks like nutritional information
+        // More flexible regex for nutritional information
         if (
-          cleanedLine.match(/\d+\s*(?:g|mg|kcal|calories|carbs?|protein|fat)/i)
+          cleanedLine.match(
+            /\d+\s*(?:g|mg|kcal|cal|calories|carbs?|protein|fat|fiber|sodium)/i
+          ) ||
+          cleanedLine.match(/^(?:calories|protein|carbs?|fat|fiber|sodium):/i)
         ) {
           recipe.nutritionalInfo.push(cleanedLine);
         }
@@ -124,7 +137,7 @@ function cleanAIResponse(response) {
           recipe.ingredients.push(cleanedLine);
         }
       }
-      // For instructions, only add if it looks like an instruction (not nutritional info)
+      // For instructions, only add if it looks like an instruction
       else if (currentSection === "instructions") {
         if (
           !cleanedLine.match(/\d+\s*(?:g|mg|kcal|calories|carbs?|protein|fat)/i)
@@ -140,6 +153,11 @@ function cleanAIResponse(response) {
   recipe.prepTime = recipe.prepTime.replace(/\*+/g, "").trim();
   recipe.cookTime = recipe.cookTime.replace(/\*+/g, "").trim();
   recipe.servings = recipe.servings.replace(/\*+/g, "").trim();
+
+  // Ensure we have values for required fields
+  if (!recipe.prepTime) recipe.prepTime = "0 minutes";
+  if (!recipe.cookTime) recipe.cookTime = "0 minutes";
+  if (!recipe.servings) recipe.servings = "4";
 
   return recipe;
 }

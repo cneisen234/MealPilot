@@ -86,6 +86,7 @@ const Login: React.FC = () => {
                 backgroundClip: "text",
                 color: "transparent",
                 marginBottom: "0",
+                marginTop: "0px",
               }}>
               MealPilot
             </h2>

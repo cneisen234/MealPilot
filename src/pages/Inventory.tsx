@@ -12,9 +12,12 @@ import {
   updateInventoryItem,
   deleteInventoryItem,
   processInventoryItemPhoto,
+  moveToShoppingList,
 } from "../utils/api";
 import "../styles/inventory.css";
 import SearchInput from "../components/common/SearchInput";
+import SortInput from "../components/common/SortInput";
+import { sortHelper, SortConfig } from "../helpers/sortHelper";
 import { useToast } from "../context/ToastContext";
 import { useAuth } from "../context/AuthContext";
 
@@ -58,16 +61,31 @@ const Inventory: React.FC = () => {
   const [newItemFromPhoto, setNewItemFromPhoto] = useState<string | null>(null);
   const [showExpirationAlert, setShowExpirationAlert] = useState(false);
   const [expiringItems, setExpiringItems] = useState<ExpiringItemData[]>([]);
-  const threeDaysFromNow = new Date();
-  threeDaysFromNow.setDate(threeDaysFromNow.getDate() + 3);
+  const [sortConfig, setSortConfig] = useState<SortConfig>({
+    field: "id",
+    direction: "desc",
+    type: "number",
+  });
+  const sevenDaysFromNow = new Date();
+  sevenDaysFromNow.setDate(sevenDaysFromNow.getDate() + 7);
+
+  const sortOptions = [
+    { label: "Recently Added", value: "id", type: "number" },
+    { label: "Name", value: "item_name", type: "string" },
+    { label: "Quantity", value: "quantity", type: "number" },
+    { label: "Expiration Date", value: "expiration_date", type: "date" },
+  ];
 
   useEffect(() => {
     loadInventory();
   }, []);
 
   useEffect(() => {
-    setFilteredItems(items);
-  }, [items]);
+    if (items.length > 0) {
+      const sorted = sortHelper(items, sortConfig);
+      setFilteredItems(sorted);
+    }
+  }, [items, sortConfig]);
 
   // Check for expiring items whenever items list changes
   useEffect(() => {
@@ -77,7 +95,7 @@ const Inventory: React.FC = () => {
           if (!item.expiration_date) return false;
           const expirationDate = new Date(item.expiration_date);
           return (
-            expirationDate <= threeDaysFromNow && expirationDate >= new Date()
+            expirationDate <= sevenDaysFromNow || expirationDate < new Date()
           );
         })
         .map((item) => ({
@@ -214,6 +232,17 @@ const Inventory: React.FC = () => {
     setMatches(null);
   };
 
+  const handleMoveToShoppingList = async (itemId: number) => {
+    try {
+      await moveToShoppingList(itemId);
+      showToast("Item moved to shopping list successfully", "success");
+      setItems((prev) => prev.filter((item) => item.id !== itemId));
+      setEditingItem(null);
+    } catch (error) {
+      showToast("Error moving item to shopping list", "error");
+    }
+  };
+
   if (isLoading) {
     return (
       <div className="loading-container">
@@ -221,6 +250,18 @@ const Inventory: React.FC = () => {
       </div>
     );
   }
+
+  const handleSearch = (filtered: InventoryItem[]) => {
+    const sorted = sortHelper(filtered, sortConfig);
+    setFilteredItems(sorted);
+  };
+
+  const handleSort = (field: string, direction: "asc" | "desc") => {
+    const type =
+      sortOptions.find((opt) => opt.value === field)?.type || "string";
+    //@ts-ignore
+    setSortConfig({ field, direction, type });
+  };
 
   return (
     <div
@@ -233,7 +274,7 @@ const Inventory: React.FC = () => {
             onClick={() => setIsPhotoModalOpen(true)}
             className="add-item-button-list"
             style={{ backgroundColor: "var(--secondary-color)" }}>
-            <FaCamera /> Add from Photo
+            <FaCamera /> Add/Edit from Photo
           </button>
           <button
             onClick={() => setIsFormOpen(true)}
@@ -248,9 +289,17 @@ const Inventory: React.FC = () => {
           ...item,
           name: item.item_name,
         }))}
-        onSearch={(filtered) => setFilteredItems(filtered)}
+        onSearch={handleSearch}
         placeholder="Search your inventory..."
       />
+      <div className="inventory-filters">
+        <SortInput
+          //@ts-ignore
+          options={sortOptions}
+          onSort={handleSort}
+          defaultSort={{ field: "id", direction: "desc" }}
+        />
+      </div>
 
       <div className="list-grid">
         {filteredItems.map((item) => (
@@ -272,22 +321,6 @@ const Inventory: React.FC = () => {
                 </button>
               </div>
             </div>
-
-            <div className="card-content">
-              <div className="quantity-info">QTY: {item.quantity}</div>
-
-              {item.expiration_date && (
-                <div
-                  className={
-                    new Date(item.expiration_date) <= threeDaysFromNow &&
-                    new Date(item.expiration_date) >= new Date()
-                      ? "expiry-info warning"
-                      : "expiry-info"
-                  }>
-                  Expires: {new Date(item.expiration_date).toLocaleDateString()}
-                </div>
-              )}
-            </div>
           </div>
         ))}
       </div>
@@ -295,13 +328,13 @@ const Inventory: React.FC = () => {
       {(isFormOpen || editingItem) && (
         <InventoryForm
           item={editingItem}
-          initialItemName={newItemFromPhoto}
           onSubmit={editingItem ? handleUpdateItem : handleAddItem}
           onClose={() => {
             setIsFormOpen(false);
             setEditingItem(null);
-            setNewItemFromPhoto(null);
           }}
+          onMoveToShoppingList={handleMoveToShoppingList}
+          initialItemName={newItemFromPhoto}
         />
       )}
 
