@@ -503,7 +503,9 @@ const RecipeDetail: React.FC = () => {
 
   // Display mode
   return (
-    <div className="recipe-result">
+    <div
+      className="recipe-result"
+      style={{ marginTop: 100, marginBottom: 100 }}>
       <div className="recipe-actions">
         <button
           onClick={handleBack}
