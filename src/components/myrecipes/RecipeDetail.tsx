@@ -21,6 +21,7 @@ import CookingMode from "../cooking/CookingMode";
 import RecipePDF from "./RecipePdf";
 import MultiAddToShoppingList from "../shoppingList/MultiAddToShoppingList";
 import { useToast } from "../../context/ToastContext";
+import { scaleIngredients } from "../../helpers/convertFractionToDecimal";
 
 interface IngredientAnalysis {
   original: string;
@@ -63,6 +64,14 @@ const RecipeDetail: React.FC = () => {
   const [isCookingMode, setIsCookingMode] = useState(false);
   const [isShoppingListModalOpen, setIsShoppingListModalOpen] = useState(false);
   const [analysisRun, setAnalysisRun] = useState(false);
+  const [displayServings, setDisplayServings] = useState<number>(0);
+  const [displayIngredients, setDisplayIngredients] = useState<
+    IngredientAnalysis[]
+  >([]);
+  const [originalRecipe, setOriginalRecipe] = useState<Recipe | null>(null);
+  const [analyzedIngredients, setAnalyzedIngredients] = useState<
+    IngredientAnalysis[]
+  >([]);
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const routeLocation = useLocation();
@@ -84,6 +93,36 @@ const RecipeDetail: React.FC = () => {
   useEffect(() => {
     loadRecipe();
   }, [id]);
+
+  useEffect(() => {
+    if (recipe && !originalRecipe) {
+      setOriginalRecipe(recipe);
+      const servingsNum = parseInt(recipe.servings);
+      setDisplayServings(servingsNum);
+      setDisplayIngredients(recipe.ingredients);
+    }
+  }, [recipe]);
+
+  useEffect(() => {
+    if (originalRecipe && displayServings) {
+      const baseIngredients =
+        analyzedIngredients.length > 0
+          ? analyzedIngredients
+          : originalRecipe.ingredients;
+      const originalServings = parseInt(originalRecipe.servings);
+
+      const scaledIngredients = baseIngredients.map((ingredient) => ({
+        ...ingredient,
+        original: scaleIngredients(
+          ingredient.original,
+          originalServings,
+          displayServings
+        ),
+      }));
+
+      setDisplayIngredients(scaledIngredients);
+    }
+  }, [displayServings, analyzedIngredients]);
 
   const loadRecipe = async () => {
     if (!id) return;
@@ -111,13 +150,36 @@ const RecipeDetail: React.FC = () => {
     }
   };
 
+  const handleServingsChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+    const newServings = parseInt(e.target.value);
+    setDisplayServings(newServings);
+  };
+
   const handleAnalyzeIngredients = async () => {
     if (!id || !recipe) return;
 
     setIsAnalyzing(true);
     try {
       const response = await getRecipeInventory(id);
-      setRecipe(response.data);
+      setAnalyzedIngredients(response.data.ingredients);
+
+      // Scale the analyzed ingredients based on current display servings
+      if (originalRecipe) {
+        const originalServings = parseInt(originalRecipe.servings);
+        const scaledAnalyzedIngredients = response.data.ingredients.map(
+          (ingredient: any) => ({
+            ...ingredient,
+            original: scaleIngredients(
+              ingredient.original,
+              originalServings,
+              displayServings
+            ),
+          })
+        );
+
+        setDisplayIngredients(scaledAnalyzedIngredients);
+      }
+
       setAnalysisRun(true);
     } catch (error) {
       console.error("Error analyzing ingredients:", error);
@@ -473,7 +535,22 @@ const RecipeDetail: React.FC = () => {
         {recipe.servings && (
           <div className="recipe-meta-item">
             <span className="meta-label">Servings</span>
-            <span className="meta-value">{recipe.servings}</span>
+            <select
+              value={displayServings}
+              onChange={handleServingsChange}
+              className="servings-select"
+              style={{
+                padding: "4px 8px",
+                borderRadius: "4px",
+                border: "1px solid #ccc",
+                backgroundColor: "white",
+              }}>
+              {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12].map((num) => (
+                <option key={num} value={num}>
+                  {num}
+                </option>
+              ))}
+            </select>
           </div>
         )}
       </div>
@@ -501,7 +578,7 @@ const RecipeDetail: React.FC = () => {
           )}
         </div>
         <ul className="recipe-list">
-          {recipe.ingredients.map((ingredient, index) => (
+          {displayIngredients.map((ingredient, index) => (
             <li key={`ingredient-${index}`} className="recipe-list-item">
               <div className="ingredient-content">
                 <span className="ingredient-text">{ingredient.original}</span>
@@ -588,7 +665,11 @@ const RecipeDetail: React.FC = () => {
         />
       )}
       {isCookingMode && (
-        <CookingMode recipe={recipe} onClose={() => setIsCookingMode(false)} />
+        <CookingMode
+          recipe={recipe}
+          displayServings={displayServings}
+          onClose={() => setIsCookingMode(false)}
+        />
       )}
 
       {isShoppingListModalOpen && (

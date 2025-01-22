@@ -5,17 +5,24 @@ import InstructionStep from "./InstructionStep";
 import CookingComplete from "./CookingComplete";
 import InventoryCheckStep from "./InventoryCheckStep";
 import { useToast } from "../../context/ToastContext";
+import { scaleIngredients } from "../../helpers/convertFractionToDecimal";
 
 interface CookingModeProps {
   recipe: {
     id: number;
     title: string;
     instructions: string[];
+    servings: string; // Original servings
   };
+  displayServings: number; // Selected servings
   onClose: () => void;
 }
 
-const CookingMode: React.FC<CookingModeProps> = ({ recipe, onClose }) => {
+const CookingMode: React.FC<CookingModeProps> = ({
+  recipe,
+  displayServings,
+  onClose,
+}) => {
   const { showToast } = useToast();
   const [currentStep, setCurrentStep] = useState(-1);
   const [state, setState] = useState({
@@ -35,8 +42,36 @@ const CookingMode: React.FC<CookingModeProps> = ({ recipe, onClose }) => {
           (ing: any) => ing.status.type === "in-inventory"
         );
 
+        console.log("Original Servings:", recipe.servings);
+        console.log("Display Servings:", displayServings);
+        console.log("InStock Before Scale:", inStockIngredients);
+
+        // Scale ingredients based on servings
+        const originalServings = parseInt(recipe.servings);
+        const scaledIngredients = inStockIngredients.map((ing: any) => ({
+          ...ing,
+          original: scaleIngredients(
+            ing.original,
+            originalServings,
+            displayServings
+          ),
+        }));
+
+        const scaleFactor = Number(displayServings) / Number(recipe.servings);
+        const ingredientsWithScaledQuantities = scaledIngredients.map(
+          (i: any) => ({
+            ...i,
+            parsed: {
+              ...i.parsed,
+              quantity: i.parsed.quantity * Number(scaleFactor),
+            },
+          })
+        );
+
+        console.log("Scaled Ingredients:", scaledIngredients);
+
         setState({
-          ingredients: inStockIngredients,
+          ingredients: ingredientsWithScaledQuantities,
           isLoading: false,
         });
 
@@ -54,7 +89,7 @@ const CookingMode: React.FC<CookingModeProps> = ({ recipe, onClose }) => {
     return () => {
       controller.abort();
     };
-  }, [recipe.id, showToast]);
+  }, [recipe.id, displayServings, recipe.servings, showToast]);
 
   const handleExitClick = () => {
     onClose();
