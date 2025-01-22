@@ -1,6 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { FaTimes, FaTags, FaBoxOpen } from "react-icons/fa";
-import { getUserRecipes } from "../../utils/api";
+import { FaTimes, FaBoxOpen } from "react-icons/fa";
 import "../../styles/shoppingList.css";
 import QtyInput from "../common/QtyInput";
 
@@ -44,7 +43,6 @@ const ShoppingListForm: React.FC<ShoppingListFormProps> = ({
   const [recipeIds, setRecipeIds] = useState<number[]>([]);
   const [showInventoryTransfer, setShowInventoryTransfer] = useState(false);
   const [expirationDate, setExpirationDate] = useState("");
-  const [availableRecipes, setAvailableRecipes] = useState<Recipe[]>([]);
 
   // Error states
   const [itemNameError, setItemNameError] = useState("");
@@ -52,7 +50,6 @@ const ShoppingListForm: React.FC<ShoppingListFormProps> = ({
   const [expirationDateError] = useState("");
 
   useEffect(() => {
-    loadRecipes();
     if (item) {
       setItemName(item.item_name);
       setQuantity(item.quantity);
@@ -61,15 +58,6 @@ const ShoppingListForm: React.FC<ShoppingListFormProps> = ({
       setItemName(newItemFromPhoto);
     }
   }, [item, newItemFromPhoto]);
-
-  const loadRecipes = async () => {
-    try {
-      const response = await getUserRecipes();
-      setAvailableRecipes(response.data);
-    } catch (error) {
-      console.error("Error loading recipes:", error);
-    }
-  };
 
   const validateForm = () => {
     let isValid = true;
@@ -106,16 +94,6 @@ const ShoppingListForm: React.FC<ShoppingListFormProps> = ({
       console.error("Error submitting form:", error);
     }
   };
-
-  const handleRecipeToggle = (recipeId: number) => {
-    setRecipeIds((prev) =>
-      prev.includes(recipeId)
-        ? prev.filter((id) => id !== recipeId)
-        : [...prev, recipeId]
-    );
-  };
-
-  const showNotThisItemButton = item && newItemFromPhoto;
 
   return (
     <div className="modal-overlay">
@@ -154,24 +132,6 @@ const ShoppingListForm: React.FC<ShoppingListFormProps> = ({
                   error={quantityError}
                 />
               </div>
-
-              <div className="form-group" style={{ marginTop: "-20px" }}>
-                <label className="recipe-tag-label">
-                  <FaTags /> Tag Recipes (Optional)
-                </label>
-                <div className="recipe-tag-list">
-                  {availableRecipes.map((recipe) => (
-                    <label key={recipe.id} className="recipe-tag-item">
-                      <input
-                        type="checkbox"
-                        checked={recipeIds?.includes(recipe.id)}
-                        onChange={() => handleRecipeToggle(recipe.id)}
-                      />
-                      <span>{recipe.title}</span>
-                    </label>
-                  ))}
-                </div>
-              </div>
             </>
           )}
 
@@ -179,7 +139,10 @@ const ShoppingListForm: React.FC<ShoppingListFormProps> = ({
             <button
               type="button"
               className="inventory-transfer-button"
-              style={{ backgroundColor: "var(--secondary-color)" }}
+              style={{
+                backgroundColor: "var(--secondary-color)",
+                marginTop: 10,
+              }}
               onClick={() => setShowInventoryTransfer(true)}>
               <FaBoxOpen /> Move to Inventory
             </button>

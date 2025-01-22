@@ -225,7 +225,6 @@
   padding: 30px;
   width: 90%;
 max-height: 75vh;
-    overflow-y: auto;
   box-shadow: 0 10px 25px rgba(0, 0, 0, 0.2);
 }
 

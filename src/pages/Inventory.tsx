@@ -263,6 +263,15 @@ const Inventory: React.FC = () => {
     setSortConfig({ field, direction, type });
   };
 
+  if (showExpirationAlert) {
+    return (
+      <ExpirationAlert
+        items={expiringItems}
+        onClose={() => setShowExpirationAlert(false)}
+      />
+    );
+  }
+
   return (
     <div
       className="inventory-container"
@@ -361,13 +370,6 @@ const Inventory: React.FC = () => {
           }}
           onNoMatch={handleNoMatch}
           onClose={() => setMatches(null)}
-        />
-      )}
-
-      {showExpirationAlert && (
-        <ExpirationAlert
-          items={expiringItems}
-          onClose={() => setShowExpirationAlert(false)}
         />
       )}
     </div>

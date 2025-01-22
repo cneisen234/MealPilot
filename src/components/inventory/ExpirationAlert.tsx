@@ -17,8 +17,8 @@ const ExpirationAlert: React.FC<ExpirationAlertProps> = ({
   if (items.length === 0) return null;
 
   return (
-    <div className="modal-overlay">
-      <div className="modal-content">
+    <div className="recipe-result" style={{ marginTop: 100 }}>
+      <div className="recipe-section">
         <div className="modal-header">
           <div className="alert-title">
             <FaExclamationTriangle size={24} color="#dc3545" />

@@ -124,6 +124,13 @@ const ShoppingList: React.FC = () => {
     try {
       const response = await getShoppingList();
       setItems(response.data);
+
+      // Select all items by default
+      const allItemIds = new Set(
+        response.data.map((item: ShoppingListItem) => item.id)
+      );
+      //@ts-ignore
+      setSelectedItems(allItemIds); // Set all items as selected
     } catch (error) {
       showToast("Failed to load shopping list items", "error");
     } finally {

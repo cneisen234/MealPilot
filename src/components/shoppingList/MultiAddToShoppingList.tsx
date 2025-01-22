@@ -175,8 +175,8 @@ const MultiAddToShoppingList: React.FC<MultiAddToShoppingListProps> = ({
   };
 
   return (
-    <div className="modal-overlay">
-      <div className="modal-content">
+    <div className="recipe-result">
+      <div className="recipe-section">
         <div className="modal-header">
           <h2>Add to Shopping List</h2>
           <p>Select items to add to your shopping list</p>

@@ -45,7 +45,6 @@ const ShareableListModal: React.FC<ShareableListModalProps> = ({
     }
   }, [isOpen, items]);
 
-  console.log(shareableLink);
   const handleCopyLink = async () => {
     try {
       await navigator.clipboard.writeText(shareableLink);

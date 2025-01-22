@@ -306,6 +306,16 @@ const RecipeDetail: React.FC = () => {
     }
   };
 
+  if (isShoppingListModalOpen) {
+    return (
+      <MultiAddToShoppingList
+        //@ts-ignore
+        ingredients={recipe.ingredients}
+        onClose={() => setIsShoppingListModalOpen(false)}
+      />
+    );
+  }
+
   if (isLoading || isSaving) {
     return (
       <div className="loading-container">
@@ -675,13 +685,6 @@ const RecipeDetail: React.FC = () => {
           recipe={recipe}
           displayServings={displayServings}
           onClose={() => setIsCookingMode(false)}
-        />
-      )}
-
-      {isShoppingListModalOpen && (
-        <MultiAddToShoppingList
-          ingredients={recipe.ingredients}
-          onClose={() => setIsShoppingListModalOpen(false)}
         />
       )}
     </div>
