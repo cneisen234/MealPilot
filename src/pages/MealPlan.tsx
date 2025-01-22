@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { useLocation } from "react-router-dom";
+import { Link, useLocation } from "react-router-dom";
 import {
   getCurrentMealPlan,
   generateMealPlan,
@@ -250,10 +250,20 @@ const MealPlan: React.FC = () => {
           maxWidth: "850px",
           margin: "20px auto",
         }}>
-        DISCLAIMER: New recipes are AI generated and are intended to act as a
-        starting point. It is always advised that you review any generated
-        recipe for accuracy. To modify a recipe first save it and then you can
-        edit it from your recipe list.
+        <p>
+          Your meal plan is generated based on your dietary preferences. For
+          more variety try adjusting your settings.
+        </p>
+        <Link
+          to="/recipe"
+          style={{
+            color: "var(--primary-color)",
+            fontWeight: "600",
+            whiteSpace: "nowrap",
+            textDecoration: "none",
+          }}>
+          Edit Preferences →
+        </Link>
       </div>
 
       {mealPlan && filteredMealPlan && filteredMealPlan.length > 0 ? (
