@@ -3,6 +3,82 @@ const router = express.Router();
 const pool = require("../db");
 const authMiddleware = require("../middleware/auth");
 
+// Get selected meal type
+router.get("/selected-meal-type", authMiddleware, async (req, res) => {
+  try {
+    const userId = req.user.id;
+    const result = await pool.query(
+      "SELECT id, item FROM meal_types WHERE user_id = $1",
+      [userId]
+    );
+    res.json(result.rows);
+  } catch (error) {
+    console.error("Error getting selected meal type:", error);
+    res.status(500).json({ message: "Server error" });
+  }
+});
+
+// Add selected meal type
+router.post("/selected-meal-type", authMiddleware, async (req, res) => {
+  try {
+    const userId = req.user.id;
+    const { item } = req.body;
+
+    // First delete any existing meal type for this user
+    await pool.query("DELETE FROM meal_types WHERE user_id = $1", [userId]);
+
+    // Then add the new one
+    const result = await pool.query(
+      "INSERT INTO meal_types (user_id, item) VALUES ($1, $2) RETURNING id, item",
+      [userId, item]
+    );
+
+    res.status(201).json(result.rows[0]);
+  } catch (error) {
+    console.error("Error adding selected meal type:", error);
+    res.status(500).json({ message: "Server error" });
+  }
+});
+
+// Get selected servings
+router.get("/selected-servings", authMiddleware, async (req, res) => {
+  try {
+    const userId = req.user.id;
+    const result = await pool.query(
+      "SELECT id, item FROM selected_servings WHERE user_id = $1",
+      [userId]
+    );
+    res.json(result.rows);
+  } catch (error) {
+    console.error("Error getting selected servings:", error);
+    res.status(500).json({ message: "Server error" });
+  }
+});
+
+// Add selected servings
+router.post("/selected-servings", authMiddleware, async (req, res) => {
+  try {
+    const userId = req.user.id;
+    const { item } = req.body;
+
+    // First delete any existing servings for this user
+    await pool.query("DELETE FROM selected_servings WHERE user_id = $1", [
+      userId,
+    ]);
+
+    // Then add the new one
+    const result = await pool.query(
+      "INSERT INTO selected_servings (user_id, item) VALUES ($1, $2) RETURNING id, item",
+      [userId, item]
+    );
+
+    res.status(201).json(result.rows[0]);
+  } catch (error) {
+    console.error("Error adding selected servings:", error);
+    res.status(500).json({ message: "Server error" });
+  }
+});
+
 // Get all can't haves for the logged-in user
 router.get("/cant-haves", authMiddleware, async (req, res) => {
   try {

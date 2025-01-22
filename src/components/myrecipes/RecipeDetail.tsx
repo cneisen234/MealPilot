@@ -518,7 +518,13 @@ const RecipeDetail: React.FC = () => {
         </button>
       </div>
       <h1 className="recipe-title">{recipe.title}</h1>
-      <RecipePDF recipe={recipe} />
+      <RecipePDF
+        recipe={{
+          ...recipe,
+          servings: displayServings.toString(),
+          ingredients: displayIngredients,
+        }}
+      />
       <div className="recipe-meta">
         {recipe.prep_time && (
           <div className="recipe-meta-item">

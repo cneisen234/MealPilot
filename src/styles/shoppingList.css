@@ -313,15 +313,6 @@
 }
 
 
-.modal-content {
-    background-color: white;
-    border-radius: 12px;
-    max-width: 900px;
-    width: 90%;
-    max-height: 90vh;
-    overflow-y: auto;
-}
-
 .modal-header {
     padding: 24px;
 }
@@ -537,10 +528,6 @@
 
 /* Mobile responsiveness */
 @media (max-width: 768px) {
-    .modal-content {
-        width: 95%;
-        margin: 16px;
-    }
 
     .share-link-section {
         flex-direction: row;

@@ -46,6 +46,20 @@ CREATE TABLE cuisine_preferences
     item VARCHAR(255) NOT NULL
 );
 
+CREATE TABLE meal_types
+(
+    id SERIAL PRIMARY KEY,
+    user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
+    item VARCHAR(50)
+);
+
+CREATE TABLE selected_servings
+(
+    id SERIAL PRIMARY KEY,
+    user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
+    item VARCHAR(50)
+);
+
 CREATE TABLE recipes
 (
     id SERIAL PRIMARY KEY,

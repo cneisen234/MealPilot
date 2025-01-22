@@ -42,10 +42,6 @@ const CookingMode: React.FC<CookingModeProps> = ({
           (ing: any) => ing.status.type === "in-inventory"
         );
 
-        console.log("Original Servings:", recipe.servings);
-        console.log("Display Servings:", displayServings);
-        console.log("InStock Before Scale:", inStockIngredients);
-
         // Scale ingredients based on servings
         const originalServings = parseInt(recipe.servings);
         const scaledIngredients = inStockIngredients.map((ing: any) => ({
@@ -67,8 +63,6 @@ const CookingMode: React.FC<CookingModeProps> = ({
             },
           })
         );
-
-        console.log("Scaled Ingredients:", scaledIngredients);
 
         setState({
           ingredients: ingredientsWithScaledQuantities,

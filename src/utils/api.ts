@@ -106,6 +106,26 @@ export const updateProfile = async (userId: number, profileData: Partial<User>) 
   return response.data;
 };
 
+// Get selected meal type
+export const getSelectedMealType = () => {
+  return api.get('/preference/selected-meal-type');
+};
+
+// Add selected meal type
+export const addSelectedMealType = (item: string) => {
+  return api.post('/preference/selected-meal-type', { item });
+};
+
+// Get selected servings
+export const getSelectedServings = () => {
+  return api.get('/preference/selected-servings');
+};
+
+// Add selected servings
+export const addSelectedServings = (item: string) => {
+  return api.post('/preference/selected-servings', { item });
+};
+
 // Can't Haves
 export const getCantHaves = () => {
   return api.get('/preference/cant-haves');

@@ -26,6 +26,10 @@ import {
   removeCuisinePreference,
   generateRecipe,
   saveRecipe,
+  addSelectedMealType,
+  addSelectedServings,
+  getSelectedMealType,
+  getSelectedServings,
 } from "../utils/api";
 import { MEAL_TYPES } from "../constants/mealTypes";
 import {
@@ -74,6 +78,8 @@ const Recipe = () => {
   const [recipe, setRecipe] = useState<Recipe | null>(null);
   const [isSaving, setIsSaving] = useState(false);
   const [selectedServings, setSelectedServings] = useState<string>("4");
+  const [selectedMealTypes, setSelectedMealTypes] = useState<any[]>([]);
+  const [selectedServingsList, setSelectedServingsList] = useState<any[]>([]);
   let currentStep = 1;
 
   useEffect(() => {
@@ -120,23 +126,56 @@ const Recipe = () => {
         mustHavesRes,
         tastePreferencesRes,
         dietaryGoalsRes,
-        CuisinePreferencesRes,
+        cuisinePreferencesRes,
+        selectedMealTypeRes,
+        selectedServingsRes,
       ] = await Promise.all([
         getCantHaves(),
         getMustHaves(),
         getTastePreferences(),
         getDietaryGoals(),
         getCuisinePreferences(),
+        getSelectedMealType(),
+        getSelectedServings(),
       ]);
+
       setCantHaves(cantHavesRes.data);
       setMustHaves(mustHavesRes.data);
       setTastePreferences(tastePreferencesRes.data);
       setDietaryGoals(dietaryGoalsRes.data);
-      setCuisinePreferences(CuisinePreferencesRes.data);
+      setCuisinePreferences(cuisinePreferencesRes.data);
+      setSelectedMealTypes(selectedMealTypeRes.data);
+      setSelectedServingsList(selectedServingsRes.data);
+
+      // Set default selected values if they exist
+      if (selectedMealTypeRes.data.length > 0) {
+        setSelectedMealType(selectedMealTypeRes.data[0].item);
+      }
+      if (selectedServingsRes.data.length > 0) {
+        setSelectedServings(selectedServingsRes.data[0].item);
+      }
     } catch (error) {
       console.error("Error loading preferences:", error);
     } finally {
       setIsLoading(false);
+    }
+  };
+
+  const handleMealTypeChange = async (item: string) => {
+    setSelectedMealType(item);
+    try {
+      await addSelectedMealType(item);
+    } catch (error) {
+      console.error("Error saving meal type:", error);
+    }
+  };
+
+  const handleServingsChange = async (item: string) => {
+    setSelectedServings(item);
+    try {
+      await addSelectedServings(item);
+    } catch (error) {
+      console.error("Error saving servings:", error);
     }
   };
 
@@ -467,7 +506,7 @@ const Recipe = () => {
           type="select"
           options={MEAL_TYPES}
           selectedItem={selectedMealType}
-          onSelect={setSelectedMealType}
+          onSelect={handleMealTypeChange}
           disabled={false}
         />
         <PreferenceInput
@@ -476,7 +515,7 @@ const Recipe = () => {
           type="select"
           options={["1", "2", "3", "4", "5", "6", "7", "8"]}
           selectedItem={selectedServings}
-          onSelect={setSelectedServings}
+          onSelect={handleServingsChange}
           disabled={false}
         />
         <PreferenceInput
