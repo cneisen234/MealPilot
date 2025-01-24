@@ -476,83 +476,6 @@ router.post(
   }
 );
 
-router.post("/add-from-receipt", authMiddleware, async (req, res) => {
-  try {
-    const userId = req.user.id;
-    const { items } = req.body;
-
-    // Check current count plus new items won't exceed limit
-    const currentCount = await pool.query(
-      "SELECT COUNT(*) FROM inventory WHERE user_id = $1",
-      [userId]
-    );
-
-    if (currentCount.rows[0].count + items.length > 200) {
-      return res.status(400).json({
-        message:
-          "Adding these items would exceed the inventory limit of 200 items.",
-      });
-    }
-
-    await pool.query("BEGIN");
-
-    let processedItems = 0;
-
-    for (const item of items) {
-      const existingItem = await pool.query(
-        "SELECT id, quantity, expiration_date FROM inventory WHERE user_id = $1 AND LOWER(item_name) = LOWER($2)",
-        [userId, item.shopping_list_item]
-      );
-
-      if (existingItem.rows.length > 0) {
-        const currentItem = existingItem.rows[0];
-
-        // For receipt items, we might want to use the existing expiration date if present
-        const finalExpirationDate = currentItem.expiration_date || null;
-
-        const newQuantity =
-          Number(item.quantity) + Number(currentItem.quantity);
-
-        await pool.query(
-          `UPDATE inventory 
-           SET quantity = $1, expiration_date = $2, updated_at = NOW()
-           WHERE id = $3`,
-          [newQuantity, finalExpirationDate, currentItem.id]
-        );
-      } else {
-        // Add new inventory item (receipt items typically won't have expiration dates)
-        await pool.query(
-          `INSERT INTO inventory 
-           (user_id, item_name, quantity) 
-           VALUES ($1, $2, $3)`,
-          [userId, item.shopping_list_item, item.quantity]
-        );
-      }
-
-      await pool.query(
-        "DELETE FROM shopping_list WHERE id = $1 AND user_id = $2",
-        [item.shopping_list_id, userId]
-      );
-
-      processedItems++;
-    }
-
-    await pool.query("COMMIT");
-
-    res.json({
-      message: `Successfully added ${processedItems} items to inventory`,
-      itemsProcessed: processedItems,
-    });
-  } catch (error) {
-    await pool.query("ROLLBACK");
-    console.error("Error adding items to inventory:", error);
-    res.status(500).json({
-      message: "Error processing inventory update",
-      error: error.message,
-    });
-  }
-});
-
 router.post(
   "/process-receipt",
   [authMiddleware, checkAiActions],
@@ -610,29 +533,26 @@ router.post(
       // Pre-process receipt lines to extract potential items and prices
       const receiptItems = receiptLines
         .map((line) => {
-          // Common receipt item patterns
-          const pricePattern = /\d+\.\d{2}/; // Matches prices like 12.99
-          const price = line.match(pricePattern)?.[0];
-
-          // Remove price and common receipt prefixes/suffixes
+          // More thorough text cleanup
           let itemText = line
-            .replace(pricePattern, "")
-            .replace(/^[0-9]+\s/, "") // Remove leading numbers
+            .replace(/^[\d\s]+/, "") // Remove leading numbers
             .replace(/\s+@\s+.*$/, "") // Remove @ price indicators
+            .replace(/\bQTY\b.*$/i, "") // Remove quantity indicators
+            .replace(/\d+\s*(?:PC|EA|PK|CT)\b/i, "") // Remove unit measurements
+            .replace(/\d+\.\d{2}/, "") // Remove prices
+            .replace(/\s{2,}/g, " ") // Normalize spaces
             .trim();
 
           return {
             text: itemText,
-            price: price,
+            original: line,
           };
         })
-        .filter((item) => item.text && item.text.length > 1); // Filter out empty or single-char lines
+        .filter((item) => item.text && item.text.length > 1);
 
       // 3. Use GPT to match receipt items with shopping list
       const gptPrompt = `Given these receipt items:
-${receiptItems
-  .map((item) => `${item.text} - $${item.price || "N/A"}`)
-  .join("\n")}
+${receiptItems.map((item) => item.text).join("\n")}
 
 And these shopping list items:
 ${shoppingList
@@ -641,11 +561,12 @@ ${shoppingList
   )
   .join("\n")}
 
-Find matches between the receipt items and shopping list items.
-Be conservative - only match items that are clearly the same product.
-Consider common variations in product names and abbreviations.
+Find matches between receipt items and shopping list items.
+Be very lenient - better to have false positives than miss matches.
+Match partial words, brands with generic items, common abbreviations, and ignore spaces/punctuation.
+Match singular/plural forms and items that are part of larger descriptions.
 
-Return a JSON object with this structure:
+Return a JSON object:
 {
   "matches": [
     {
@@ -663,7 +584,7 @@ Return a JSON object with this structure:
           {
             role: "system",
             content:
-              "You are a receipt analysis expert that specializes in matching shopping list items with receipt entries. Be precise and conservative in making matches.",
+              "You are a receipt analysis expert that specializes in matching shopping list items with receipt entries.",
           },
           {
             role: "user",

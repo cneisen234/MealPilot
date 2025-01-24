@@ -125,6 +125,18 @@ const ReceiptMatchesModal: React.FC<ReceiptMatchesModalProps> = ({
 
         <div className="modal-footer">
           <button
+            onClick={onClose}
+            style={{
+              padding: "10px 20px",
+              borderRadius: "5px",
+              border: "none",
+              backgroundColor: "var(--surface-color)",
+              color: "var(--text-color)",
+              cursor: "pointer",
+            }}>
+            Cancel
+          </button>
+          <button
             onClick={handleAddToInventory}
             className="button-add"
             disabled={isProcessing || selectedItems.size === 0}>

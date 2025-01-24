@@ -89,6 +89,14 @@ const ShoppingList: React.FC = () => {
 
   useEffect(() => {
     if (items.length > 0) {
+      // Select all items by default upon items update
+      const allItemIds = new Set(items.map((item) => item.id));
+      setSelectedItems(allItemIds);
+    }
+  }, [items]);
+
+  useEffect(() => {
+    if (items.length > 0) {
       const sorted = sortHelper(items, sortConfig);
       setFilteredItems(sorted);
     }
@@ -222,13 +230,17 @@ const ShoppingList: React.FC = () => {
         );
       } else {
         setItems((prev) => [response.data, ...prev]);
+        setSelectedItems((prev) => {
+          const newSet = new Set(Array.from(prev));
+          newSet.add(response.data.id);
+          return newSet;
+        });
       }
 
       setIsFormOpen(false);
       showToast("Item added successfully!", "success");
     } catch (error) {
       showToast("Error adding item. Please try again.", "error");
-      console.error("Error adding item:", error);
     }
   };
 

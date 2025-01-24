@@ -1,6 +1,6 @@
 import React, { useState, useRef, useCallback, useEffect } from "react";
 import Webcam from "react-webcam";
-import { FaCamera, FaUpload, FaTimes } from "react-icons/fa";
+import { FaCamera, FaUpload, FaTimes, FaArrowLeft } from "react-icons/fa";
 import AnimatedTechIcon from "./AnimatedTechIcon";
 
 interface PhotoCaptureModalProps {
@@ -17,6 +17,7 @@ const PhotoCaptureModal: React.FC<PhotoCaptureModalProps> = ({
   const [mode, setMode] = useState<"select" | "camera">("select");
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [isLandscape, setIsLandscape] = useState(false);
   const [isCameraAvailable, setIsCameraAvailable] = useState<boolean | null>(
     null
   );
@@ -81,11 +82,6 @@ const PhotoCaptureModal: React.FC<PhotoCaptureModalProps> = ({
   ) => {
     const file = event.target.files?.[0];
     if (!file) return;
-
-    if (file.size > 5 * 1024 * 1024) {
-      setError("Image size must be less than 5MB");
-      return;
-    }
 
     setIsLoading(true);
     try {
@@ -247,14 +243,18 @@ const PhotoCaptureModal: React.FC<PhotoCaptureModalProps> = ({
               maxWidth: "400px",
               margin: "0 auto",
             }}>
+            <button
+              onClick={() => setMode("select")}
+              className="recipe-action-button back-button"
+              style={{ marginBottom: "16px" }}>
+              <FaArrowLeft /> Back
+            </button>
             <Webcam
               audio={false}
               ref={webcamRef}
               screenshotQuality={1}
               screenshotFormat="image/jpeg"
               videoConstraints={{
-                width: 1080,
-                height: 1920,
                 facingMode: "environment",
               }}
               style={{
@@ -322,9 +322,9 @@ const PhotoCaptureModal: React.FC<PhotoCaptureModalProps> = ({
               maxWidth: "850px",
               margin: "20px auto",
             }}>
-            NOTE: Position the item so it's completely visible and centered in
-            frame, with no other items visible. If the item has text, ensure
-            it's clearly readable in the photo.
+            NOTE: Position the item in good lighting so it's completely visible
+            and centered in frame, with no other items visible. If the item has
+            text, ensure it's clearly readable in the photo.
           </div>
           <button
             onClick={onClose}
