@@ -25,6 +25,20 @@ const SpeechRecognitionModal = ({
           <h2>Listening for Voice Input</h2>
         </div>
 
+        <div
+          style={{
+            backgroundColor: "rgba(5, 71, 42, 0.1)",
+            padding: "12px 20px",
+            borderRadius: "8px",
+            marginTop: "-22px",
+            fontSize: "0.9rem",
+            color: "var(--text-color)",
+            maxWidth: "850px",
+            margin: "20px auto",
+          }}>
+          NOTE: Ensure your browser has access to your device's microphone.
+        </div>
+
         <div style={{ textAlign: "center", marginBottom: "30px" }}>
           <FaMicrophone
             size={48}
