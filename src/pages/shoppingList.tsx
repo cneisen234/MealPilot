@@ -12,6 +12,7 @@ import AnimatedTechIcon from "../components/common/AnimatedTechIcon";
 import ConfirmationModal from "../components/common/ConfirmationModal";
 import ShoppingListForm from "../components/shoppingList/shoppingListForm";
 import PhotoCaptureModal from "../components/common/PhotoCaptureComponent";
+import SpeechRecognitionComponent from "../components/common/SpeechRecognitionComponent";
 import {
   getShoppingList,
   addShoppingListItem,
@@ -102,6 +103,17 @@ const ShoppingList: React.FC = () => {
     }
   }, [items, sortConfig]);
 
+  const handleSpeechMatches = (
+    matches: Array<{ id: number; item_name: string }>
+  ) => {
+    setMatches(matches);
+  };
+
+  const handleSpeechNoMatch = (spokenText: string) => {
+    setNewItemFromPhoto(spokenText); // Reuse photo state for speech input
+    handleNoMatch();
+  };
+
   const handleSearch = (filtered: ShoppingListItem[]) => {
     const sorted = sortHelper(filtered, sortConfig);
     setFilteredItems(sorted);
@@ -156,7 +168,7 @@ const ShoppingList: React.FC = () => {
       }
       if (aiActionsRemaining <= 0) {
         showToast(
-          "You've reached your daily AI action limit. Please try again tomorrow.",
+          "You've reached your daily AI action limit. Try another method.",
           "error"
         );
         setIsUploadingReceipt(false);
@@ -188,7 +200,7 @@ const ShoppingList: React.FC = () => {
       }
       if (aiActionsRemaining <= 0) {
         showToast(
-          "You've reached your daily AI action limit. Please try again tomorrow.",
+          "You've reached your daily AI action limit. Try another method.",
           "error"
         );
         return;
@@ -313,6 +325,20 @@ const ShoppingList: React.FC = () => {
     setMatches(null);
   };
 
+  if (matches) {
+    return (
+      <MatchSelectionModal
+        matches={matches}
+        onSelect={(item) => {
+          setEditingItem(item);
+          setMatches(null);
+        }}
+        onNoMatch={handleNoMatch}
+        onClose={() => setMatches(null)}
+      />
+    );
+  }
+
   return (
     <div
       className="inventory-container"
@@ -321,26 +347,32 @@ const ShoppingList: React.FC = () => {
         <h1>Shopping List</h1>
         <div className="multi-button-list">
           <button
+            onClick={() => setIsItemPhotoModalOpen(true)}
+            className="add-item-button-list"
+            style={{ backgroundColor: "var(--secondary-color)" }}>
+            <FaCamera /> Add/Edit from Photo
+          </button>
+          <SpeechRecognitionComponent
+            items={items}
+            onMatches={handleSpeechMatches}
+            onNoMatch={handleSpeechNoMatch}
+            setNewItemFromPhoto={setNewItemFromPhoto}
+          />
+          <button
+            onClick={() => setIsFormOpen(true)}
+            className="add-item-button-list"
+            style={{ backgroundColor: "var(--secondary-color)" }}>
+            <FaPlus /> Add Item
+          </button>
+          <button
             onClick={() => setIsReceiptModalOpen(true)}
             className="add-item-button-list"
             disabled={isUploadingReceipt}
-            style={{ backgroundColor: "var(--secondary-color)" }}>
+            style={{ backgroundColor: "var(--primary-color)" }}>
             <>
               <FaReceipt />
               <span>Update list from Receipt</span>
             </>
-          </button>
-          <button
-            onClick={() => setIsItemPhotoModalOpen(true)}
-            className="add-item-button-list"
-            style={{ backgroundColor: "var(--primary-color)" }}>
-            <FaCamera /> Add/Edit from Photo
-          </button>
-          <button
-            onClick={() => setIsFormOpen(true)}
-            className="add-item-button-list"
-            style={{ backgroundColor: "var(--primary-color)" }}>
-            <FaPlus /> Add Item
           </button>
           <button
             onClick={handleShareList}
@@ -468,17 +500,6 @@ const ShoppingList: React.FC = () => {
         }))}
         setIsLoading={setIsLoading}
       />
-      {matches && (
-        <MatchSelectionModal
-          matches={matches}
-          onSelect={(item) => {
-            setEditingItem(item);
-            setMatches(null);
-          }}
-          onNoMatch={handleNoMatch}
-          onClose={() => setMatches(null)}
-        />
-      )}
     </div>
   );
 };

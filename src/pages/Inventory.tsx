@@ -6,6 +6,7 @@ import InventoryForm from "../components/inventory/InventoryForm";
 import ExpirationAlert from "../components/inventory/ExpirationAlert";
 import PhotoCaptureModal from "../components/common/PhotoCaptureComponent";
 import MatchSelectionModal from "../components/common/MatchSelectionModal";
+import SpeechRecognitionComponent from "../components/common/SpeechRecognitionComponent";
 import {
   getInventoryItems,
   addInventoryItem,
@@ -113,6 +114,20 @@ const Inventory: React.FC = () => {
     }
   }, [items]);
 
+  const handleSpeechMatches = (
+    matches: Array<{ id: number; item_name: string }>
+  ) => {
+    setMatches({
+      items: matches,
+      suggestedName: matches[0].item_name,
+    });
+  };
+
+  const handleSpeechNoMatch = (spokenText: string) => {
+    setNewItemFromPhoto(spokenText); // We can reuse this state for speech input
+    handleNoMatch();
+  };
+
   const loadInventory = async () => {
     try {
       const response = await getInventoryItems();
@@ -204,7 +219,7 @@ const Inventory: React.FC = () => {
       }
       if (aiActionsRemaining < 1) {
         showToast(
-          "You've reached your daily AI action limit. Please try again tomorrow.",
+          "You've reached your daily AI action limit. Try another method.",
           "error"
         );
         return;
@@ -272,6 +287,20 @@ const Inventory: React.FC = () => {
     );
   }
 
+  if (matches) {
+    return (
+      <MatchSelectionModal
+        matches={matches.items}
+        onSelect={(item) => {
+          setEditingItem(item);
+          setMatches(null);
+        }}
+        onNoMatch={handleNoMatch}
+        onClose={() => setMatches(null)}
+      />
+    );
+  }
+
   return (
     <div
       className="inventory-container"
@@ -285,10 +314,16 @@ const Inventory: React.FC = () => {
             style={{ backgroundColor: "var(--secondary-color)" }}>
             <FaCamera /> Add/Edit from Photo
           </button>
+          <SpeechRecognitionComponent
+            items={items}
+            onMatches={handleSpeechMatches}
+            onNoMatch={handleSpeechNoMatch}
+            setNewItemFromPhoto={setNewItemFromPhoto}
+          />
           <button
             onClick={() => setIsFormOpen(true)}
             className="add-item-button-list"
-            style={{ backgroundColor: "var(--primary-color)" }}>
+            style={{ backgroundColor: "var(--secondary-color)" }}>
             <FaPlus /> Add Item
           </button>
         </div>
@@ -360,18 +395,6 @@ const Inventory: React.FC = () => {
         onClose={() => setIsPhotoModalOpen(false)}
         apiFunction={handleItemPhotoProcessing}
       />
-
-      {matches && (
-        <MatchSelectionModal
-          matches={matches.items}
-          onSelect={(item) => {
-            setEditingItem(item);
-            setMatches(null);
-          }}
-          onNoMatch={handleNoMatch}
-          onClose={() => setMatches(null)}
-        />
-      )}
     </div>
   );
 };

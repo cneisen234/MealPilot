@@ -49,7 +49,7 @@ const checkAiActions = async (req, res, next) => {
       //We want to stop the actions but not throw an error.
       return res.status(200).json({
         message:
-          "You've reached your daily AI action limit. Please try again tomorrow.",
+          "You've reached your daily AI action limit. Try another method.",
         aiActions: 0,
       });
     }

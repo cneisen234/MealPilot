@@ -45,7 +45,7 @@ const RecipeImport: React.FC<RecipeImportProps> = ({ onRecipeImported }) => {
       }
       if (aiActionsRemaining <= 0) {
         showToast(
-          "You've reached your daily AI action limit. Please try again tomorrow.",
+          "You've reached your daily AI action limit. Try another method.",
           "error"
         );
         setIsLoading(false);
@@ -74,7 +74,7 @@ const RecipeImport: React.FC<RecipeImportProps> = ({ onRecipeImported }) => {
       }
       if (aiActionsRemaining < 1) {
         showToast(
-          "You've reached your daily AI action limit. Please try again tomorrow.",
+          "You've reached your daily AI action limit. Try another method.",
           "error"
         );
         return;

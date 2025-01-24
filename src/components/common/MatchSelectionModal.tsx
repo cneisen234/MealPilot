@@ -19,8 +19,8 @@ const MatchSelectionModal: React.FC<MatchSelectionModalProps> = ({
   onNoMatch,
 }) => {
   return (
-    <div className="modal-overlay">
-      <div className="modal-content">
+    <div className="recipe-result" style={{ marginTop: 100 }}>
+      <div className="recipe-section">
         <div className="modal-header-form">
           <h2>Found Similar Items</h2>
           <button onClick={onClose} className="modal-close-btn">

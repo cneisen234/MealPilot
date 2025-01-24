@@ -1,0 +1,90 @@
+.speech-recognition-container {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+}
+
+.listening-dots {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 12px;
+}
+
+.microphone-icon {
+    margin-right: 8px;
+}
+
+.speech-error-message {
+    color: #dc3545;
+    font-size: 0.875rem;
+    margin-top: 0.5rem;
+}
+
+.listening-indicator {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.listening-dot {
+    width: 12px;
+    height: 12px;
+    background-color: var(--primary-color);
+    border-radius: 50%;
+    animation: pulse 1.5s ease-in-out infinite;
+}
+
+.listening-dot:nth-child(2) {
+    animation-delay: 0.2s;
+}
+
+.listening-dot:nth-child(3) {
+    animation-delay: 0.4s;
+}
+
+.transcript-display {
+    background-color: rgba(5, 71, 42, 0.1);
+    padding: 8px 16px;
+    border-radius: 8px;
+    margin-left: 8px;
+    font-size: 0.9rem;
+    color: var(--text-color);
+}
+
+.disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+.microphone-icon {
+    margin-right: 8px;
+}
+@keyframes glow {
+    from {
+        opacity: 0.8;
+        transform: scale(0.98);
+    }
+
+    to {
+        opacity: 1;
+        transform: scale(1.02);
+    }
+}
+
+@keyframes pulse {
+    0% {
+        transform: scale(0.8);
+        opacity: 0.5;
+    }
+
+    50% {
+        transform: scale(1.2);
+        opacity: 1;
+    }
+
+    100% {
+        transform: scale(0.8);
+        opacity: 0.5;
+    }
+}
