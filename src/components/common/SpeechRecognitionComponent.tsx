@@ -120,6 +120,8 @@ const SpeechRecognitionComponent: React.FC<SpeechRecognitionProps> = ({
     if (!listening && transcript) {
       findMatches(transcript);
       resetTranscript();
+    } else {
+      findMatches("");
     }
   }, [listening, transcript, findMatches, resetTranscript]);
 
