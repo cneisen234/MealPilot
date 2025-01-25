@@ -26,8 +26,7 @@ const InstructionStep: React.FC<InstructionStepProps> = ({
   // Timer state management
   const [timerDuration, setTimerDuration] = useState<number | null>(null);
   const [isTimer, setIsTimer] = useState(false);
-  const { timeLeft, isActive, startTimer, pauseTimer, resetTimer, playBeep } =
-    useTimer();
+  const { timeLeft, isActive, startTimer, pauseTimer, resetTimer } = useTimer();
 
   // Parse instruction for timing information when component mounts or instruction changes
   useEffect(() => {
@@ -113,7 +112,7 @@ const InstructionStep: React.FC<InstructionStepProps> = ({
   };
 
   return (
-    <div className="recipe-result">
+    <div className="recipe-result" style={{ marginBottom: 200 }}>
       <p className="step-counter">
         Step {stepNumber} of {totalSteps}
       </p>

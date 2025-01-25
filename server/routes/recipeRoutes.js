@@ -501,192 +501,242 @@ router.get("/myrecipes/:id", authMiddleware, async (req, res) => {
   }
 });
 
-router.get(
-  "/myrecipesinventory/:id",
-  [authMiddleware], // Removed checkAiActions since we don't need it anymore
-  async (req, res) => {
-    try {
-      const userId = req.user.id;
-      const recipeId = req.params.id;
+router.get("/myrecipesinventory/:id", [authMiddleware], async (req, res) => {
+  try {
+    const userId = req.user.id;
+    const recipeId = req.params.id;
 
-      const [recipeResult, inventoryResult] = await Promise.all([
-        pool.query("SELECT * FROM recipes WHERE id = $1 AND user_id = $2", [
-          recipeId,
-          userId,
-        ]),
-        pool.query("SELECT * FROM inventory WHERE user_id = $1", [userId]),
-      ]);
+    // Words that are too generic to match on alone unless they're the only word
+    const genericIngredientWords = new Set([
+      "syrup",
+      "sauce",
+      "oil",
+      "vinegar",
+      "cream",
+      "milk",
+      "cheese",
+      "flour",
+      "sugar",
+      "salt",
+      "pepper",
+      "spice",
+      "seasoning",
+      "broth",
+      "stock",
+      "juice",
+      "extract",
+      "powder",
+      "paste",
+      "butter",
+      "water",
+      "wine",
+      "bread",
+      "rice",
+      "pasta",
+      "noodles",
+    ]);
 
-      if (recipeResult.rows.length === 0) {
-        return res.status(404).json({ message: "Recipe not found" });
+    const [recipeResult, inventoryResult] = await Promise.all([
+      pool.query("SELECT * FROM recipes WHERE id = $1 AND user_id = $2", [
+        recipeId,
+        userId,
+      ]),
+      pool.query("SELECT * FROM inventory WHERE user_id = $1", [userId]),
+    ]);
+
+    if (recipeResult.rows.length === 0) {
+      return res.status(404).json({ message: "Recipe not found" });
+    }
+
+    const recipe = recipeResult.rows[0];
+    const inventory = inventoryResult.rows;
+
+    const extractItemName = (original) => {
+      let processed = original.toLowerCase();
+      processed = processed.replace(/\d+(\.\d+)?(\s*\/\s*\d+)?/g, "");
+
+      const measurements = [
+        "cup",
+        "cups",
+        "tablespoon",
+        "tablespoons",
+        "tbsp",
+        "teaspoon",
+        "teaspoons",
+        "tsp",
+        "pound",
+        "pounds",
+        "lb",
+        "lbs",
+        "ounce",
+        "ounces",
+        "oz",
+        "gram",
+        "grams",
+        "g",
+        "ml",
+        "milliliter",
+        "milliliters",
+        "pinch",
+        "pinches",
+        "dash",
+        "dashes",
+        "handful",
+        "handfuls",
+        "piece",
+        "pieces",
+        "slice",
+        "slices",
+        "can",
+        "cans",
+        "package",
+        "packages",
+        "bottle",
+        "bottles",
+      ];
+
+      measurements.forEach((measure) => {
+        const measureRegex = new RegExp(`\\b${measure}s?\\b`, "g");
+        processed = processed.replace(measureRegex, "");
+      });
+
+      const connectors = [
+        "of",
+        "the",
+        "a",
+        "an",
+        "fresh",
+        "chopped",
+        "diced",
+        "sliced",
+        "minced",
+        "ground",
+        "frozen",
+        "canned",
+        "dried",
+        "raw",
+        "cooked",
+      ];
+
+      connectors.forEach((connector) => {
+        const connectorRegex = new RegExp(`\\b${connector}\\b`, "g");
+        processed = processed.replace(connectorRegex, "");
+      });
+
+      return processed.replace(/[.,]|(\s+)/g, " ").trim();
+    };
+
+    const doIngredientsMatch = (cleanedItem, cleanedInventoryItem) => {
+      const itemWords = cleanedItem.split(" ");
+      const inventoryWords = cleanedInventoryItem.split(" ");
+
+      // Case 1: If either is a single generic word (e.g., just "milk"),
+      // match it with any ingredient containing that word
+      if (itemWords.length === 1 && genericIngredientWords.has(itemWords[0])) {
+        return inventoryWords.includes(itemWords[0]);
+      }
+      if (
+        inventoryWords.length === 1 &&
+        genericIngredientWords.has(inventoryWords[0])
+      ) {
+        return itemWords.includes(inventoryWords[0]);
       }
 
-      const recipe = recipeResult.rows[0];
-      const inventory = inventoryResult.rows;
+      // Case 2: For multi-word items, check if one item is a subset of the other
+      const commonGenericWords = itemWords.filter(
+        (word) =>
+          genericIngredientWords.has(word) && inventoryWords.includes(word)
+      );
 
-      // Function to extract item name (same as shopping list modal)
-      const extractItemName = (original) => {
-        // First, convert everything to lowercase for consistent matching
-        let processed = original.toLowerCase();
+      if (commonGenericWords.length > 0) {
+        const itemSet = new Set(itemWords);
+        const inventorySet = new Set(inventoryWords);
 
-        // Remove numbers and fractions (including decimals)
-        processed = processed.replace(/\d+(\.\d+)?(\s*\/\s*\d+)?/g, "");
-
-        // Remove all measurement terms
-        const measurements = [
-          "cup",
-          "cups",
-          "tablespoon",
-          "tablespoons",
-          "tbsp",
-          "teaspoon",
-          "teaspoons",
-          "tsp",
-          "pound",
-          "pounds",
-          "lb",
-          "lbs",
-          "ounce",
-          "ounces",
-          "oz",
-          "gram",
-          "grams",
-          "g",
-          "ml",
-          "milliliter",
-          "milliliters",
-          "pinch",
-          "pinches",
-          "dash",
-          "dashes",
-          "handful",
-          "handfuls",
-          "piece",
-          "pieces",
-          "slice",
-          "slices",
-          "can",
-          "cans",
-          "package",
-          "packages",
-          "bottle",
-          "bottles",
-        ];
-
-        measurements.forEach((measure) => {
-          const measureRegex = new RegExp(`\\b${measure}s?\\b`, "g");
-          processed = processed.replace(measureRegex, "");
-        });
-
-        // Remove common connectors and prepositions
-        const connectors = [
-          "of",
-          "the",
-          "a",
-          "an",
-          "fresh",
-          "chopped",
-          "diced",
-          "sliced",
-        ];
-        connectors.forEach((connector) => {
-          const connectorRegex = new RegExp(`\\b${connector}\\b`, "g");
-          processed = processed.replace(connectorRegex, "");
-        });
-
-        // Clean up whitespace and commas
-        return processed.replace(/,/g, "").replace(/\s+/g, " ").trim();
-      };
-
-      // Function to extract quantity
-      const extractQuantity = (original) => {
-        const match = original.match(/\d+(\.\d+)?(\s*\/\s*\d+)?/);
-        if (!match) return 1;
-
-        const numStr = match[0];
-        if (numStr.includes("/")) {
-          const [num, denom] = numStr
-            .split("/")
-            .map((n) => parseFloat(n.trim()));
-          return num / denom;
+        if (itemWords.length < inventoryWords.length) {
+          return itemWords.every((word) => inventorySet.has(word));
+        } else {
+          return inventoryWords.every((word) => itemSet.has(word));
         }
-        return parseFloat(numStr);
-      };
+      }
 
-      const ingredients = recipe.ingredients.map((ingredient) => {
-        const parsedName = extractItemName(ingredient);
-        const parsedQuantity = extractQuantity(ingredient);
+      // Case 3: For all other cases, match on non-generic words
+      const itemNonGenericWords = itemWords.filter(
+        (word) => !genericIngredientWords.has(word)
+      );
+      const inventoryNonGenericWords = inventoryWords.filter(
+        (word) => !genericIngredientWords.has(word)
+      );
 
-        // Look for exact match in inventory (case-insensitive)
-        const inventoryMatch = inventory.find((item) => {
-          const inventoryName = extractItemName(item.item_name).toLowerCase();
-          const ingredientName = parsedName.toLowerCase();
+      return itemNonGenericWords.some((word) =>
+        inventoryNonGenericWords.includes(word)
+      );
+    };
 
-          // Split both names into words
-          const inventoryWords = inventoryName.split(" ");
-          const ingredientWords = ingredientName.split(" ");
+    const extractQuantity = (original) => {
+      const match = original.match(/\d+(\.\d+)?(\s*\/\s*\d+)?/);
+      if (!match) return 1;
 
-          // Check if either name contains all the words of the other
-          const inventoryContainsIngredient = ingredientWords.every((word) =>
-            inventoryWords.some(
-              (invWord) => invWord.includes(word) || word.includes(invWord)
-            )
-          );
+      const numStr = match[0];
+      if (numStr.includes("/")) {
+        const [num, denom] = numStr.split("/").map((n) => parseFloat(n.trim()));
+        return num / denom;
+      }
+      return parseFloat(numStr);
+    };
 
-          const ingredientContainsInventory = inventoryWords.every((word) =>
-            ingredientWords.some(
-              (ingWord) => ingWord.includes(word) || word.includes(ingWord)
-            )
-          );
+    const ingredients = recipe.ingredients.map((ingredient) => {
+      const parsedName = extractItemName(ingredient);
+      const parsedQuantity = extractQuantity(ingredient);
 
-          return inventoryContainsIngredient || ingredientContainsInventory;
-        });
+      // Look for match in inventory using our improved matching logic
+      const inventoryMatch = inventory.find((item) => {
+        const inventoryName = extractItemName(item.item_name);
+        return doIngredientsMatch(parsedName, inventoryName);
+      });
 
-        if (inventoryMatch) {
-          return {
-            original: ingredient,
-            parsed: {
-              quantity: parsedQuantity,
-              name: inventoryMatch.item_name,
-            },
-            status: {
-              type: "in-inventory",
-              hasEnough: inventoryMatch.quantity >= parsedQuantity,
-              available: {
-                quantity: inventoryMatch.quantity,
-                id: inventoryMatch.id,
-              },
-            },
-          };
-        }
-
-        // No match found
+      if (inventoryMatch) {
         return {
           original: ingredient,
           parsed: {
             quantity: parsedQuantity,
-            name: parsedName,
+            name: inventoryMatch.item_name,
           },
           status: {
-            type: "missing",
-            hasEnough: false,
+            type: "in-inventory",
+            hasEnough: inventoryMatch.quantity >= parsedQuantity,
+            available: {
+              quantity: inventoryMatch.quantity,
+              id: inventoryMatch.id,
+            },
           },
         };
-      });
+      }
 
-      res.json({
-        ...recipe,
-        ingredients,
-      });
-    } catch (error) {
-      console.error("Recipe analysis error:", error);
-      res.status(500).json({
-        error: "Failed to analyze recipe",
-        details: error.message,
-      });
-    }
+      return {
+        original: ingredient,
+        parsed: {
+          quantity: parsedQuantity,
+          name: parsedName,
+        },
+        status: {
+          type: "missing",
+          hasEnough: false,
+        },
+      };
+    });
+
+    res.json({
+      ...recipe,
+      ingredients,
+    });
+  } catch (error) {
+    console.error("Recipe analysis error:", error);
+    res.status(500).json({
+      error: "Failed to analyze recipe",
+      details: error.message,
+    });
   }
-);
+});
 
 router.put("/myrecipes/:id", authMiddleware, async (req, res) => {
   try {

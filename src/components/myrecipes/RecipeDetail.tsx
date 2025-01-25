@@ -216,10 +216,38 @@ const RecipeDetail: React.FC = () => {
   ) => {
     if (!editedRecipe) return;
 
-    setEditedRecipe((prev) => ({
-      ...prev!,
-      [field]: prev![field].map((item, i) => (i === index ? value : item)),
-    }));
+    //@ts-ignore
+    setEditedRecipe((prev) => {
+      if (!prev) return prev;
+
+      if (field === "ingredients") {
+        const updatedIngredients = prev.ingredients.map((ingredient, i) => {
+          if (i === index) {
+            return {
+              ...ingredient,
+              original: value,
+              parsed: undefined,
+              status: {
+                type: "unparseable",
+                hasEnough: false,
+              },
+            };
+          }
+          return ingredient;
+        });
+
+        return {
+          ...prev,
+          ingredients: updatedIngredients,
+        };
+      }
+
+      // Handle other fields normally
+      return {
+        ...prev,
+        [field]: prev[field].map((item, i) => (i === index ? value : item)),
+      };
+    });
   };
 
   const addArrayItem = (
@@ -263,7 +291,28 @@ const RecipeDetail: React.FC = () => {
         ),
         mealType: editedRecipe.mealType,
       });
-      await loadRecipe();
+
+      // Update the recipe state with the edited version
+      setRecipe(editedRecipe);
+
+      // Reset the original recipe
+      setOriginalRecipe(editedRecipe);
+
+      // Update display ingredients
+      const updatedIngredients = editedRecipe.ingredients.map((ingredient) => ({
+        ...ingredient,
+        original: scaleIngredients(
+          ingredient.original,
+          parseInt(editedRecipe.servings),
+          displayServings
+        ),
+      }));
+      setDisplayIngredients(updatedIngredients);
+
+      // Clear analyzed ingredients since they're now outdated
+      setAnalyzedIngredients([]);
+      setAnalysisRun(false);
+
       showToast("Recipe updated successfully", "success");
       setIsEditing(false);
     } catch (error) {

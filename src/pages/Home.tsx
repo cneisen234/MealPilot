@@ -86,11 +86,12 @@ const Home: React.FC = () => {
             ))}
           </div>
 
-          {/* Cost Breakdown Section */}
+          <h2
+            className="mealpilot-home__cost-savings-title"
+            style={{ marginTop: 100 }}>
+            How MealPilot Saves You Money
+          </h2>
           <div className="mealpilot-home__features">
-            <h2 className="mealpilot-home__cost-savings-title">
-              How MealPilot Saves You Money
-            </h2>
             <div className="mealpilot-home__feature">
               <h3 className="mealpilot-home__feature-title">
                 Meal Delivery Services:
@@ -103,9 +104,9 @@ const Home: React.FC = () => {
             <div className="mealpilot-home__feature">
               <h3 className="mealpilot-home__feature-title">Grocery Bills:</h3>
               <p className="mealpilot-home__feature-text">
-                Cut down on food waste and save up to $150/month by only
-                purchasing what you need, thanks to MealPilot's professional and
-                truly robust pantry tracking system.
+                Save up to $150/month by only purchasing what you need, thanks
+                to MealPilot's professional and truly robust pantry tracking
+                system.
               </p>
             </div>
             <div className="mealpilot-home__feature">
@@ -123,9 +124,32 @@ const Home: React.FC = () => {
                 not planning them.
               </p>
             </div>
-            <h2 className="mealpilot-home__cost-savings-title">
-              Why We're Different, and truly the best
-            </h2>
+            <div className="mealpilot-home__feature">
+              <h3 className="mealpilot-home__feature-title">
+                Reduced Food Waste:
+              </h3>
+              <p className="mealpilot-home__feature-text">
+                Save up to $120/month by tracking expiration dates and planning
+                meals around ingredients you already have, eliminating food
+                waste entirely.
+              </p>
+            </div>
+            <div className="mealpilot-home__feature">
+              <h3 className="mealpilot-home__feature-title">
+                Smart Bulk Buying:
+              </h3>
+              <p className="mealpilot-home__feature-text">
+                Save up to $80/month by intelligently identifying bulk buying
+                opportunities and tracking long-term storage items effectively.
+              </p>
+            </div>
+          </div>
+          <h2
+            className="mealpilot-home__cost-savings-title"
+            style={{ marginTop: 100 }}>
+            Why We're Different, and Truly the Best
+          </h2>
+          <div className="mealpilot-home__features">
             <div className="mealpilot-home__feature">
               <h3 className="mealpilot-home__feature-title">
                 All-In-One Solution
@@ -139,29 +163,31 @@ const Home: React.FC = () => {
                 more effective solution to your kitchen needs.
               </p>
             </div>
-          </div>
-          <div className="mealpilot-home__features">
+            <div className="mealpilot-home__feature">
+              <h3 className="mealpilot-home__feature-title">
+                Real AI, Not Just Marketing
+              </h3>
+              <p className="mealpilot-home__feature-text">
+                Unlike other apps that only claim to use AI, MealPilot employs
+                genuine artificial intelligence that learns and adapts to your
+                preferences, dietary needs, and cooking habits. Our AI
+                understands the nuances of cooking, nutrition, and meal planning
+                in ways that traditional apps simply cannot match.
+              </p>
+            </div>
             <div className="mealpilot-home__feature">
               <h2 className="mealpilot-home__feature-title">
                 We're Not Just Another Recipe or Inventory App
               </h2>
               <p className="mealpilot-home__feature-text">
-                MealPilot is a comprehensive kitchen solution that automates the
-                tasks typically handled by professional services, saving you
-                hundreds of dollars each month. What truly sets us apart is our
-                deeply integrated AI system, which makes what was once
-                impossible, possible. We’ve perfected features that traditional
-                meal planning apps have struggled to get right for years.
-                <br />
-                <br />
-                Have you ever imagined hiring a personal chef, a meal planner,
-                or a pantry manager, MealPilot combines all of these roles into
-                one powerful app, saving you time, money, and effort. These
-                professional services are automated with the power of AI, making
-                your kitchen run smoother than ever.
-                <br />
-                <br />
-                Finally, a solution that actually works!
+                MealPilot is a comprehensive kitchen solution that automates
+                tasks typically handled by professional services. Our deeply
+                integrated AI system combines the roles of a personal chef, meal
+                planner, and pantry manager into one powerful app. We've
+                perfected features that traditional apps have struggled with for
+                years, saving you time, money, and effort while making your
+                kitchen run smoother than ever. Finally, a solution that
+                actually works!
               </p>
 
               <br />
