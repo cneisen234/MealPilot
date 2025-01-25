@@ -241,6 +241,7 @@ const PhotoCaptureModal: React.FC<PhotoCaptureModalProps> = ({
             style={{
               width: "100%",
               maxWidth: "400px",
+              height: 300,
               margin: "0 auto",
             }}>
             <Webcam
