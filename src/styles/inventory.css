@@ -481,6 +481,70 @@ max-height: 75vh;
     flex: 1;
 }
 
+.expiring-item-content {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 1rem;
+}
+
+.expiring-item-info {
+    flex: 1;
+}
+
+.matching-recipes {
+    flex: 2;
+}
+
+.recipes-label {
+    color: var(--primary-color);
+    font-weight: 600;
+    margin-bottom: 0.5rem;
+}
+
+.recipe-links {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+}
+
+.recipe-link-button {
+    background: none;
+    border: none;
+    color: var(--secondary-color);
+    padding: 0.25rem 0.5rem;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 0.9rem;
+    transition: all 0.2s ease;
+}
+
+.recipe-link-button:hover {
+    background-color: rgba(255, 157, 114, 0.1);
+    transform: translateY(-1px);
+}
+
+@media (max-width: 768px) {
+    .expiring-item-content {
+        flex-direction: column;
+        gap: 0.5rem;
+    }
+
+    .matching-recipes {
+        width: 100%;
+        margin-top: 0.5rem;
+    }
+
+    .recipe-links {
+        flex-direction: column;
+    }
+
+    .recipe-link-button {
+        text-align: left;
+        width: 100%;
+    }
+}
+
 @media (max-width: 768px) {
     .inventory-filters {
             flex-direction: column;
