@@ -62,7 +62,7 @@ const SpeechRecognitionModal = ({
                 borderRadius: "8px",
                 color: "var(--text-color)",
               }}>
-              {currentTranscript}
+              Transcription Done!
             </div>
           )}
         </div>
@@ -84,12 +84,8 @@ const SpeechRecognitionComponent: React.FC<SpeechRecognitionProps> = ({
   onNoMatch,
   setNewItemFromPhoto,
 }) => {
-  const {
-    transcript,
-    listening,
-    resetTranscript,
-    browserSupportsSpeechRecognition,
-  } = useSpeechRecognition();
+  const { transcript, resetTranscript, browserSupportsSpeechRecognition } =
+    useSpeechRecognition();
 
   // Custom state to manage listening control
   const [isListening, setIsListening] = useState(false);
