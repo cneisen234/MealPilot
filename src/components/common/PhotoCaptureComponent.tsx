@@ -249,8 +249,8 @@ const PhotoCaptureModal: React.FC<PhotoCaptureModalProps> = ({
               screenshotQuality={1}
               screenshotFormat="image/jpeg"
               videoConstraints={{
-                width: 1080,
-                height: 1920,
+                width: 1920,
+                height: 1080,
                 facingMode: "environment",
               }}
               style={{
