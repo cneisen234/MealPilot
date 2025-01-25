@@ -68,7 +68,7 @@ const SpeechRecognitionModal = ({
         </div>
 
         <button
-          onClick={onClose}
+          onClick={onClose} // onClose will reset the transcript
           className="submit-button"
           style={{ width: "100%", marginTop: "20px" }}>
           Stop Listening
@@ -141,12 +141,17 @@ const SpeechRecognitionComponent: React.FC<SpeechRecognitionProps> = ({
       findMatches(transcript);
     }
     SpeechRecognition.stopListening();
+    resetTranscript(); // Reset the transcript when stopping listening
   };
 
   const handleStartListening = () => {
     resetTranscript();
     setHasProcessed(false);
     SpeechRecognition.startListening();
+  };
+
+  const handleCloseModal = () => {
+    resetTranscript(); // Reset the transcript on modal close
   };
 
   return (
@@ -162,7 +167,7 @@ const SpeechRecognitionComponent: React.FC<SpeechRecognitionProps> = ({
       {listening && (
         <SpeechRecognitionModal
           currentTranscript={transcript}
-          onClose={handleStopListening}
+          onClose={handleCloseModal}
         />
       )}
     </>
