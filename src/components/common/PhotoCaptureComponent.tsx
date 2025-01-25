@@ -241,6 +241,7 @@ const PhotoCaptureModal: React.FC<PhotoCaptureModalProps> = ({
             style={{
               width: "100%",
               maxWidth: "400px",
+              height: "300px",
               margin: "0 auto",
             }}>
             <Webcam
@@ -249,14 +250,13 @@ const PhotoCaptureModal: React.FC<PhotoCaptureModalProps> = ({
               screenshotQuality={1}
               screenshotFormat="image/jpeg"
               videoConstraints={{
-                width: 720,
-                height: 480,
+                width: 400,
+                height: 300,
                 facingMode: "environment",
               }}
               style={{
                 width: "100%",
-                height: "100%",
-                maxHeight: "50vh",
+                height: "300px",
                 objectFit: "cover",
                 borderRadius: "8px",
               }}
