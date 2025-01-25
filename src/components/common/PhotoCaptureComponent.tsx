@@ -243,18 +243,13 @@ const PhotoCaptureModal: React.FC<PhotoCaptureModalProps> = ({
               maxWidth: "400px",
               margin: "0 auto",
             }}>
-            <button
-              onClick={() => setMode("select")}
-              className="recipe-action-button back-button"
-              style={{ marginBottom: "16px" }}>
-              <FaArrowLeft /> Back
-            </button>
             <Webcam
               audio={false}
               ref={webcamRef}
               screenshotQuality={1}
               screenshotFormat="image/jpeg"
               videoConstraints={{
+                height: 1080,
                 facingMode: "environment",
               }}
               style={{
@@ -270,6 +265,11 @@ const PhotoCaptureModal: React.FC<PhotoCaptureModalProps> = ({
                 gap: "12px",
                 marginTop: "16px",
               }}>
+              <button
+                onClick={() => setMode("select")}
+                className="recipe-action-button back-button">
+                <FaArrowLeft /> Back
+              </button>
               <button
                 onClick={handleCameraCapture}
                 className="recipe-action-button back-button">
