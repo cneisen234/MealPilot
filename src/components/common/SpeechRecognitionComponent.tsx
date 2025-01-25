@@ -1,4 +1,4 @@
-import React, { useEffect, useCallback, useState } from "react";
+import React, { useEffect, useCallback } from "react";
 import { FaMicrophone } from "react-icons/fa";
 import SpeechRecognition, {
   useSpeechRecognition,
@@ -68,7 +68,7 @@ const SpeechRecognitionModal = ({
         </div>
 
         <button
-          onClick={onClose} // onClose will reset the transcript
+          onClick={onClose}
           className="submit-button"
           style={{ width: "100%", marginTop: "20px" }}>
           Stop Listening
@@ -90,7 +90,6 @@ const SpeechRecognitionComponent: React.FC<SpeechRecognitionProps> = ({
     resetTranscript,
     browserSupportsSpeechRecognition,
   } = useSpeechRecognition();
-  const [hasProcessed, setHasProcessed] = useState(false);
 
   const findMatches = useCallback(
     (spokenText: string) => {
@@ -108,56 +107,39 @@ const SpeechRecognitionComponent: React.FC<SpeechRecognitionProps> = ({
 
       if (matches.length > 0) {
         setNewItemFromPhoto(spokenText.trim());
-        onMatches(matches);
+        onMatches(matches); // Keep matches the same
       } else {
         onNoMatch(spokenText.trim());
       }
-      setHasProcessed(true);
     },
-    [items, onMatches, onNoMatch, setNewItemFromPhoto]
+    [items, onMatches, onNoMatch]
   );
 
-  // Reset hasProcessed when starting to listen
+  // Process results when speech recognition stops
   useEffect(() => {
-    if (listening) {
-      setHasProcessed(false);
-    }
-  }, [listening]);
-
-  // Process results only when speech recognition stops and hasn't been processed yet
-  useEffect(() => {
-    if (!listening && transcript && !hasProcessed) {
+    if (!listening && transcript) {
       findMatches(transcript);
       resetTranscript();
     }
-  }, [listening, transcript, hasProcessed, findMatches, resetTranscript]);
+  }, [listening, transcript, findMatches, resetTranscript]);
 
   if (!browserSupportsSpeechRecognition) {
     return null;
   }
 
-  const handleStopListening = () => {
-    if (transcript && !hasProcessed) {
-      findMatches(transcript);
+  const toggleListening = () => {
+    if (listening) {
+      SpeechRecognition.stopListening();
+    } else {
+      resetTranscript();
+      SpeechRecognition.startListening();
     }
-    SpeechRecognition.stopListening();
-    resetTranscript(); // Reset the transcript when stopping listening
-  };
-
-  const handleStartListening = () => {
-    resetTranscript();
-    setHasProcessed(false);
-    SpeechRecognition.startListening();
-  };
-
-  const handleCloseModal = () => {
-    resetTranscript(); // Reset the transcript on modal close
   };
 
   return (
     <>
       <button
-        onClick={listening ? handleStopListening : handleStartListening}
+        onClick={toggleListening}
         className="add-item-button-list"
         style={{ backgroundColor: "var(--secondary-color)" }}>
         <FaMicrophone className="microphone-icon" />
@@ -167,7 +149,7 @@ const SpeechRecognitionComponent: React.FC<SpeechRecognitionProps> = ({
       {listening && (
         <SpeechRecognitionModal
           currentTranscript={transcript}
-          onClose={handleCloseModal}
+          onClose={() => SpeechRecognition.stopListening()}
         />
       )}
     </>
