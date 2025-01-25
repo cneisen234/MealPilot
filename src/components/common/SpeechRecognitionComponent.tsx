@@ -1,4 +1,4 @@
-import React, { useEffect, useCallback } from "react";
+import React, { useCallback, useState } from "react";
 import { FaMicrophone } from "react-icons/fa";
 import SpeechRecognition, {
   useSpeechRecognition,
@@ -71,7 +71,7 @@ const SpeechRecognitionModal = ({
           onClick={onClose}
           className="submit-button"
           style={{ width: "100%", marginTop: "20px" }}>
-          Stop Listening
+          Results
         </button>
       </div>
     </div>
@@ -90,6 +90,9 @@ const SpeechRecognitionComponent: React.FC<SpeechRecognitionProps> = ({
     resetTranscript,
     browserSupportsSpeechRecognition,
   } = useSpeechRecognition();
+
+  // Custom state to manage listening control
+  const [isListening, setIsListening] = useState(false);
 
   const findMatches = useCallback(
     (spokenText: string) => {
@@ -115,28 +118,25 @@ const SpeechRecognitionComponent: React.FC<SpeechRecognitionProps> = ({
     [items, onMatches, onNoMatch]
   );
 
-  // Process results when speech recognition stops
-  useEffect(() => {
-    if (!listening && transcript) {
-      findMatches(transcript);
-      resetTranscript();
-    } else {
-      setNewItemFromPhoto("");
-      onMatches([]);
-    }
-  }, [listening, transcript, findMatches, resetTranscript]);
-
   if (!browserSupportsSpeechRecognition) {
     return null;
   }
 
+  // Start listening manually
   const toggleListening = () => {
-    if (listening) {
+    if (isListening) {
       SpeechRecognition.stopListening();
     } else {
-      resetTranscript();
       SpeechRecognition.startListening();
     }
+    setIsListening((prev) => !prev);
+  };
+
+  const handleOnClose = () => {
+    findMatches(transcript);
+    resetTranscript();
+    setIsListening(false); // Stop manually when closing
+    SpeechRecognition.stopListening();
   };
 
   return (
@@ -149,10 +149,10 @@ const SpeechRecognitionComponent: React.FC<SpeechRecognitionProps> = ({
         <span>Add/Edit by Voice</span>
       </button>
 
-      {listening && (
+      {isListening && (
         <SpeechRecognitionModal
           currentTranscript={transcript}
-          onClose={() => SpeechRecognition.stopListening()}
+          onClose={handleOnClose}
         />
       )}
     </>
