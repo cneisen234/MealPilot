@@ -121,7 +121,8 @@ const SpeechRecognitionComponent: React.FC<SpeechRecognitionProps> = ({
       findMatches(transcript);
       resetTranscript();
     } else {
-      findMatches("");
+      setNewItemFromPhoto("");
+      onMatches([]);
     }
   }, [listening, transcript, findMatches, resetTranscript]);
 
