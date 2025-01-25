@@ -17,7 +17,6 @@ const PhotoCaptureModal: React.FC<PhotoCaptureModalProps> = ({
   const [mode, setMode] = useState<"select" | "camera">("select");
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [isLandscape, setIsLandscape] = useState(false);
   const [isCameraAvailable, setIsCameraAvailable] = useState<boolean | null>(
     null
   );
@@ -241,7 +240,6 @@ const PhotoCaptureModal: React.FC<PhotoCaptureModalProps> = ({
             style={{
               width: "100%",
               maxWidth: "400px",
-              height: 300,
               margin: "0 auto",
             }}>
             <Webcam
@@ -250,8 +248,8 @@ const PhotoCaptureModal: React.FC<PhotoCaptureModalProps> = ({
               screenshotQuality={1}
               screenshotFormat="image/jpeg"
               videoConstraints={{
-                width: 1920,
-                height: 1080,
+                width: 1080,
+                height: 1920,
                 facingMode: "environment",
               }}
               style={{
