@@ -7,6 +7,8 @@ export interface User {
   bio: string;
   city?: string | null;
   state?: string | null;
+  ai_actions?: number | undefined;
+  trial_end_date?: Date;
 }
 
 export interface Recipe {

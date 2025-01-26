@@ -11,6 +11,7 @@ const inventoryRoutes = require("./routes/InventoryRoutes");
 const shoppingListRoutes = require("./routes/shoppingListRoutes");
 const sharedListRoutes = require("./routes/sharedListRoutes");
 const preferenceRoutes = require("./routes/preferenceRoutes");
+const paymentRoutes = require("./routes/paymentRoutes");
 const path = require("path");
 
 const app = express();
@@ -46,6 +47,7 @@ app.use("/api/inventory", inventoryRoutes);
 app.use("/api/shopping-list", shoppingListRoutes);
 app.use("/api/shared-list", sharedListRoutes);
 app.use("/api/preference", preferenceRoutes);
+app.use("/api/payment", paymentRoutes);
 
 app.get("*", (req, res) => {
   res.sendFile(path.join(__dirname, "../build", "index.html"));

@@ -11,6 +11,22 @@ CREATE TABLE users
     admin BOOLEAN NOT NULL DEFAULT false
 );
 
+ALTER TABLE users
+    ADD COLUMN has_subscription BOOLEAN DEFAULT false,
+ADD COLUMN subscription_updated_at TIMESTAMP DEFAULT NOW
+(),
+ADD COLUMN stripe_subscription_id VARCHAR
+(255),
+ADD COLUMN stripe_customer_id VARCHAR
+(255),
+ADD COLUMN stripe_payment_method_id VARCHAR
+(255);
+
+ALTER TABLE users
+    ADD COLUMN subscription_consent BOOLEAN DEFAULT false,
+ADD COLUMN trial_start_date TIMESTAMP,
+ADD COLUMN trial_end_date TIMESTAMP;
+
 CREATE TABLE cant_haves
 (
     id SERIAL PRIMARY KEY,

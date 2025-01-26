@@ -493,7 +493,7 @@ const Recipe = () => {
             maxWidth: "800px",
             margin: "20px auto",
           }}>
-          MEDICAL DISCLAIMER: MealPilot is not a substitute for professional
+          MEDICAL DISCLAIMER: MealSphere is not a substitute for professional
           medical advice. Always consult your healthcare provider about your
           dietary needs and restrictions.
         </div>

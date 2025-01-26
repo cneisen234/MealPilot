@@ -1,4 +1,4 @@
-const CACHE_NAME = "mealpilot-v1";
+const CACHE_NAME = "mealsphere-v1";
 const urlsToCache = [
   "/",
   "/index.html",

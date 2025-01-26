@@ -1,0 +1,204 @@
+.account-settings-container {
+    max-width: 800px;
+    margin: 40px auto;
+    padding: 20px;
+}
+
+.account-settings-header {
+    display: flex;
+    align-items: center;
+    gap: 15px;
+    margin-bottom: 30px;
+}
+
+.account-settings-header h1 {
+    color: var(--primary-color);
+    margin: 0;
+}
+
+.payment-section {
+    background: var(--surface-color);
+    border-radius: 12px;
+    padding: 24px;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+}
+
+.payment-section h2 {
+    color: var(--primary-color);
+    margin-bottom: 20px;
+    padding-bottom: 10px;
+    border-bottom: 2px solid rgba(5, 71, 42, 0.1);
+}
+
+.current-payment-method {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 15px;
+    background-color: rgba(5, 71, 42, 0.05);
+    border-radius: 8px;
+    margin-bottom: 20px;
+}
+
+.card-icon {
+    color: var(--primary-color);
+    font-size: 20px;
+}
+
+.expiry {
+    color: var(--text-color);
+    opacity: 0.7;
+    margin-left: auto;
+}
+
+.update-payment-button {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    background-color: var(--secondary-color);
+    color: white;
+    border: none;
+    padding: 12px 24px;
+    border-radius: 8px;
+    cursor: pointer;
+    font-weight: 600;
+    transition: all 0.3s ease;
+}
+
+.update-payment-button:hover {
+    opacity: 0.9;
+    transform: translateY(-1px);
+}
+
+.payment-form {
+    margin-top: 20px;
+    border-top: 1px solid rgba(0, 0, 0, 0.1);
+    padding-top: 20px;
+}
+
+.card-element-container {
+    padding: 15px;
+    border: 2px solid #E0E0E0;
+    border-radius: 8px;
+    background-color: white;
+    transition: all 0.3s ease;
+}
+
+.card-element-container:focus-within {
+    border-color: var(--primary-color);
+    box-shadow: 0 0 0 3px rgba(5, 71, 42, 0.1);
+}
+
+.address-section {
+    margin-top: 20px;
+}
+
+.address-section h3 {
+    color: var(--primary-color);
+    margin-bottom: 15px;
+}
+
+.address-grid {
+    display: grid;
+    grid-template-columns: repeat(6, 1fr);
+    gap: 12px;
+}
+
+.address-grid input {
+    padding: 12px;
+    border: 2px solid #E0E0E0;
+    border-radius: 8px;
+    font-size: 1rem;
+    transition: all 0.3s ease;
+}
+
+.address-grid input:focus {
+    outline: none;
+    border-color: var(--primary-color);
+    box-shadow: 0 0 0 3px rgba(5, 71, 42, 0.1);
+}
+
+.address-grid .full-width {
+    grid-column: span 6;
+}
+
+.error-message {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    color: #dc3545;
+    background-color: rgba(220, 53, 69, 0.1);
+    padding: 12px;
+    border-radius: 8px;
+    margin: 15px 0;
+}
+
+.success-message {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    color: #28a745;
+    background-color: rgba(40, 167, 69, 0.1);
+    padding: 12px;
+    border-radius: 8px;
+    margin: 15px 0;
+}
+
+.submit-button {
+    background-color: var(--primary-color);
+    color: white;
+    border: none;
+    padding: 12px 24px;
+    border-radius: 8px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    width: 100%;
+    margin-top: 20px;
+}
+
+.submit-button:hover:not(:disabled) {
+    opacity: 0.9;
+    transform: translateY(-1px);
+}
+
+.submit-button:disabled {
+    opacity: 0.7;
+    cursor: not-allowed;
+}
+
+.loading-container {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    padding: 20px;
+}
+
+@media (max-width: 768px) {
+    .account-settings-container {
+        margin: 20px auto;
+        padding: 15px;
+    }
+
+    .address-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .address-grid input {
+        grid-column: 1 / -1;
+    }
+
+    .current-payment-method {
+        flex-direction: column;
+        align-items: flex-start;
+        text-align: center;
+    }
+
+    .expiry {
+        margin-left: 0;
+    }
+}

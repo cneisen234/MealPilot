@@ -14,7 +14,7 @@ const Signup: React.FC = () => {
             }}>
             <img
               src="/MealPilot-icon-transparent.png"
-              alt="MealPilot"
+              alt="MealSphere"
               style={{
                 width: "64px",
                 height: "64px",
@@ -31,7 +31,7 @@ const Signup: React.FC = () => {
                 marginBottom: "0",
                 marginTop: "11px",
               }}>
-              MealPilot
+              MealSphere
             </h2>
           </div>
           <SignupForm />

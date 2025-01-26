@@ -11,10 +11,10 @@ const Home: React.FC = () => {
           <div className="mealpilot-home__logo-wrapper">
             <img
               src="/MealPilot-icon-transparent.png"
-              alt="MealPilot"
+              alt="MealSphere"
               className="mealpilot-home__logo"
             />
-            <div className="mealpilot-home__brand">MealPilot</div>
+            <div className="mealpilot-home__brand">MealSphere</div>
           </div>
 
           <h1 className="mealpilot-home__title">
@@ -27,7 +27,7 @@ const Home: React.FC = () => {
           <p className="mealpilot-home__description">
             Unleash the power of AI to effortlessly streamline your kitchen.
             From personalized meal planning to intelligent pantry management,
-            MealPilot is your personal chef, grocery assistant, and meal
+            MealSphere is your personal chef, grocery assistant, and meal
             architect—all in one.
           </p>
 
@@ -69,7 +69,7 @@ const Home: React.FC = () => {
                 icon: <FaClipboardList />,
                 title: "Pantry Management",
                 description:
-                  "Easily track your pantry items and grocery needs. Scan receipts, upload photos, or add items manually—MealPilot keeps you organized and helps you avoid wasteful shopping trips.",
+                  "Easily track your pantry items and grocery needs. Scan receipts, upload photos, or add items manually—MealSphere keeps you organized and helps you avoid wasteful shopping trips.",
               },
             ].map((feature, index) => (
               <div key={index} className="mealpilot-home__feature">
@@ -89,7 +89,7 @@ const Home: React.FC = () => {
           <h2
             className="mealpilot-home__cost-savings-title"
             style={{ marginTop: 100 }}>
-            How MealPilot Saves You Money
+            How MealSphere Saves You Money
           </h2>
           <div className="mealpilot-home__features">
             <div className="mealpilot-home__feature">
@@ -105,7 +105,7 @@ const Home: React.FC = () => {
               <h3 className="mealpilot-home__feature-title">Grocery Bills:</h3>
               <p className="mealpilot-home__feature-text">
                 Save up to $150/month by only purchasing what you need, thanks
-                to MealPilot's professional and truly robust pantry tracking
+                to MealSphere's professional and truly robust pantry tracking
                 system.
               </p>
             </div>
@@ -146,10 +146,10 @@ const Home: React.FC = () => {
                 All-In-One Solution
               </h3>
               <p className="mealpilot-home__feature-text">
-                MealPilot does it all, with deeply integrated features that work
-                together seamlessly. Instead of paying for multiple apps that
-                each tackle only one aspect of the job—and do so
-                poorly—MealPilot brings everything under one roof. We’ll help
+                MealSphere does it all, with deeply integrated features that
+                work together seamlessly. Instead of paying for multiple apps
+                that each tackle only one aspect of the job—and do so
+                poorly—MealSphere brings everything under one roof. We’ll help
                 you save money on unnecessary subscriptions while providing a
                 more effective solution to your kitchen needs.
               </p>
@@ -159,7 +159,7 @@ const Home: React.FC = () => {
                 Real AI, Not Just Marketing
               </h3>
               <p className="mealpilot-home__feature-text">
-                Unlike other apps that only claim to use AI, MealPilot employs
+                Unlike other apps that only claim to use AI, MealSphere employs
                 genuine artificial intelligence that learns and adapts to your
                 preferences, dietary needs, and cooking habits. Our AI
                 understands the nuances of cooking, nutrition, and meal planning
@@ -171,7 +171,7 @@ const Home: React.FC = () => {
                 We're Not Just Another Recipe or Inventory App
               </h2>
               <p className="mealpilot-home__feature-text">
-                MealPilot is a comprehensive kitchen solution that automates
+                MealSphere is a comprehensive kitchen solution that automates
                 tasks typically handled by professional services. Our deeply
                 integrated AI system combines the roles of a personal chef, meal
                 planner, and pantry manager into one powerful app. We've

@@ -25,6 +25,10 @@ import MealPlan from "./pages/MealPlan";
 import Inventory from "./pages/Inventory";
 import ShoppingList from "./pages/shoppingList";
 import ShareableListPage from "./components/shoppingList/SharableListPage";
+import AccountSettings from "./pages/AccountSettings";
+import ReferralProgram from "./pages/ReferralProgram";
+import { Elements } from "@stripe/react-stripe-js";
+import { loadStripe } from "@stripe/stripe-js";
 import { ToastContainer } from "./components/common/Toast";
 import { ToastProvider } from "./context/ToastContext";
 
@@ -34,6 +38,10 @@ const AppContent: React.FC = () => {
   useEffect(() => {
     checkAuthStatus();
   }, [checkAuthStatus]);
+
+  const stripePromise = loadStripe(
+    process.env.REACT_APP_STRIPE_PUBLISHABLE_KEY!
+  );
 
   return (
     <div
@@ -94,6 +102,22 @@ const AppContent: React.FC = () => {
             <Route
               path="/shopping-list"
               element={<PrivateRoute element={<ShoppingList />} />}
+            />
+            <Route
+              path="/account-settings"
+              element={
+                <PrivateRoute
+                  element={
+                    <Elements stripe={stripePromise}>
+                      <AccountSettings />
+                    </Elements>
+                  }
+                />
+              }
+            />
+            <Route
+              path="/referral-program"
+              element={<PrivateRoute element={<ReferralProgram />} />}
             />
             <Route
               path="/share/shopping-list/:id"

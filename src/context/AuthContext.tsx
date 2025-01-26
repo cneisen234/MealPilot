@@ -4,11 +4,12 @@ import React, { createContext, useState, useEffect, useContext } from "react";
 
 interface AuthContextType {
   isAuthenticated: boolean;
-  login: (token: string, ai_actions: number) => void;
+  login: (token: string, ai_actions: number, has_subscription: boolean) => void;
   logout: () => void;
   checkAuthStatus: () => void;
   setAiActionsRemaining: (aiActionsRemaining: number) => void;
   aiActionsRemaining: number;
+  hasSubscription: boolean;
 }
 
 const AuthContext = createContext<AuthContextType | null>(null);
@@ -18,6 +19,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
 }) => {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [aiActionsRemaining, setAiActionsRemaining] = useState(40);
+  const [hasSubscription, setHasSubscription] = useState(false);
 
   const checkAuthStatus = () => {
     const token = localStorage.getItem("token");
@@ -28,9 +30,14 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
     checkAuthStatus();
   }, []);
 
-  const login = (token: string, ai_actions: number) => {
+  const login = (
+    token: string,
+    ai_actions: number,
+    has_subscription: boolean
+  ) => {
     localStorage.setItem("token", token);
     setAiActionsRemaining(ai_actions);
+    setHasSubscription(has_subscription);
     setIsAuthenticated(true);
   };
 
@@ -48,6 +55,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
         checkAuthStatus,
         setAiActionsRemaining,
         aiActionsRemaining,
+        hasSubscription,
       }}>
       {children}
     </AuthContext.Provider>

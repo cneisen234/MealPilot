@@ -1,0 +1,123 @@
+.subscription-terms-container {
+    background: var(--surface-color);
+    border-radius: 16px;
+    padding: 24px;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+    margin: 0 auto;
+}
+
+.terms-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 24px;
+}
+
+.terms-header h2 {
+    color: var(--primary-color);
+    font-size: 24px;
+    margin: 0;
+}
+
+.price-tag {
+    background: var(--primary-color);
+    color: white;
+    padding: 8px 16px;
+    border-radius: 20px;
+    font-weight: 600;
+}
+
+.terms-content {
+    color: var(--text-color);
+}
+
+.terms-content p {
+    margin-bottom: 20px;
+    font-size: 16px;
+}
+
+.terms-list {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+    margin-bottom: 24px;
+}
+
+.term-item {
+    display: flex;
+    align-items: flex-start;
+    gap: 12px;
+    font-size: 15px;
+    line-height: 1.5;
+}
+
+.bullet {
+    width: 6px;
+    height: 6px;
+    background: var(--primary-color);
+    border-radius: 50%;
+    margin-top: 8px;
+}
+
+.divider {
+    height: 1px;
+    background: rgba(0, 0, 0, 0.1);
+    margin: 8px 0;
+}
+
+.consent-wrapper {
+    margin: 24px 0;
+    padding: 16px;
+    background: rgba(5, 71, 42, 0.05);
+    border-radius: 12px;
+}
+
+.consent-label {
+    display: flex;
+    align-items: flex-start;
+    gap: 12px;
+    cursor: pointer;
+}
+
+.consent-checkbox {
+    width: 20px;
+    height: 20px;
+    margin-top: 2px;
+    accent-color: var(--primary-color);
+}
+
+.subscribe-button {
+    width: 100%;
+    padding: 16px;
+    border: none;
+    border-radius: 12px;
+    background: var(--primary-color);
+    color: white;
+    font-size: 16px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.3s ease;
+}
+
+.subscribe-button:hover:not(.disabled) {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(5, 71, 42, 0.2);
+}
+
+.subscribe-button.disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+}
+
+@media (max-width: 768px) {
+    .subscription-terms-container {
+        margin: 16px;
+        padding: 20px;
+    }
+
+    .terms-header {
+        flex-direction: column;
+        gap: 12px;
+        text-align: center;
+    }
+}

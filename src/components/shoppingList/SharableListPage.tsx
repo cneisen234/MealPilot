@@ -87,7 +87,7 @@ const ShareableListPage: React.FC = () => {
         }}>
         <img
           src="/MealPilot-icon-transparent.png"
-          alt="MealPilot"
+          alt="MealSphere"
           style={{
             width: "48px",
             height: "48px",
@@ -104,7 +104,7 @@ const ShareableListPage: React.FC = () => {
             margin: "0",
             fontSize: "2.5rem",
           }}>
-          MealPilot
+          MealSphere
         </h1>
       </div>
 

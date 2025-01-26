@@ -7,7 +7,7 @@ const url = process.env.NODE_ENV === 'production'
   : 'http://localhost:5000/api';
 
 const api = axios.create({
-  baseURL: url,
+  baseURL: url, 
   headers: {
     'Content-Type': 'application/json',
   },
@@ -447,6 +447,21 @@ export const deleteMealPlan = () => {
 
 export const moveToShoppingList = async (itemId: number) => {
   return await api.post(`/shopping-list/from-inventory/${itemId}`);
+};
+
+export const checkPrimaryPaymentMethod = async () => {
+  return api.get('/payment/status');
+};
+
+export const updatePaymentMethod = async (paymentMethodId: string, address: any) => {
+  return api.post('/payment/update-payment-method', {
+    paymentMethodId,
+    address
+  });
+};
+
+export const createSubscription = (data: { consent: boolean }) => {
+  return api.post('/payment/subscribe', data);
 };
 
 export default api;

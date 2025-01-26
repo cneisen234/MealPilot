@@ -11,10 +11,9 @@ router.post("/login", async (req, res) => {
 
   try {
     // Fetch the user from the database, excluding the password
-    const result = await pool.query(
-      "SELECT id, email, name, ai_actions, password FROM users WHERE email = $1",
-      [email]
-    );
+    const result = await pool.query("SELECT * FROM users WHERE email = $1", [
+      email,
+    ]);
 
     if (result.rows.length === 0) {
       return res.status(401).json({ message: "Invalid email or password" });
@@ -44,6 +43,7 @@ router.post("/login", async (req, res) => {
         email: user.email,
         name: user.name,
         ai_actions: user.ai_actions,
+        has_subscription: user.has_subscription,
       },
     });
   } catch (error) {
@@ -112,13 +112,13 @@ router.post("/forgot-password", async (req, res) => {
     <body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px;">
       <div style="text-align: center; margin-bottom: 20px;">
         <div style="background-color: #05472A; color: white; font-size: 24px; font-weight: bold; padding: 10px 20px; display: inline-block; border-radius: 5px;">
-          MealPilot
+          MealSphere
         </div>
       </div>
       <div style="background-color: #f8f9fa; border-radius: 5px; padding: 20px; margin-bottom: 20px;">
         <h2 style="color: #05472A; margin-top: 0;">Password Reset Request</h2>
         <p>Hello,</p>
-        <p>You are receiving this because you (or someone else) have requested to reset the password for your MealPilot account.</p>
+        <p>You are receiving this because you (or someone else) have requested to reset the password for your MealSphere account.</p>
         <p>Please click the button below to complete the process:</p>
         <div style="text-align: center; margin: 30px 0;">
           <a href="${resetUrl}" style="background-color: #FF9D72; color: white; padding: 12px 20px; text-decoration: none; border-radius: 5px; font-weight: bold;">Reset Your Password</a>
@@ -135,9 +135,9 @@ router.post("/forgot-password", async (req, res) => {
     const msg = {
       to: user.rows[0].email,
       from: process.env.SENDGRID_FROM_EMAIL,
-      subject: "MealPilot Password Reset Request",
+      subject: "MealSphere Password Reset Request",
       html: htmlContent,
-      text: `Reset your MealPilot password by visiting: ${resetUrl}`,
+      text: `Reset your MealSphere password by visiting: ${resetUrl}`,
     };
 
     await sgMail.send(msg);

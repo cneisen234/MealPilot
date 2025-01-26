@@ -49,6 +49,101 @@
     margin-left: 20px;
 }
 
+.dropdown-container {
+    position: relative;
+    display: inline-block;
+}
+
+.dropdown-trigger {
+    background: none;
+    border: none;
+    color: var(--text-color);
+    padding: 8px;
+    cursor: pointer;
+    border-radius: 50%;
+    transition: all 0.3s ease;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.dropdown-trigger:hover {
+    background-color: rgba(5, 71, 42, 0.1);
+}
+
+.gear-icon {
+    font-size: 1.5rem;
+    transition: transform 0.3s ease;
+}
+
+.dropdown-trigger:hover .gear-icon {
+    transform: rotate(45deg);
+}
+
+.dropdown-menu {
+    position: absolute;
+    top: 100%;
+    right: 0;
+    margin-top: 8px;
+    background-color: var(--surface-color);
+    border-radius: 8px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+    min-width: 200px;
+    z-index: 1000;
+    overflow: hidden;
+    animation: dropdownFade 0.2s ease;
+}
+
+.dropdown-item {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 12px 16px;
+    width: 100%;
+    text-align: left;
+    border: none;
+    background: none;
+    color: var(--text-color);
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.dropdown-item:hover {
+    background-color: rgba(5, 71, 42, 0.1);
+}
+
+.dropdown-icon {
+    font-size: 1.1rem;
+    color: var(--primary-color);
+}
+
+@keyframes dropdownFade {
+    from {
+        opacity: 0;
+        transform: translateY(-8px);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+@media (max-width: 768px) {
+.dropdown-menu {
+        position: absolute;
+        top: 40px;
+        /* Position it below the gear icon */
+        right: 0;
+        margin-top: 0;
+        background-color: var(--surface-color);
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+        /* Slightly stronger shadow for mobile */
+        z-index: 1001;
+        /* Ensure it appears above other mobile elements */
+    }
+}
+
 @media (max-width: 768px) {
     .header {
         position: fixed;

@@ -49,8 +49,13 @@ const Login: React.FC = () => {
 
     try {
       const response = await login({ email: email.toLowerCase(), password });
-      localStorage.setItem("token", response.data.token);
-      authLogin(response.data.token, response.data.user.ai_actions);
+      localStorage.setItem("token", response.data);
+      console.log(response.data);
+      authLogin(
+        response.data.token,
+        response.data.user.ai_actions,
+        response.data.user.has_subscription
+      );
       checkAuthStatus();
       showToast("Successfully logged in!", "success");
       navigate("/recipe", { state: { fromLogin: true } });
@@ -70,7 +75,7 @@ const Login: React.FC = () => {
             }}>
             <img
               src="/MealPilot-icon-transparent.png"
-              alt="MealPilot"
+              alt="MealSphere"
               style={{
                 width: "64px",
                 height: "64px",
@@ -88,7 +93,7 @@ const Login: React.FC = () => {
                 marginBottom: "0",
                 marginTop: "0px",
               }}>
-              MealPilot
+              MealSphere
             </h2>
           </div>
           <form onSubmit={(e) => handleSubmit(e)}>
