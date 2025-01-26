@@ -372,7 +372,7 @@ const Recipe = () => {
 
   if (recipe) {
     return (
-      <div style={{ marginBottom: 150, marginTop: 50 }}>
+      <div style={{ marginBottom: 150, marginTop: 150 }}>
         <div
           style={{
             backgroundColor: "rgba(5, 71, 42, 0.1)",

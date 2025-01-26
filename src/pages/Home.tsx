@@ -55,19 +55,19 @@ const Home: React.FC = () => {
             {[
               {
                 icon: <FaUtensils />,
-                title: "AI-Powered Meal Planning",
+                title: "AI-Powered Meal Creation",
                 description:
-                  "Let our AI create weekly meal plans tailored to your dietary preferences and nutritional goals. No more guesswork—just delicious meals that fit your lifestyle.",
+                  "Let our AI create meals tailored to your dietary preferences and nutritional goals. No more guesswork—just delicious meals that fit your lifestyle.",
               },
               {
                 icon: <FaCalendar />,
-                title: "Personalized Meal Scheduler",
+                title: "Personalized Meal Plans",
                 description:
                   "Say goodbye to the hassle of planning your meals. Automatically schedule your meals for the week, blending your favorites with new suggestions based on what's in your pantry.",
               },
               {
                 icon: <FaClipboardList />,
-                title: "Pantry & Inventory Management",
+                title: "Pantry Management",
                 description:
                   "Easily track your pantry items and grocery needs. Scan receipts, upload photos, or add items manually—MealPilot keeps you organized and helps you avoid wasteful shopping trips.",
               },
@@ -112,7 +112,7 @@ const Home: React.FC = () => {
             <div className="mealpilot-home__feature">
               <h3 className="mealpilot-home__feature-title">Dining Out:</h3>
               <p className="mealpilot-home__feature-text">
-                Reduce your dining-out expenses by up to $100/month by always
+                Reduce your dining-out expenses by up to $300/month by always
                 having a meal plan ready to go.
               </p>
             </div>
@@ -134,20 +134,11 @@ const Home: React.FC = () => {
                 waste entirely.
               </p>
             </div>
-            <div className="mealpilot-home__feature">
-              <h3 className="mealpilot-home__feature-title">
-                Smart Bulk Buying:
-              </h3>
-              <p className="mealpilot-home__feature-text">
-                Save up to $80/month by intelligently identifying bulk buying
-                opportunities and tracking long-term storage items effectively.
-              </p>
-            </div>
           </div>
           <h2
             className="mealpilot-home__cost-savings-title"
             style={{ marginTop: 100 }}>
-            Why We're Different, and Truly the Best
+            Why We're Truly the Best
           </h2>
           <div className="mealpilot-home__features">
             <div className="mealpilot-home__feature">
@@ -192,7 +183,7 @@ const Home: React.FC = () => {
 
               <br />
               <Link to="/signup" className="mealpilot-home__cta">
-                Sign Up Now and See for Yourself
+                Sign Up Now to See for Yourself!
               </Link>
             </div>
           </div>
