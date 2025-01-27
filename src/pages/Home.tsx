@@ -1,11 +1,19 @@
 import React from "react";
 import { Link } from "react-router-dom";
-import { FaUtensils, FaClipboardList, FaCalendar } from "react-icons/fa";
+import {
+  FaUtensils,
+  FaClipboardList,
+  FaCalendar,
+  FaCamera,
+  FaMicrophone,
+  FaChartLine,
+  FaShoppingCart,
+} from "react-icons/fa";
 import "../styles/home.css";
 
 const Home: React.FC = () => {
   return (
-    <div className="mealpilot-home">
+    <div className="mealpilot-home" style={{ marginBottom: 100 }}>
       <div className="mealpilot-home__container">
         <div className="mealpilot-home__content">
           <div className="mealpilot-home__logo-wrapper">
@@ -55,21 +63,21 @@ const Home: React.FC = () => {
             {[
               {
                 icon: <FaUtensils />,
-                title: "AI-Powered Meal Creation",
+                title: "Personalized Recipe Creation",
                 description:
-                  "Let our AI create meals tailored to your dietary preferences and nutritional goals. No more guesswork—just delicious meals that fit your lifestyle.",
+                  "Tell us your dietary restrictions, preferences, and must-have ingredients. Our AI creates custom recipes that perfectly match your needs - whether you want gluten-free, need high-protein meals, or prefer specific cuisines. Save your recipes, customize them, and even add your own personal recipes with a snap of a photo. Have a cookbook laying around? Just take a picture of a favorite recipe and it's in the app and integrated into the system!",
               },
               {
                 icon: <FaCalendar />,
-                title: "Personalized Meal Plans",
+                title: "One-Click Meal Planning",
                 description:
-                  "Say goodbye to the hassle of planning your meals. Automatically schedule your meals for the week, blending your favorites with new suggestions based on what's in your pantry.",
+                  "Generate a complete week of balanced meals with a single click. Get breakfast, lunch, and dinner plans that work together. Generate a mix from your saved recipes as well as recommendations for new ones. Our system intelligently knows the difference between breakfast, lunch, and dinner and creates a meal plan with appropriate meals. Don't like a suggestion? Simply swap it with another recipe that fits your plan.",
               },
               {
-                icon: <FaClipboardList />,
-                title: "Pantry Management",
+                icon: <FaCamera />,
+                title: "Effortless Kitchen Management",
                 description:
-                  "Easily track your pantry items and grocery needs. Scan receipts, upload photos, or add items manually—MealSphere keeps you organized and helps you avoid wasteful shopping trips.",
+                  "Simply take a photo of your groceries or speak into the app to update your inventory. No barcode scanning needed. Take photos of receipts to update your shopping list and inventory seemlessly. Almost no manual entry required! The same easy process works for building shopping lists and finding items you already have. Our system searches your list for matches based solely on the content of the photo, and knows what to look for to find a match!",
               },
             ].map((feature, index) => (
               <div key={index} className="mealpilot-home__feature">
@@ -85,107 +93,61 @@ const Home: React.FC = () => {
               </div>
             ))}
           </div>
-
-          <h2
-            className="mealpilot-home__cost-savings-title"
-            style={{ marginTop: 100 }}>
-            How MealSphere Saves You Money
+          <br />
+          <h2 className="mealpilot-home__section-title">
+            Everything Works Together
           </h2>
           <div className="mealpilot-home__features">
-            <div className="mealpilot-home__feature">
-              <h3 className="mealpilot-home__feature-title">
-                Meal Delivery Services:
-              </h3>
-              <p className="mealpilot-home__feature-text">
-                Save up to $200/month by eliminating the need for meal kits or
-                delivery subscriptions.
-              </p>
-            </div>
-            <div className="mealpilot-home__feature">
-              <h3 className="mealpilot-home__feature-title">Grocery Bills:</h3>
-              <p className="mealpilot-home__feature-text">
-                Save up to $150/month by only purchasing what you need, thanks
-                to MealSphere's professional and truly robust pantry tracking
-                system.
-              </p>
-            </div>
-            <div className="mealpilot-home__feature">
-              <h3 className="mealpilot-home__feature-title">Dining Out:</h3>
-              <p className="mealpilot-home__feature-text">
-                Reduce your dining-out expenses by up to $300/month by always
-                having a meal plan ready to go.
-              </p>
-            </div>
-            <div className="mealpilot-home__feature">
-              <h3 className="mealpilot-home__feature-title">Time Savings:</h3>
-              <p className="mealpilot-home__feature-text">
-                Save up to 5 hours a week on meal planning, grocery shopping,
-                and recipe organization—time you can spend enjoying your meals,
-                not planning them.
-              </p>
-            </div>
-            <div className="mealpilot-home__feature">
-              <h3 className="mealpilot-home__feature-title">
-                Reduced Food Waste:
-              </h3>
-              <p className="mealpilot-home__feature-text">
-                Save up to $120/month by tracking expiration dates and planning
-                meals around ingredients you already have, eliminating food
-                waste entirely.
-              </p>
-            </div>
+            {[
+              {
+                icon: <FaShoppingCart />,
+                title: "True Recipe Integration",
+                description:
+                  "Check recipe ingredients against your pantry with one click. Get alerts when items are expiring with suggestions for saved recipes that use them. Every feature communicates - your recipes know your inventory, and your inventory knows your recipes.",
+              },
+              {
+                icon: <FaChartLine />,
+                title: "Inventory Tracking",
+                description:
+                  "Track expiration dates, get alerts about low items, and automatically update quantities when you cook. Your pantry stays organized without the hassle.",
+              },
+              {
+                icon: <FaMicrophone />,
+                title: "Voice & Photo Integration",
+                description:
+                  "Use voice commands or photos to find items, add to shopping lists, or update inventory. The AI understands context and matches items intelligently.",
+              },
+            ].map((feature, index) => (
+              <div key={index} className="mealpilot-home__feature">
+                <div className="mealpilot-home__feature-icon">
+                  {feature.icon}
+                </div>
+                <h3 className="mealpilot-home__feature-title">
+                  {feature.title}
+                </h3>
+                <p className="mealpilot-home__feature-text">
+                  {feature.description}
+                </p>
+              </div>
+            ))}
           </div>
-          <h2
-            className="mealpilot-home__cost-savings-title"
-            style={{ marginTop: 100 }}>
-            Why We're Truly the Best
-          </h2>
-          <div className="mealpilot-home__features">
-            <div className="mealpilot-home__feature">
-              <h3 className="mealpilot-home__feature-title">
-                All-In-One Solution
-              </h3>
-              <p className="mealpilot-home__feature-text">
-                MealSphere does it all, with deeply integrated features that
-                work together seamlessly. Instead of paying for multiple apps
-                that each tackle only one aspect of the job—and do so
-                poorly—MealSphere brings everything under one roof. We’ll help
-                you save money on unnecessary subscriptions while providing a
-                more effective solution to your kitchen needs.
-              </p>
-            </div>
-            <div className="mealpilot-home__feature">
-              <h3 className="mealpilot-home__feature-title">
-                Real AI, Not Just Marketing
-              </h3>
-              <p className="mealpilot-home__feature-text">
-                Unlike other apps that only claim to use AI, MealSphere employs
-                genuine artificial intelligence that learns and adapts to your
-                preferences, dietary needs, and cooking habits. Our AI
-                understands the nuances of cooking, nutrition, and meal planning
-                in ways that traditional apps simply cannot match.
-              </p>
-            </div>
-            <div className="mealpilot-home__feature">
-              <h2 className="mealpilot-home__feature-title">
-                We're Not Just Another Recipe or Inventory App
-              </h2>
-              <p className="mealpilot-home__feature-text">
-                MealSphere is a comprehensive kitchen solution that automates
-                tasks typically handled by professional services. Our deeply
-                integrated AI system combines the roles of a personal chef, meal
-                planner, and pantry manager into one powerful app. We've
-                perfected features that traditional apps have struggled with for
-                years, saving you time, money, and effort while making your
-                kitchen run smoother than ever. Finally, a solution that
-                actually works!
-              </p>
-
-              <br />
-              <Link to="/signup" className="mealpilot-home__cta">
-                Sign Up Now to See for Yourself!
-              </Link>
-            </div>
+          <div className="mealpilot-home__closing-section">
+            <h2 className="mealpilot-home__closing-title">
+              Stop Wasting Food. Start Saving Time.
+            </h2>
+            <p className="mealpilot-home__feature">
+              The average household throws away $1,500 worth of food every year
+              because of poor planning and expired ingredients. Over 5 hours a
+              week are spent on meal planning and management. These factors are
+              compounded if you have unique dietary restrictions. MealSphere
+              doesn't just help you plan meals - it actively works to save you
+              money, time, and stress. by making sure nothing, including your
+              time, goes to waste. Ready to turn your kitchen into a well-oiled
+              machine?
+            </p>
+            <Link to="/signup" className="mealpilot-home__cta">
+              Start Today
+            </Link>
           </div>
         </div>
       </div>
