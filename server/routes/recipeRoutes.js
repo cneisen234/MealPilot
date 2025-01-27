@@ -313,8 +313,8 @@ IMPORTANT: All fields must be included and properly formatted as shown above, es
       const completion = await openai.chat.completions.create({
         model: "deepseek-chat",
         messages: [{ role: "user", content: prompt }],
-        max_tokens: 500,
-        temperature: 0.3,
+        max_tokens: 1000,
+        temperature: 0.7,
       });
 
       const recipeText = completion.choices[0].message.content;
