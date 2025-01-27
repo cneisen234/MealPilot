@@ -33,13 +33,13 @@ const checkAiActions = async (req, res, next) => {
     if (should_reset) {
       await pool.query(
         `UPDATE users 
-         SET ai_actions = 40, 
+         SET ai_actions = 60, 
              last_action_reset = CURRENT_DATE 
          WHERE id = $1 
          RETURNING ai_actions`,
         [req.user.id]
       );
-      req.aiActions = 40;
+      req.aiActions = 60;
     } else {
       req.aiActions = ai_actions;
     }

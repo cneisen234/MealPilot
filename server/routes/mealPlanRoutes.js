@@ -210,7 +210,7 @@ Nutritional Information:
 
         try {
           const completion = await openai.chat.completions.create({
-            model: "gpt-3.5-turbo",
+            model: "deepseek-reasoner",
             messages: [{ role: "user", content: prompt }],
             max_tokens: 1000,
             temperature: 0.7,

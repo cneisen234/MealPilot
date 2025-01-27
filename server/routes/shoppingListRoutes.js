@@ -579,7 +579,7 @@ Return a JSON object:
 }`;
 
       const completion = await openai.chat.completions.create({
-        model: "gpt-3.5-turbo",
+        model: "deepseek-chat",
         messages: [
           {
             role: "system",
@@ -979,7 +979,7 @@ Respond with a JSON object in this format:
 }`;
 
       const completion = await openai.chat.completions.create({
-        model: "gpt-3.5-turbo",
+        model: "deepseek-chat",
         messages: [
           {
             role: "system",

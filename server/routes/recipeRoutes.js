@@ -311,7 +311,7 @@ IMPORTANT: All fields must be included and properly formatted as shown above, es
 
       // Generate recipe using OpenAI
       const completion = await openai.chat.completions.create({
-        model: "gpt-3.5-turbo",
+        model: "deepseek-reasoner",
         messages: [{ role: "user", content: prompt }],
         max_tokens: 1000,
         temperature: 0.7,
@@ -968,7 +968,7 @@ router.post(
     ${pageText.substring(0, 8000)}`;
 
       const completion = await openai.chat.completions.create({
-        model: "gpt-3.5-turbo",
+        model: "deepseek-chat",
         messages: [
           {
             role: "system",
@@ -1171,7 +1171,7 @@ Return a JSON object with exactly this structure:
 }`;
 
       const completion = await openai.chat.completions.create({
-        model: "gpt-3.5-turbo",
+        model: "deepseek-chat",
         messages: [
           {
             role: "system",

@@ -365,7 +365,7 @@ const Recipe = () => {
   if (isLoading) {
     return (
       <div className="loading-container">
-        <AnimatedTechIcon size={100} speed={4} />
+        <AnimatedTechIcon size={100} speed={4} /> Thinking on it!
       </div>
     );
   }
