@@ -311,10 +311,10 @@ IMPORTANT: All fields must be included and properly formatted as shown above, es
 
       // Generate recipe using OpenAI
       const completion = await openai.chat.completions.create({
-        model: "deepseek-reasoner",
+        model: "deepseek-chat",
         messages: [{ role: "user", content: prompt }],
-        max_tokens: 1000,
-        temperature: 0.7,
+        max_tokens: 500,
+        temperature: 0.3,
       });
 
       const recipeText = completion.choices[0].message.content;
