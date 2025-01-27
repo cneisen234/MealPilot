@@ -109,7 +109,7 @@ const Home: React.FC = () => {
                 icon: <FaChartLine />,
                 title: "Inventory Tracking",
                 description:
-                  "Track expiration dates, get alerts about low items, and automatically update quantities when you cook. Your pantry stays organized without the hassle.",
+                  "Track expiration dates,and automatically update quantities when you cook. Your pantry stays organized without the hassle.",
               },
               {
                 icon: <FaMicrophone />,
