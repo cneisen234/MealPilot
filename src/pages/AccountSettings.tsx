@@ -261,6 +261,7 @@ const AccountSettings = () => {
           </form>
         )}
       </div>
+      <br />
       {currentPaymentMethod && (
         <div className="subscription-section">
           {!hasSubscription ? (

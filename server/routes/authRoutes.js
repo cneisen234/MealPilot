@@ -12,7 +12,7 @@ router.post("/login", async (req, res) => {
   try {
     // Fetch the user from the database, excluding the password
     const result = await pool.query("SELECT * FROM users WHERE email = $1", [
-      email,
+      email.toLowerCase(),
     ]);
 
     if (result.rows.length === 0) {
@@ -30,7 +30,7 @@ router.post("/login", async (req, res) => {
 
     // Generate a JWT token
     const token = jwt.sign(
-      { userId: user.id, email: user.email },
+      { userId: user.id, email: user.email.toLowerCase() },
       process.env.JWT_SECRET,
       { expiresIn: "12h" }
     );
@@ -40,7 +40,7 @@ router.post("/login", async (req, res) => {
       token,
       user: {
         id: user.id,
-        email: user.email,
+        email: user.email.toLowerCase(),
         name: user.name,
         ai_actions: user.ai_actions,
         has_subscription: user.has_subscription,
@@ -56,28 +56,31 @@ router.post("/signup", async (req, res) => {
   const { name, email, password } = req.body;
 
   try {
-    // Check if the email is already in use
     const emailCheck = await pool.query(
       "SELECT * FROM users WHERE LOWER(email) = LOWER($1)",
-      [email]
+      [email.toLowerCase()]
     );
     if (emailCheck.rows.length > 0) {
       return res.status(400).json({ message: "Email already in use" });
     }
 
-    // Hash the password
     const saltRounds = 10;
     const hashedPassword = await bcrypt.hash(password, saltRounds);
 
-    // Insert the new user into the database
     const result = await pool.query(
-      "INSERT INTO users (name, email, password) VALUES ($1, $2, $3) RETURNING id",
-      [name, email, hashedPassword]
+      `INSERT INTO users (
+        name, 
+        email, 
+        password
+      ) VALUES ($1, $2, $3) 
+      RETURNING id, trial_end_date`,
+      [name, email.toLowerCase(), hashedPassword]
     );
 
     res.status(201).json({
       message: "User created successfully",
       userId: result.rows[0].id,
+      trialEndDate: result.rows[0].trial_end_date,
     });
   } catch (error) {
     console.error("Error during signup:", error);
@@ -90,7 +93,7 @@ router.post("/forgot-password", async (req, res) => {
 
   try {
     const user = await pool.query("SELECT * FROM users WHERE email = $1", [
-      email,
+      email.toLowerCase(),
     ]);
 
     if (user.rows.length === 0) {
@@ -182,7 +185,7 @@ router.get("/check-email", async (req, res) => {
   const { email } = req.query;
   try {
     const result = await pool.query("SELECT * FROM users WHERE email = $1", [
-      email,
+      email.toLowerCase(),
     ]);
     res.json({ available: result.rows.length === 0 });
   } catch (error) {
@@ -195,7 +198,7 @@ router.get("/check-email-exists", async (req, res) => {
   const { email } = req.query;
   try {
     const result = await pool.query("SELECT * FROM users WHERE email = $1", [
-      email,
+      email.toLowerCase(),
     ]);
     res.json({ exists: result.rows.length > 0 });
   } catch (error) {

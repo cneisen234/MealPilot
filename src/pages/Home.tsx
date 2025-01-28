@@ -2,7 +2,6 @@ import React from "react";
 import { Link } from "react-router-dom";
 import {
   FaUtensils,
-  FaClipboardList,
   FaCalendar,
   FaCamera,
   FaMicrophone,
@@ -109,7 +108,7 @@ const Home: React.FC = () => {
                 icon: <FaChartLine />,
                 title: "Inventory Tracking",
                 description:
-                  "Track expiration dates,and automatically update quantities when you cook. Your pantry stays organized without the hassle.",
+                  "Track expiration dates, and automatically update quantities when you cook. Your pantry stays organized without the hassle.",
               },
               {
                 icon: <FaMicrophone />,
@@ -131,20 +130,24 @@ const Home: React.FC = () => {
               </div>
             ))}
           </div>
+          <br />
           <div className="mealpilot-home__closing-section">
             <h2 className="mealpilot-home__closing-title">
               Stop Wasting Food. Start Saving Time.
             </h2>
-            <p className="mealpilot-home__feature">
-              The average household throws away $1,500 worth of food every year
-              because of poor planning and expired ingredients. Over 5 hours a
-              week are spent on meal planning and management. These factors are
-              compounded if you have unique dietary restrictions. MealSphere
-              doesn't just help you plan meals - it actively works to save you
-              money, time, and stress. by making sure nothing, including your
-              time, goes to waste. Ready to turn your kitchen into a well-oiled
-              machine?
-            </p>
+            <div className="mealpilot-home__feature">
+              <p className="mealpilot-home__feature-text">
+                The average household throws away $1,500 worth of food every
+                year because of poor planning and expired ingredients. Over 5
+                hours a week are spent on meal planning and management. These
+                factors are compounded if you have unique dietary restrictions.
+                MealSphere doesn't just help you plan meals - it actively works
+                to save you money, time, and stress. by making sure nothing,
+                including your time, goes to waste. Ready to turn your kitchen
+                into a well-oiled machine?
+              </p>
+            </div>
+            <br />
             <Link to="/signup" className="mealpilot-home__cta">
               Start Today
             </Link>

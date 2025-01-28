@@ -24,8 +24,11 @@ ADD COLUMN stripe_payment_method_id VARCHAR
 
 ALTER TABLE users
     ADD COLUMN subscription_consent BOOLEAN DEFAULT false,
-ADD COLUMN trial_start_date TIMESTAMP,
-ADD COLUMN trial_end_date TIMESTAMP;
+ADD COLUMN trial_start_date TIMESTAMP DEFAULT NOW
+(),
+ADD COLUMN trial_end_date TIMESTAMP DEFAULT
+(NOW
+() + INTERVAL '30 days');
 
 CREATE TABLE cant_haves
 (

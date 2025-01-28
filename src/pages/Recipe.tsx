@@ -80,6 +80,7 @@ const Recipe = () => {
   const [selectedServings, setSelectedServings] = useState<string>("4");
   const [selectedMealTypes, setSelectedMealTypes] = useState<any[]>([]);
   const [selectedServingsList, setSelectedServingsList] = useState<any[]>([]);
+  const [isThinking, setIsThinking] = useState<boolean>(false);
   let currentStep = 1;
 
   useEffect(() => {
@@ -281,6 +282,9 @@ const Recipe = () => {
 
   const handleGenerateRecipe = async () => {
     setIsLoading(true);
+    setTimeout(() => {
+      setIsThinking(true);
+    }, 5000);
     try {
       const response = await generateRecipe(selectedMealType, selectedServings);
       if (aiActionsRemaining === 10) {
@@ -291,6 +295,7 @@ const Recipe = () => {
           "You've reached your daily AI action limit. Try another method.",
           "error"
         );
+        setIsThinking(false);
         setIsLoading(false);
         return;
       }
@@ -365,7 +370,8 @@ const Recipe = () => {
   if (isLoading) {
     return (
       <div className="loading-container">
-        <AnimatedTechIcon size={100} speed={4} /> Thinking on it!
+        <AnimatedTechIcon size={100} speed={4} />
+        {isThinking && <p>Thinking on it!</p>}
       </div>
     );
   }

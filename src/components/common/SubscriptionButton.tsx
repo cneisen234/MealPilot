@@ -48,14 +48,14 @@ const SubscriptionButton: React.FC = () => {
         <ul className="terms-list">
           <li className="term-item">
             Your current subscription will remain active until the end of your
-            billing period
+            billing period.
           </li>
           <li className="term-item">
-            No refunds are provided for partial months or unused time
+            No refunds are provided for partial months or unused time.
           </li>
           <li className="term-item">
             Each monthly subscription period begins on your billing date and
-            continues for 30 days
+            continues for 30 days.
           </li>
           {/* {user?.trial_end_date && (
             <li className="term-item">

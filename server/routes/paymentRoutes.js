@@ -98,51 +98,93 @@ router.post("/update-payment-method", authMiddleware, async (req, res) => {
   }
 });
 
-// Add to paymentRoutes.js
 router.post("/subscribe", authMiddleware, async (req, res) => {
   const { consent } = req.body;
 
   try {
+    await pool.query("BEGIN");
+
     if (!consent) {
+      await pool.query("ROLLBACK");
       return res.status(400).json({
         message: "You must agree to the subscription terms to continue",
       });
     }
 
     const userResult = await pool.query(
-      `SELECT stripe_customer_id, stripe_payment_method_id, trial_end_date, 
-       stripe_subscription_id, has_subscription 
-       FROM users WHERE id = $1`,
+      `SELECT 
+        stripe_customer_id, 
+        stripe_payment_method_id,
+        trial_start_date,
+        trial_end_date,
+        stripe_subscription_id,
+        has_subscription
+      FROM users WHERE id = $1`,
       [req.user.id]
     );
 
+    if (userResult.rows.length === 0) {
+      await pool.query("ROLLBACK");
+      return res.status(404).json({ message: "User not found" });
+    }
+
     const user = userResult.rows[0];
 
+    if (!user.stripe_customer_id) {
+      await pool.query("ROLLBACK");
+      return res.status(400).json({
+        message: "Customer account not properly set up",
+      });
+    }
+
     if (!user.stripe_payment_method_id) {
+      await pool.query("ROLLBACK");
       return res.status(400).json({
         message: "Please add a payment method before subscribing",
       });
     }
 
     if (user.stripe_subscription_id) {
+      await pool.query("ROLLBACK");
       return res.status(400).json({
         message: "You already have an active subscription",
       });
     }
 
-    // Calculate trial end if user is in trial period
-    const trialEnd = user.trial_end_date
-      ? Math.floor(new Date(user.trial_end_date).getTime() / 1000)
-      : undefined;
-
-    // Create the subscription with or without trial
-    const subscription = await stripe.subscriptions.create({
+    const now = new Date();
+    const trialEnd = user.trial_end_date ? new Date(user.trial_end_date) : null;
+    let subscriptionParams = {
       customer: user.stripe_customer_id,
       items: [{ price: process.env.STRIPE_PRICE_ID }],
-      trial_end: trialEnd,
       payment_behavior: "default_incomplete",
       expand: ["latest_invoice.payment_intent"],
-    });
+    };
+
+    // If trial is still active and valid, set subscription to start after trial
+    if (trialEnd && trialEnd > now) {
+      subscriptionParams.trial_end = Math.floor(trialEnd.getTime() / 1000);
+    }
+
+    // Create the subscription with or without trial period
+    const subscription = await stripe.subscriptions.create(subscriptionParams);
+
+    if (!subscription || !subscription.id) {
+      await pool.query("ROLLBACK");
+      return res.status(500).json({
+        message: "Error creating subscription with payment provider",
+      });
+    }
+
+    // Verify subscription status
+    if (
+      subscription.status === "incomplete" ||
+      subscription.status === "incomplete_expired"
+    ) {
+      await pool.query("ROLLBACK");
+      return res.status(400).json({
+        message: "Payment setup incomplete",
+      });
+    }
 
     // Update user record
     await pool.query(
@@ -151,18 +193,31 @@ router.post("/subscribe", authMiddleware, async (req, res) => {
            has_subscription = true,
            subscription_consent = true,
            subscription_updated_at = NOW()
-       WHERE id = $2`,
+       WHERE id = $2
+       RETURNING id, has_subscription, subscription_updated_at`,
       [subscription.id, req.user.id]
     );
+
+    await pool.query("COMMIT");
 
     res.json({
       success: true,
       subscriptionId: subscription.id,
       clientSecret: subscription.latest_invoice?.payment_intent?.client_secret,
-      trialEnd: user.trial_end_date,
+      trialEnd: trialEnd && trialEnd > now ? trialEnd : null,
+      status: subscription.status,
     });
   } catch (error) {
+    await pool.query("ROLLBACK");
     console.error("Error creating subscription:", error);
+
+    // More specific error messages based on the error type
+    if (error.type === "StripeCardError") {
+      return res.status(400).json({ message: error.message });
+    } else if (error.type === "StripeInvalidRequestError") {
+      return res.status(400).json({ message: "Invalid subscription request" });
+    }
+
     res.status(500).json({ message: "Error creating subscription" });
   }
 });
