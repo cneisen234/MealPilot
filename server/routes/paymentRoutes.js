@@ -144,13 +144,35 @@ router.post("/subscribe", authMiddleware, async (req, res) => {
       });
     }
 
+    let existingSubscription = null;
+
     if (user.stripe_subscription_id) {
-      await pool.query("ROLLBACK");
-      return res.status(400).json({
-        message: "You already have an active subscription",
-      });
+      try {
+        existingSubscription = await stripe.subscriptions.retrieve(
+          user.stripe_subscription_id
+        );
+      } catch (error) {
+        console.error("Error retrieving subscription:", error);
+        await pool.query("ROLLBACK");
+        return res
+          .status(500)
+          .json({ message: "Error checking subscription status" });
+      }
+
+      // If the existing subscription is canceled, proceed with resubscription
+      if (existingSubscription.status === "canceled") {
+        console.log(
+          "Existing subscription is canceled, allowing resubscription."
+        );
+      } else if (existingSubscription.status === "active") {
+        await pool.query("ROLLBACK");
+        return res.status(400).json({
+          message: "You already have an active subscription",
+        });
+      }
     }
 
+    // Set up subscription parameters
     const now = new Date();
     const trialEnd = user.trial_end_date ? new Date(user.trial_end_date) : null;
     let subscriptionParams = {
@@ -160,12 +182,11 @@ router.post("/subscribe", authMiddleware, async (req, res) => {
       expand: ["latest_invoice.payment_intent"],
     };
 
-    // If trial is still active and valid, set subscription to start after trial
     if (trialEnd && trialEnd > now) {
       subscriptionParams.trial_end = Math.floor(trialEnd.getTime() / 1000);
     }
 
-    // Create the subscription with or without trial period
+    // Create a new subscription
     const subscription = await stripe.subscriptions.create(subscriptionParams);
 
     if (!subscription || !subscription.id) {
@@ -186,7 +207,7 @@ router.post("/subscribe", authMiddleware, async (req, res) => {
       });
     }
 
-    // Update user record
+    // Update the user's subscription ID in the database with the new subscription
     await pool.query(
       `UPDATE users 
        SET stripe_subscription_id = $1,
@@ -210,14 +231,6 @@ router.post("/subscribe", authMiddleware, async (req, res) => {
   } catch (error) {
     await pool.query("ROLLBACK");
     console.error("Error creating subscription:", error);
-
-    // More specific error messages based on the error type
-    if (error.type === "StripeCardError") {
-      return res.status(400).json({ message: error.message });
-    } else if (error.type === "StripeInvalidRequestError") {
-      return res.status(400).json({ message: "Invalid subscription request" });
-    }
-
     res.status(500).json({ message: "Error creating subscription" });
   }
 });
@@ -225,6 +238,7 @@ router.post("/subscribe", authMiddleware, async (req, res) => {
 // Cancel subscription
 router.post("/cancel-subscription", authMiddleware, async (req, res) => {
   try {
+    // Get the user's subscription info
     const userResult = await pool.query(
       "SELECT stripe_subscription_id FROM users WHERE id = $1",
       [req.user.id]
@@ -232,27 +246,91 @@ router.post("/cancel-subscription", authMiddleware, async (req, res) => {
 
     const { stripe_subscription_id } = userResult.rows[0];
 
+    // If no subscription ID exists, return an error
     if (!stripe_subscription_id) {
       return res.status(400).json({ message: "No active subscription found" });
     }
 
-    // Cancel at period end
+    // Retrieve the subscription details from Stripe to check if it's active or canceled
+    const subscription = await stripe.subscriptions.retrieve(
+      stripe_subscription_id
+    );
+
+    // If the subscription is already canceled in Stripe
+    if (subscription.status === "canceled") {
+      // Update the database to reflect the canceled status
+      await pool.query(
+        `UPDATE users 
+         SET has_subscription = false,
+             stripe_subscription_id = NULL,  // Remove the old subscription ID
+             subscription_updated_at = NOW() 
+         WHERE id = $1`,
+        [req.user.id]
+      );
+
+      return res.status(400).json({
+        message: "Your subscription has already been canceled",
+      });
+    }
+
+    // If the subscription is still active, cancel it at the end of the period
     await stripe.subscriptions.update(stripe_subscription_id, {
-      cancel_at_period_end: true,
+      cancel_at_period_end: true, // Set cancellation for the end of the period
     });
 
+    // Retrieve the updated subscription details
+    const updatedSubscription = await stripe.subscriptions.retrieve(
+      stripe_subscription_id
+    );
+
+    // Update the user's subscription status in the database
     await pool.query(
       `UPDATE users 
        SET has_subscription = false,
+           stripe_subscription_id = NULL,
            subscription_updated_at = NOW() 
        WHERE id = $1`,
       [req.user.id]
     );
 
-    res.json({ success: true });
+    res.json({ success: true, message: "Subscription canceled successfully" });
   } catch (error) {
-    console.error("Error cancelling subscription:", error);
-    res.status(500).json({ message: "Error cancelling subscription" });
+    console.error("Error canceling subscription:", error);
+    res.status(500).json({ message: "Error canceling subscription" });
+  }
+});
+
+// Define the /payment/subscription-info route
+router.get("/subscription-info", authMiddleware, async (req, res) => {
+  try {
+    // Get user's subscription info from the database
+    const userResult = await pool.query(
+      `SELECT stripe_subscription_id 
+       FROM users 
+       WHERE id = $1`,
+      [req.user.id]
+    );
+
+    // Check if subscription exists in the database
+    const { stripe_subscription_id } = userResult.rows[0];
+    if (!stripe_subscription_id) {
+      return res.status(400).json({
+        message: "No active subscription found",
+      });
+    }
+
+    // Fetch subscription details from Stripe
+    const subscription = await stripe.subscriptions.retrieve(
+      stripe_subscription_id
+    );
+
+    // Return relevant subscription info
+    return res.json({
+      status: subscription.status,
+      current_period_end: subscription.current_period_end, // Unix timestamp
+    });
+  } catch (error) {
+    return res.sendStatus(500);
   }
 });
 

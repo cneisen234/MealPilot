@@ -1,6 +1,7 @@
 // middleware/aiActions.js
 const pool = require("../db");
 
+// middleware/aiActions.js
 const checkAiActions = async (req, res, next) => {
   if (!req.user) {
     return res.status(401).json({ message: "No token, authorization denied" });
@@ -9,19 +10,11 @@ const checkAiActions = async (req, res, next) => {
   try {
     // Get current AI actions count and admin status
     const result = await pool.query(
-      `SELECT ai_actions, 
-              admin,
-              CASE 
-                WHEN DATE(last_action_reset) < CURRENT_DATE 
-                THEN true 
-                ELSE false 
-              END as should_reset
-       FROM users 
-       WHERE id = $1`,
+      `SELECT ai_actions, admin FROM users WHERE id = $1`,
       [req.user.id]
     );
 
-    const { ai_actions, should_reset, admin } = result.rows[0];
+    const { ai_actions, admin } = result.rows[0];
 
     // If user is admin, skip rate limiting
     if (admin) {
@@ -29,24 +22,8 @@ const checkAiActions = async (req, res, next) => {
       return;
     }
 
-    // Reset actions if it's a new day
-    if (should_reset) {
-      await pool.query(
-        `UPDATE users 
-         SET ai_actions = 60, 
-             last_action_reset = CURRENT_DATE 
-         WHERE id = $1 
-         RETURNING ai_actions`,
-        [req.user.id]
-      );
-      req.aiActions = 60;
-    } else {
-      req.aiActions = ai_actions;
-    }
-
     // If no actions left, prevent the action
-    if (req.aiActions <= 0) {
-      //We want to stop the actions but not throw an error.
+    if (ai_actions <= 0) {
       return res.status(200).json({
         message:
           "You've reached your daily AI action limit. Try another method.",
@@ -55,7 +32,7 @@ const checkAiActions = async (req, res, next) => {
     }
 
     // Add warning flag if actions are low
-    if (req.aiActions <= 10) {
+    if (ai_actions <= 10) {
       res.set("X-AI-Actions-Warning", "true");
     }
 
@@ -68,10 +45,8 @@ const checkAiActions = async (req, res, next) => {
       [req.user.id]
     );
 
-    req.aiActions = updated.rows[0].ai_actions;
-
     // Add the remaining count to response headers
-    res.set("X-AI-Actions-Remaining", req.aiActions.toString());
+    res.set("X-AI-Actions-Remaining", updated.rows[0].ai_actions.toString());
 
     next();
   } catch (error) {

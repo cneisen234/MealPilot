@@ -2,10 +2,15 @@ import React, { useState, useEffect } from "react";
 import { CardElement, useStripe, useElements } from "@stripe/react-stripe-js";
 import { FaCreditCard, FaTimes, FaCheck } from "react-icons/fa";
 import { useAuth } from "../context/AuthContext";
-import { checkPrimaryPaymentMethod, updatePaymentMethod } from "../utils/api";
+import {
+  cancelSubscription,
+  checkPrimaryPaymentMethod,
+  updatePaymentMethod,
+} from "../utils/api";
 import AnimatedTechIcon from "../components/common/AnimatedTechIcon";
 import "../styles/accountsettings.css";
 import SubscriptionButton from "../components/common/SubscriptionButton";
+import CancelSubscription from "../components/common/CancelSubscription";
 
 interface PaymentMethod {
   brand: string;
@@ -24,7 +29,7 @@ interface AddressInfo {
 }
 
 const AccountSettings = () => {
-  const { hasSubscription } = useAuth();
+  const { hasSubscription, setHasSubscription } = useAuth();
   const stripe = useStripe();
   const elements = useElements();
 
@@ -50,8 +55,6 @@ const AccountSettings = () => {
     fetchCurrentPaymentMethod();
   }, []);
 
-  console.log(hasSubscription);
-
   const fetchCurrentPaymentMethod = async () => {
     try {
       setIsLoading(true);
@@ -68,8 +71,6 @@ const AccountSettings = () => {
           //@ts-ignore
           exp_year: info.data.paymentMethod.exp_year,
         });
-        //@ts-ignore
-        // setAddress(paymentMethod.address);
       }
     } catch (error) {
       console.error("Error fetching payment method:", error);
@@ -101,11 +102,6 @@ const AccountSettings = () => {
       const { error, paymentMethod } = await stripe.createPaymentMethod({
         type: "card",
         card: cardElement,
-        // billing_details: {
-        //   address: address,
-        //   email: user?.email,
-        //   name: user?.name,
-        // },
       });
 
       if (error) {
@@ -125,6 +121,26 @@ const AccountSettings = () => {
     } finally {
       setIsLoading(false);
     }
+  };
+
+  console.log(hasSubscription);
+
+  // Cancel subscription logic
+  const handleCancelSubscription = async () => {
+    try {
+      // Perform cancellation logic
+      console.log("Subscription canceled.");
+      await cancelSubscription();
+      setHasSubscription(false);
+      localStorage.setItem("hasSubscription", JSON.stringify(false));
+    } catch (error) {
+      console.error("Error cancelling subscription", error);
+    }
+  };
+
+  const handleSubscriptionSuccess = () => {
+    setHasSubscription(true); // Update the subscription state in context
+    localStorage.setItem("hasSubscription", JSON.stringify(true));
   };
 
   return (
@@ -265,10 +281,10 @@ const AccountSettings = () => {
       {currentPaymentMethod && (
         <div className="subscription-section">
           {!hasSubscription ? (
-            <SubscriptionButton />
-          ) : // Placeholder for future cancel subscription component
-          // <CancelSubscription /> -- We'll add this component later
-          null}
+            <SubscriptionButton onSuccess={handleSubscriptionSuccess} />
+          ) : (
+            <CancelSubscription onCancel={handleCancelSubscription} />
+          )}
         </div>
       )}
     </div>

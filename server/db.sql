@@ -6,7 +6,7 @@ CREATE TABLE users
     password VARCHAR(255) NOT NULL,
     reset_password_token VARCHAR(255),
     reset_password_expires TIMESTAMP,
-    ai_actions INTEGER NOT NULL DEFAULT 40,
+    ai_actions INTEGER NOT NULL DEFAULT 60,
     last_action_reset DATE DEFAULT NOW(),
     admin BOOLEAN NOT NULL DEFAULT false
 );

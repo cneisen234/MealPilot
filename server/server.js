@@ -2,7 +2,7 @@ const express = require("express");
 const cors = require("cors");
 require("dotenv").config();
 const sgMail = require("@sendgrid/mail");
-
+const cron = require("node-cron");
 const authRoutes = require("./routes/authRoutes");
 const userRoutes = require("./routes/userRoutes");
 const recipeRoutes = require("./routes/recipeRoutes");
@@ -52,6 +52,29 @@ app.use("/api/payment", paymentRoutes);
 app.get("*", (req, res) => {
   res.sendFile(path.join(__dirname, "../build", "index.html"));
 });
+
+cron.schedule(
+  "0 6 * * *",
+  async () => {
+    try {
+      // Reset AI actions for all non-admin users to 40
+      await pool.query(`
+      UPDATE users 
+      SET ai_actions = 60,
+          last_action_reset = CURRENT_DATE 
+      WHERE admin = false
+    `);
+      console.log(
+        "Successfully reset AI actions for all users at CST midnight"
+      );
+    } catch (error) {
+      console.error("Error resetting AI actions:", error);
+    }
+  },
+  {
+    timezone: "America/Chicago", // Explicitly set timezone to CST
+  }
+);
 
 // Start server
 app.listen(port, () => {

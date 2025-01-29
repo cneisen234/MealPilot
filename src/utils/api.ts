@@ -464,5 +464,13 @@ export const createSubscription = (data: { consent: boolean }) => {
   return api.post('/payment/subscribe', data);
 };
 
+export const cancelSubscription = async () => {
+  return api.post('/payment/cancel-subscription');
+};
+
+export const getSubscriptionInfo = async () => {
+    return api.get('/payment/subscription-info');
+};
+
 export default api;
 
