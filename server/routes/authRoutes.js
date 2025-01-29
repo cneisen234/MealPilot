@@ -67,6 +67,10 @@ router.post("/signup", async (req, res) => {
     const saltRounds = 10;
     const hashedPassword = await bcrypt.hash(password, saltRounds);
 
+    // Calculate trial end date (30 days from now)
+    const trialEndDate = new Date();
+    trialEndDate.setDate(trialEndDate.getDate() + 30);
+
     const result = await pool.query(
       `INSERT INTO users (
         name, 
@@ -76,6 +80,81 @@ router.post("/signup", async (req, res) => {
       RETURNING id, trial_end_date`,
       [name, email.toLowerCase(), hashedPassword]
     );
+
+    // Create welcome email HTML content
+    const welcomeHtmlContent = `
+      <html>
+        <body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px;">
+          <div style="text-align: center; margin-bottom: 20px;">
+            <div style="background-color: #05472A; color: white; font-size: 24px; font-weight: bold; padding: 10px 20px; display: inline-block; border-radius: 5px;">
+              MealSphere
+            </div>
+          </div>
+          <div style="background-color: #f8f9fa; border-radius: 5px; padding: 20px; margin-bottom: 20px;">
+            <h2 style="color: #05472A; margin-top: 0;">Welcome to MealSphere!</h2>
+            <p>Hi ${name},</p>
+            <p>Thank you for joining MealSphere! We're excited to help you streamline your kitchen and discover amazing recipes tailored to your preferences.</p>
+            
+            <h3 style="color: #FF9D72;">Popular Features:</h3>
+            <ul style="list-style: none; padding: 0;">
+              <li style="margin-bottom: 10px; padding-left: 20px;">📸 Snap photos of your groceries to automatically add them to your inventory</li>
+              <li style="margin-bottom: 10px; padding-left: 20px;">🧾 Scan receipts to update multiple items at once</li>
+              <li style="margin-bottom: 10px; padding-left: 20px;">🤖 AI-powered recipe suggestions based on your dietary preferences</li>
+              <li style="margin-bottom: 10px; padding-left: 20px;">📅 Automated meal planning with a push of a button</li>
+            </ul>
+
+            <p>As a reminder your free trial expires on ${trialEndDate.toLocaleDateString()}. Click the link below to subscribe.</p>
+            
+            <div style="text-align: center; margin: 30px 0;">
+              <a href="${process.env.FRONTEND_URL}/account-settings" 
+                 style="background-color: #FF9D72; color: white; padding: 12px 20px; text-decoration: none; border-radius: 5px; font-weight: bold;">
+                Subscribe Now
+              </a>
+            </div>
+            <p>We truly hope MealSphere becomes the holistic kitchen solution you've been needing. We're excited to help you save time, money, and stress with the power of AI.</p>
+          </div>
+          <div style="text-align: center; font-size: 12px; color: #666;">
+            <p>&copy; 2025 VibeQuest. All rights reserved.</p>
+          </div>
+        </body>
+      </html>
+    `;
+
+    // Create admin notification email HTML content
+    const adminNotificationHtml = `
+      <html>
+        <body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px;">
+          <div style="background-color: #f8f9fa; border-radius: 5px; padding: 20px; margin-bottom: 20px;">
+            <h2 style="color: #05472A; margin-top: 0;">New User Signup</h2>
+            <p>A new user has signed up for MealSphere:</p>
+            <p><strong>Name:</strong> ${name}</p>
+            <p><strong>Email:</strong> ${email}</p>
+            <p><strong>Signup Date:</strong> ${new Date().toLocaleString()}</p>
+            <p><strong>Trial End Date:</strong> ${trialEndDate.toLocaleString()}</p>
+          </div>
+        </body>
+      </html>
+    `;
+
+    // Send welcome email to new user
+    await sgMail.send({
+      to: email,
+      from: process.env.SENDGRID_FROM_EMAIL,
+      subject: "Welcome to MealSphere! 🎉",
+      html: welcomeHtmlContent,
+      text: `Welcome to MealSphere! Your trial expires on ${trialEndDate.toLocaleDateString()}. Visit ${
+        process.env.FRONTEND_URL
+      }/account-settings to subscribe.`,
+    });
+
+    // Send notification email to admin
+    await sgMail.send({
+      to: "christopherjay71186@gmail.com",
+      from: process.env.SENDGRID_FROM_EMAIL,
+      subject: "MealSphere: New User Signup",
+      html: adminNotificationHtml,
+      text: `New user signup - Name: ${name}, Email: ${email}, Trial End: ${trialEndDate.toLocaleString()}`,
+    });
 
     res.status(201).json({
       message: "User created successfully",

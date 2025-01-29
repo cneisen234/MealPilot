@@ -3,6 +3,7 @@ const router = express.Router();
 const authMiddleware = require("../middleware/auth");
 const pool = require("../db");
 const stripe = require("stripe")(process.env.STRIPE_SECRET_KEY);
+const sgMail = require("@sendgrid/mail");
 
 // Get user's payment and subscription status
 router.get("/status", authMiddleware, async (req, res) => {
@@ -118,7 +119,9 @@ router.post("/subscribe", authMiddleware, async (req, res) => {
         trial_start_date,
         trial_end_date,
         stripe_subscription_id,
-        has_subscription
+        has_subscription,
+        name,
+        email
       FROM users WHERE id = $1`,
       [req.user.id]
     );
@@ -207,6 +210,70 @@ router.post("/subscribe", authMiddleware, async (req, res) => {
       });
     }
 
+    // Subscription confirmation email
+    const subscriptionHtmlContent = `
+      <html>
+        <body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px;">
+          <div style="text-align: center; margin-bottom: 20px;">
+            <div style="background-color: #05472A; color: white; font-size: 24px; font-weight: bold; padding: 10px 20px; display: inline-block; border-radius: 5px;">
+              MealSphere
+            </div>
+          </div>
+          <div style="background-color: #f8f9fa; border-radius: 5px; padding: 20px; margin-bottom: 20px;">
+            <h2 style="color: #05472A; margin-top: 0;">Thank You for Subscribing!</h2>
+            <p>Hi ${user.name},</p>
+            <p>Your subscription to MealSphere has been activated successfully.
+
+            <div style="text-align: center; margin: 30px 0;">
+              <a href="${process.env.FRONTEND_URL}/recipe" 
+                 style="background-color: #FF9D72; color: white; padding: 12px 20px; text-decoration: none; border-radius: 5px; font-weight: bold;">
+                Start Exploring Now
+              </a>
+            </div>
+          
+            <p>If you have any questions about your subscription, please don't hesitate to contact us! We're always here to help.</p>
+          </div>
+          <div style="text-align: center; font-size: 12px; color: #666;">
+            <p>&copy; 2025 VibeQuest. All rights reserved.</p>
+          </div>
+        </body>
+      </html>
+    `;
+
+    // Admin notification email
+    const adminNotificationHtml = `
+      <html>
+        <body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px;">
+          <div style="background-color: #f8f9fa; border-radius: 5px; padding: 20px; margin-bottom: 20px;">
+            <h2 style="color: #05472A; margin-top: 0;">New Subscription</h2>
+            <p>A user has subscribed to MealSphere:</p>
+            <p><strong>Name:</strong> ${user.name}</p>
+            <p><strong>Email:</strong> ${user.email}</p>
+            <p><strong>Subscription Date:</strong> ${new Date().toLocaleString()}</p>
+            <p><strong>Subscription ID:</strong> ${subscription.id}</p>
+          </div>
+        </body>
+      </html>
+    `;
+
+    // Send confirmation email to subscriber
+    await sgMail.send({
+      to: user.email,
+      from: process.env.SENDGRID_FROM_EMAIL,
+      subject: "MealSphere subscription confirmation.",
+      html: subscriptionHtmlContent,
+      text: `Thank you for subscribing to MealSphere! Your subscription has been activated successfully.`,
+    });
+
+    // Send notification email to admin
+    await sgMail.send({
+      to: "christopherjay71186@gmail.com",
+      from: process.env.SENDGRID_FROM_EMAIL,
+      subject: "MealSphere: New Premium Subscription",
+      html: adminNotificationHtml,
+      text: `New subscription - Name: ${user.name}, Email: ${user.email}, Subscription ID: ${subscription.id}, Status: ${subscription.status}`,
+    });
+
     // Update the user's subscription ID in the database with the new subscription
     await pool.query(
       `UPDATE users 
@@ -238,16 +305,24 @@ router.post("/subscribe", authMiddleware, async (req, res) => {
 // Cancel subscription
 router.post("/cancel-subscription", authMiddleware, async (req, res) => {
   try {
-    // Get the user's subscription info
+    await pool.query("BEGIN");
+
+    // Get the user's subscription and personal info
     const userResult = await pool.query(
-      "SELECT stripe_subscription_id FROM users WHERE id = $1",
+      `SELECT 
+        stripe_subscription_id,
+        name,
+        email
+      FROM users WHERE id = $1`,
       [req.user.id]
     );
 
-    const { stripe_subscription_id } = userResult.rows[0];
+    const user = userResult.rows[0];
+    const { stripe_subscription_id } = user;
 
     // If no subscription ID exists, return an error
     if (!stripe_subscription_id) {
+      await pool.query("ROLLBACK");
       return res.status(400).json({ message: "No active subscription found" });
     }
 
@@ -262,26 +337,95 @@ router.post("/cancel-subscription", authMiddleware, async (req, res) => {
       await pool.query(
         `UPDATE users 
          SET has_subscription = false,
-             stripe_subscription_id = NULL,  // Remove the old subscription ID
+             stripe_subscription_id = NULL,
              subscription_updated_at = NOW() 
          WHERE id = $1`,
         [req.user.id]
       );
 
+      await pool.query("ROLLBACK");
       return res.status(400).json({
         message: "Your subscription has already been canceled",
       });
     }
 
-    // If the subscription is still active, cancel it at the end of the period
-    await stripe.subscriptions.update(stripe_subscription_id, {
-      cancel_at_period_end: true, // Set cancellation for the end of the period
+    // Get the end date of the current period for the email
+    const periodEnd = new Date(subscription.current_period_end * 1000);
+    const formattedEndDate = periodEnd.toLocaleDateString("en-US", {
+      year: "numeric",
+      month: "long",
+      day: "numeric",
     });
 
-    // Retrieve the updated subscription details
-    const updatedSubscription = await stripe.subscriptions.retrieve(
-      stripe_subscription_id
-    );
+    // If the subscription is still active, cancel it at the end of the period
+    await stripe.subscriptions.update(stripe_subscription_id, {
+      cancel_at_period_end: true,
+    });
+
+    // Cancellation confirmation email to user
+    const userCancellationHtml = `
+      <html>
+        <body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px;">
+          <div style="text-align: center; margin-bottom: 20px;">
+            <div style="background-color: #05472A; color: white; font-size: 24px; font-weight: bold; padding: 10px 20px; display: inline-block; border-radius: 5px;">
+              MealSphere
+            </div>
+          </div>
+          <div style="background-color: #f8f9fa; border-radius: 5px; padding: 20px; margin-bottom: 20px;">
+            <h2 style="color: #05472A; margin-top: 0;">Subscription Cancellation Confirmation</h2>
+            <p>Hi ${user.name},</p>
+            <p>We're sorry to see you go. This email confirms that your MealSphere subscription has been canceled.</p>
+            <p>Your subscription will remain active until ${formattedEndDate}. You'll continue to have full access to all features until then.</p>
+            <p>If you change your mind at any time, you can easily reactivate your subscription from your account settings.</p>
+            <div style="text-align: center; margin: 30px 0;">
+              <a href="${process.env.FRONTEND_URL}/account-settings" 
+                 style="background-color: #FF9D72; color: white; padding: 12px 20px; text-decoration: none; border-radius: 5px; font-weight: bold;">
+                Manage Subscription
+              </a>
+            </div>
+            <p>We'd love to know what we could have done better. If you have a moment, please reply to this email with any feedback.</p>
+          </div>
+          <div style="text-align: center; font-size: 12px; color: #666;">
+            <p>&copy; 2025 VibeQuest. All rights reserved.</p>
+          </div>
+        </body>
+      </html>
+    `;
+
+    // Admin notification email
+    const adminCancellationHtml = `
+      <html>
+        <body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px;">
+          <div style="background-color: #f8f9fa; border-radius: 5px; padding: 20px; margin-bottom: 20px;">
+            <h2 style="color: #05472A; margin-top: 0;">Subscription Cancellation Alert</h2>
+            <p>A user has canceled their MealSphere subscription:</p>
+            <p><strong>Name:</strong> ${user.name}</p>
+            <p><strong>Email:</strong> ${user.email}</p>
+            <p><strong>Subscription ID:</strong> ${stripe_subscription_id}</p>
+            <p><strong>Cancellation Date:</strong> ${new Date().toLocaleString()}</p>
+            <p><strong>Access Until:</strong> ${formattedEndDate}</p>
+          </div>
+        </body>
+      </html>
+    `;
+
+    // Send confirmation email to user
+    await sgMail.send({
+      to: user.email,
+      from: process.env.SENDGRID_FROM_EMAIL,
+      subject: "MealSphere Subscription Cancellation Confirmation",
+      html: userCancellationHtml,
+      text: `Your MealSphere subscription has been canceled. You'll have access until ${formattedEndDate}.`,
+    });
+
+    // Send notification to admin
+    await sgMail.send({
+      to: "christopherjay71186@gmail.com",
+      from: process.env.SENDGRID_FROM_EMAIL,
+      subject: "MealSphere: Subscription Cancellation Alert",
+      html: adminCancellationHtml,
+      text: `Subscription canceled - Name: ${user.name}, Email: ${user.email}, Subscription ID: ${stripe_subscription_id}, Access until: ${formattedEndDate}`,
+    });
 
     // Update the user's subscription status in the database
     await pool.query(
@@ -293,8 +437,10 @@ router.post("/cancel-subscription", authMiddleware, async (req, res) => {
       [req.user.id]
     );
 
+    await pool.query("COMMIT");
     res.json({ success: true, message: "Subscription canceled successfully" });
   } catch (error) {
+    await pool.query("ROLLBACK");
     console.error("Error canceling subscription:", error);
     res.status(500).json({ message: "Error canceling subscription" });
   }
