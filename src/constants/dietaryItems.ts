@@ -54,8 +54,8 @@ export const COMMON_DIETARY_GOALS = [
 
 export const COMMON_CUISINE_PREFERENCES = [
   'african',
+  'american',
   'asian',
-  'european',
   'indian',
   'italian',
   'japanese',
