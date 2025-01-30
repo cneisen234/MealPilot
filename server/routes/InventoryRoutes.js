@@ -2,6 +2,7 @@ const express = require("express");
 const router = express.Router();
 const authMiddleware = require("../middleware/auth");
 const checkAiActions = require("../middleware/aiActions");
+const checkPaywall = require("../middleware/checkPaywall");
 const openai = require("../openai");
 const pool = require("../db");
 const vision = require("@google-cloud/vision");
@@ -14,7 +15,7 @@ const client = new vision.ImageAnnotatorClient({
 });
 
 // Get all inventory items for the logged-in user
-router.get("/", authMiddleware, async (req, res) => {
+router.get("/", [authMiddleware, checkPaywall], async (req, res) => {
   try {
     const userId = req.user.id;
     const result = await pool.query(
@@ -38,7 +39,7 @@ const determineExpirationDate = (existingDate, newDate) => {
 };
 
 // Regular inventory POST route
-router.post("/", authMiddleware, async (req, res) => {
+router.post("/", [authMiddleware, checkPaywall], async (req, res) => {
   try {
     const userId = req.user.id;
     const inventoryCount = await pool.query(
@@ -113,7 +114,7 @@ router.post("/", authMiddleware, async (req, res) => {
 });
 
 // Update an inventory item
-router.put("/:id", authMiddleware, async (req, res) => {
+router.put("/:id", [authMiddleware, checkPaywall], async (req, res) => {
   try {
     const userId = req.user.id;
     const itemId = req.params.id;
@@ -175,7 +176,7 @@ router.put("/:id", authMiddleware, async (req, res) => {
 });
 
 // Delete an inventory item
-router.put("/delete/:id", authMiddleware, async (req, res) => {
+router.put("/delete/:id", [authMiddleware, checkPaywall], async (req, res) => {
   try {
     const userId = req.user.id;
     const itemId = req.params.id;
@@ -231,54 +232,58 @@ router.put("/delete/:id", authMiddleware, async (req, res) => {
   }
 });
 
-router.put("/delete-by-name/:itemName", authMiddleware, async (req, res) => {
-  try {
-    const userId = req.user.id;
-    const itemName = req.params.itemName;
-    const { quantity } = req.body;
+router.put(
+  "/delete-by-name/:itemName",
+  [authMiddleware, checkPaywall],
+  async (req, res) => {
+    try {
+      const userId = req.user.id;
+      const itemName = req.params.itemName;
+      const { quantity } = req.body;
 
-    // Start a transaction
-    await pool.query("BEGIN");
+      // Start a transaction
+      await pool.query("BEGIN");
 
-    // First get the current quantity
-    const currentItem = await pool.query(
-      "SELECT quantity FROM inventory WHERE user_id = $1 AND LOWER(item_name) = LOWER($2)",
-      [userId, itemName]
-    );
-
-    if (currentItem.rows.length === 0) {
-      await pool.query("ROLLBACK");
-      return res.status(404).json({ message: "Item not found" });
-    }
-
-    const remainingQuantity = currentItem.rows[0].quantity - quantity;
-
-    if (remainingQuantity <= 0) {
-      // Delete the item if quantity would be zero or less
-      await pool.query(
-        "DELETE FROM inventory WHERE user_id = $1 AND LOWER(item_name) = LOWER($2)",
+      // First get the current quantity
+      const currentItem = await pool.query(
+        "SELECT quantity FROM inventory WHERE user_id = $1 AND LOWER(item_name) = LOWER($2)",
         [userId, itemName]
       );
-    } else {
-      // Update the quantity if there's still some remaining
-      await pool.query(
-        "UPDATE inventory SET quantity = $1 WHERE user_id = $2 AND LOWER(item_name) = LOWER($3)",
-        [remainingQuantity, userId, itemName]
-      );
-    }
 
-    await pool.query("COMMIT");
-    res.json({
-      message:
-        remainingQuantity <= 0 ? "Item removed" : "Item quantity updated",
-      remainingQuantity: remainingQuantity > 0 ? remainingQuantity : 0,
-    });
-  } catch (error) {
-    await pool.query("ROLLBACK");
-    console.error("Error updating inventory item:", error);
-    res.status(500).json({ message: "Server error" });
+      if (currentItem.rows.length === 0) {
+        await pool.query("ROLLBACK");
+        return res.status(404).json({ message: "Item not found" });
+      }
+
+      const remainingQuantity = currentItem.rows[0].quantity - quantity;
+
+      if (remainingQuantity <= 0) {
+        // Delete the item if quantity would be zero or less
+        await pool.query(
+          "DELETE FROM inventory WHERE user_id = $1 AND LOWER(item_name) = LOWER($2)",
+          [userId, itemName]
+        );
+      } else {
+        // Update the quantity if there's still some remaining
+        await pool.query(
+          "UPDATE inventory SET quantity = $1 WHERE user_id = $2 AND LOWER(item_name) = LOWER($3)",
+          [remainingQuantity, userId, itemName]
+        );
+      }
+
+      await pool.query("COMMIT");
+      res.json({
+        message:
+          remainingQuantity <= 0 ? "Item removed" : "Item quantity updated",
+        remainingQuantity: remainingQuantity > 0 ? remainingQuantity : 0,
+      });
+    } catch (error) {
+      await pool.query("ROLLBACK");
+      console.error("Error updating inventory item:", error);
+      res.status(500).json({ message: "Server error" });
+    }
   }
-});
+);
 
 // Constants for product categories and exclusions
 const PRODUCT_CATEGORIES = [
@@ -311,7 +316,7 @@ const EXCLUSION_CATEGORIES = [
 
 router.post(
   "/analyze-item",
-  [authMiddleware, checkAiActions],
+  [authMiddleware, checkAiActions, checkPaywall],
   async (req, res) => {
     try {
       const userId = req.user.id;

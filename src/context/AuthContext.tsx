@@ -1,5 +1,5 @@
 import React, { createContext, useState, useEffect, useContext } from "react";
-import api from "../utils/api";
+import { checkPrimaryPaymentMethod } from "../utils/api";
 
 interface AuthContextType {
   isAuthenticated: boolean;
@@ -46,7 +46,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
     if (token) {
       try {
         // Fetch current user status including subscription and AI actions
-        const response = await api.get("/payment/status");
+        const response = await checkPrimaryPaymentMethod();
         setHasSubscription(response.data.hasSubscription);
         setAiActionsRemaining(response.data.aiActionsRemaining || 60);
         setIsAuthenticated(true);
@@ -82,7 +82,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
     localStorage.removeItem("aiActionsRemaining");
     setIsAuthenticated(false);
     setHasSubscription(false);
-    setAiActionsRemaining(40);
   };
 
   return (

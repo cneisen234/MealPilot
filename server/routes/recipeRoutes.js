@@ -2,6 +2,7 @@ const express = require("express");
 const router = express.Router();
 const authMiddleware = require("../middleware/auth");
 const checkAiActions = require("../middleware/aiActions");
+const checkPaywall = require("../middleware/checkPaywall");
 const pool = require("../db");
 const openai = require("../openai");
 const axios = require("axios");
@@ -100,7 +101,7 @@ const standardizeUnit = (unit) => {
 
 router.post(
   "/create-recipe",
-  [authMiddleware, checkAiActions],
+  [authMiddleware, checkAiActions, checkPaywall],
   async (req, res) => {
     try {
       const userId = req.user.id;
@@ -356,41 +357,13 @@ IMPORTANT: All fields must be included and properly formatted as shown above, es
   }
 );
 
-router.post("/save-recipe", authMiddleware, async (req, res) => {
-  try {
-    const userId = req.user.id;
-    const {
-      title,
-      prepTime,
-      cookTime,
-      servings,
-      ingredients,
-      instructions,
-      nutritionalInfo,
-      mealType,
-    } = req.body;
-
-    await pool.query("BEGIN");
-
-    const recipeCount = await pool.query(
-      "SELECT COUNT(*) FROM recipes WHERE user_id = $1",
-      [userId]
-    );
-
-    if (recipeCount.rows[0].count >= 100) {
-      return res.status(400).json({
-        message:
-          "Recipe limit reached. Maximum 100 recipes allowed per account.",
-      });
-    }
-
-    const recipeResult = await pool.query(
-      `INSERT INTO recipes 
-        (user_id, title, prep_time, cook_time, servings, ingredients, instructions, nutritional_info, meal_type)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
-       RETURNING id`,
-      [
-        userId,
+router.post(
+  "/save-recipe",
+  [authMiddleware, checkPaywall],
+  async (req, res) => {
+    try {
+      const userId = req.user.id;
+      const {
         title,
         prepTime,
         cookTime,
@@ -399,67 +372,99 @@ router.post("/save-recipe", authMiddleware, async (req, res) => {
         instructions,
         nutritionalInfo,
         mealType,
-      ]
-    );
+      } = req.body;
 
-    const newRecipeId = recipeResult.rows[0].id;
+      await pool.query("BEGIN");
 
-    // Check for meal plan updates
-    const mealPlanResult = await pool.query(
-      "SELECT meals FROM meal_plans WHERE user_id = $1",
-      [userId]
-    );
+      const recipeCount = await pool.query(
+        "SELECT COUNT(*) FROM recipes WHERE user_id = $1",
+        [userId]
+      );
 
-    if (mealPlanResult.rows.length > 0) {
-      const meals = mealPlanResult.rows[0].meals;
-      let updated = false;
+      if (recipeCount.rows[0].count >= 100) {
+        return res.status(400).json({
+          message:
+            "Recipe limit reached. Maximum 100 recipes allowed per account.",
+        });
+      }
 
-      // Check each day and meal for matching title
-      for (const date in meals) {
-        for (const mealTime of ["breakfast", "lunch", "dinner"]) {
-          if (meals[date][mealTime].title === title) {
-            meals[date][mealTime] = {
-              title,
-              prepTime,
-              cookTime,
-              servings,
-              ingredients,
-              instructions,
-              nutritionalInfo,
-              mealType,
-              isNew: false,
-              recipeId: newRecipeId,
-            };
-            updated = true;
+      const recipeResult = await pool.query(
+        `INSERT INTO recipes 
+        (user_id, title, prep_time, cook_time, servings, ingredients, instructions, nutritional_info, meal_type)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+       RETURNING id`,
+        [
+          userId,
+          title,
+          prepTime,
+          cookTime,
+          servings,
+          ingredients,
+          instructions,
+          nutritionalInfo,
+          mealType,
+        ]
+      );
+
+      const newRecipeId = recipeResult.rows[0].id;
+
+      // Check for meal plan updates
+      const mealPlanResult = await pool.query(
+        "SELECT meals FROM meal_plans WHERE user_id = $1",
+        [userId]
+      );
+
+      if (mealPlanResult.rows.length > 0) {
+        const meals = mealPlanResult.rows[0].meals;
+        let updated = false;
+
+        // Check each day and meal for matching title
+        for (const date in meals) {
+          for (const mealTime of ["breakfast", "lunch", "dinner"]) {
+            if (meals[date][mealTime].title === title) {
+              meals[date][mealTime] = {
+                title,
+                prepTime,
+                cookTime,
+                servings,
+                ingredients,
+                instructions,
+                nutritionalInfo,
+                mealType,
+                isNew: false,
+                recipeId: newRecipeId,
+              };
+              updated = true;
+            }
           }
+        }
+
+        if (updated) {
+          await pool.query(
+            "UPDATE meal_plans SET meals = $1 WHERE user_id = $2",
+            [meals, userId]
+          );
         }
       }
 
-      if (updated) {
-        await pool.query(
-          "UPDATE meal_plans SET meals = $1 WHERE user_id = $2",
-          [meals, userId]
-        );
-      }
+      await pool.query("COMMIT");
+
+      res.status(201).json({
+        message: "Recipe saved successfully",
+        recipeId: newRecipeId,
+      });
+    } catch (error) {
+      await pool.query("ROLLBACK");
+      console.error("Error saving recipe:", error);
+      res.status(500).json({
+        message: "Error saving recipe",
+        error: error.message,
+      });
     }
-
-    await pool.query("COMMIT");
-
-    res.status(201).json({
-      message: "Recipe saved successfully",
-      recipeId: newRecipeId,
-    });
-  } catch (error) {
-    await pool.query("ROLLBACK");
-    console.error("Error saving recipe:", error);
-    res.status(500).json({
-      message: "Error saving recipe",
-      error: error.message,
-    });
   }
-});
+);
 
-router.get("/myrecipes", authMiddleware, async (req, res) => {
+router.get("/myrecipes", [authMiddleware, checkPaywall], async (req, res) => {
   try {
     const userId = req.user.id;
 
@@ -477,326 +482,342 @@ router.get("/myrecipes", authMiddleware, async (req, res) => {
   }
 });
 
-router.get("/myrecipes/:id", authMiddleware, async (req, res) => {
-  try {
-    const userId = req.user.id;
-    const recipeId = req.params.id;
+router.get(
+  "/myrecipes/:id",
+  [authMiddleware, checkPaywall],
+  async (req, res) => {
+    try {
+      const userId = req.user.id;
+      const recipeId = req.params.id;
 
-    const result = await pool.query(
-      `SELECT * FROM recipes 
+      const result = await pool.query(
+        `SELECT * FROM recipes 
        WHERE id = $1 AND user_id = $2`,
-      [recipeId, userId]
-    );
+        [recipeId, userId]
+      );
 
-    if (result.rows.length === 0) {
-      return res.status(404).json({ message: "Recipe not found" });
+      if (result.rows.length === 0) {
+        return res.status(404).json({ message: "Recipe not found" });
+      }
+
+      res.json(result.rows[0]);
+    } catch (error) {
+      console.error("Error fetching recipe:", error);
+      res
+        .status(500)
+        .json({ error: "An error occurred while fetching the recipe" });
     }
-
-    res.json(result.rows[0]);
-  } catch (error) {
-    console.error("Error fetching recipe:", error);
-    res
-      .status(500)
-      .json({ error: "An error occurred while fetching the recipe" });
   }
-});
+);
 
-router.get("/myrecipesinventory/:id", [authMiddleware], async (req, res) => {
-  try {
-    const userId = req.user.id;
-    const recipeId = req.params.id;
+router.get(
+  "/myrecipesinventory/:id",
+  [authMiddleware, checkPaywall],
+  async (req, res) => {
+    try {
+      const userId = req.user.id;
+      const recipeId = req.params.id;
 
-    // Words that are too generic to match on alone unless they're the only word
-    const genericIngredientWords = new Set([
-      "syrup",
-      "sauce",
-      "oil",
-      "vinegar",
-      "cream",
-      "milk",
-      "cheese",
-      "flour",
-      "sugar",
-      "salt",
-      "pepper",
-      "spice",
-      "seasoning",
-      "broth",
-      "stock",
-      "juice",
-      "extract",
-      "powder",
-      "paste",
-      "butter",
-      "water",
-      "wine",
-      "bread",
-      "rice",
-      "pasta",
-      "noodles",
-    ]);
+      // Words that are too generic to match on alone unless they're the only word
+      const genericIngredientWords = new Set([
+        "syrup",
+        "sauce",
+        "oil",
+        "vinegar",
+        "cream",
+        "milk",
+        "cheese",
+        "flour",
+        "sugar",
+        "salt",
+        "pepper",
+        "spice",
+        "seasoning",
+        "broth",
+        "stock",
+        "juice",
+        "extract",
+        "powder",
+        "paste",
+        "butter",
+        "water",
+        "wine",
+        "bread",
+        "rice",
+        "pasta",
+        "noodles",
+      ]);
 
-    const [recipeResult, inventoryResult] = await Promise.all([
-      pool.query("SELECT * FROM recipes WHERE id = $1 AND user_id = $2", [
-        recipeId,
-        userId,
-      ]),
-      pool.query("SELECT * FROM inventory WHERE user_id = $1", [userId]),
-    ]);
+      const [recipeResult, inventoryResult] = await Promise.all([
+        pool.query("SELECT * FROM recipes WHERE id = $1 AND user_id = $2", [
+          recipeId,
+          userId,
+        ]),
+        pool.query("SELECT * FROM inventory WHERE user_id = $1", [userId]),
+      ]);
 
-    if (recipeResult.rows.length === 0) {
-      return res.status(404).json({ message: "Recipe not found" });
-    }
-
-    const recipe = recipeResult.rows[0];
-    const inventory = inventoryResult.rows;
-
-    const extractItemName = (original) => {
-      let processed = original.toLowerCase();
-      processed = processed.replace(/\d+(\.\d+)?(\s*\/\s*\d+)?/g, "");
-
-      const measurements = [
-        "cup",
-        "cups",
-        "tablespoon",
-        "tablespoons",
-        "tbsp",
-        "teaspoon",
-        "teaspoons",
-        "tsp",
-        "pound",
-        "pounds",
-        "lb",
-        "lbs",
-        "ounce",
-        "ounces",
-        "oz",
-        "gram",
-        "grams",
-        "g",
-        "ml",
-        "milliliter",
-        "milliliters",
-        "pinch",
-        "pinches",
-        "dash",
-        "dashes",
-        "handful",
-        "handfuls",
-        "piece",
-        "pieces",
-        "slice",
-        "slices",
-        "can",
-        "cans",
-        "package",
-        "packages",
-        "bottle",
-        "bottles",
-      ];
-
-      measurements.forEach((measure) => {
-        const measureRegex = new RegExp(`\\b${measure}s?\\b`, "g");
-        processed = processed.replace(measureRegex, "");
-      });
-
-      const connectors = [
-        "of",
-        "the",
-        "a",
-        "an",
-        "fresh",
-        "chopped",
-        "diced",
-        "sliced",
-        "minced",
-        "ground",
-        "frozen",
-        "canned",
-        "dried",
-        "raw",
-        "cooked",
-      ];
-
-      connectors.forEach((connector) => {
-        const connectorRegex = new RegExp(`\\b${connector}\\b`, "g");
-        processed = processed.replace(connectorRegex, "");
-      });
-
-      return processed.replace(/[.,]|(\s+)/g, " ").trim();
-    };
-
-    const doIngredientsMatch = (cleanedItem, cleanedInventoryItem) => {
-      const itemWords = cleanedItem.split(" ");
-      const inventoryWords = cleanedInventoryItem.split(" ");
-
-      // Case 1: If either is a single generic word (e.g., just "milk"),
-      // match it with any ingredient containing that word
-      if (itemWords.length === 1 && genericIngredientWords.has(itemWords[0])) {
-        return inventoryWords.includes(itemWords[0]);
-      }
-      if (
-        inventoryWords.length === 1 &&
-        genericIngredientWords.has(inventoryWords[0])
-      ) {
-        return itemWords.includes(inventoryWords[0]);
+      if (recipeResult.rows.length === 0) {
+        return res.status(404).json({ message: "Recipe not found" });
       }
 
-      // Case 2: For multi-word items, check if one item is a subset of the other
-      const commonGenericWords = itemWords.filter(
-        (word) =>
-          genericIngredientWords.has(word) && inventoryWords.includes(word)
-      );
+      const recipe = recipeResult.rows[0];
+      const inventory = inventoryResult.rows;
 
-      if (commonGenericWords.length > 0) {
-        const itemSet = new Set(itemWords);
-        const inventorySet = new Set(inventoryWords);
+      const extractItemName = (original) => {
+        let processed = original.toLowerCase();
+        processed = processed.replace(/\d+(\.\d+)?(\s*\/\s*\d+)?/g, "");
 
-        if (itemWords.length < inventoryWords.length) {
-          return itemWords.every((word) => inventorySet.has(word));
-        } else {
-          return inventoryWords.every((word) => itemSet.has(word));
+        const measurements = [
+          "cup",
+          "cups",
+          "tablespoon",
+          "tablespoons",
+          "tbsp",
+          "teaspoon",
+          "teaspoons",
+          "tsp",
+          "pound",
+          "pounds",
+          "lb",
+          "lbs",
+          "ounce",
+          "ounces",
+          "oz",
+          "gram",
+          "grams",
+          "g",
+          "ml",
+          "milliliter",
+          "milliliters",
+          "pinch",
+          "pinches",
+          "dash",
+          "dashes",
+          "handful",
+          "handfuls",
+          "piece",
+          "pieces",
+          "slice",
+          "slices",
+          "can",
+          "cans",
+          "package",
+          "packages",
+          "bottle",
+          "bottles",
+        ];
+
+        measurements.forEach((measure) => {
+          const measureRegex = new RegExp(`\\b${measure}s?\\b`, "g");
+          processed = processed.replace(measureRegex, "");
+        });
+
+        const connectors = [
+          "of",
+          "the",
+          "a",
+          "an",
+          "fresh",
+          "chopped",
+          "diced",
+          "sliced",
+          "minced",
+          "ground",
+          "frozen",
+          "canned",
+          "dried",
+          "raw",
+          "cooked",
+        ];
+
+        connectors.forEach((connector) => {
+          const connectorRegex = new RegExp(`\\b${connector}\\b`, "g");
+          processed = processed.replace(connectorRegex, "");
+        });
+
+        return processed.replace(/[.,]|(\s+)/g, " ").trim();
+      };
+
+      const doIngredientsMatch = (cleanedItem, cleanedInventoryItem) => {
+        const itemWords = cleanedItem.split(" ");
+        const inventoryWords = cleanedInventoryItem.split(" ");
+
+        // Case 1: If either is a single generic word (e.g., just "milk"),
+        // match it with any ingredient containing that word
+        if (
+          itemWords.length === 1 &&
+          genericIngredientWords.has(itemWords[0])
+        ) {
+          return inventoryWords.includes(itemWords[0]);
         }
-      }
+        if (
+          inventoryWords.length === 1 &&
+          genericIngredientWords.has(inventoryWords[0])
+        ) {
+          return itemWords.includes(inventoryWords[0]);
+        }
 
-      // Case 3: For all other cases, match on non-generic words
-      const itemNonGenericWords = itemWords.filter(
-        (word) => !genericIngredientWords.has(word)
-      );
-      const inventoryNonGenericWords = inventoryWords.filter(
-        (word) => !genericIngredientWords.has(word)
-      );
+        // Case 2: For multi-word items, check if one item is a subset of the other
+        const commonGenericWords = itemWords.filter(
+          (word) =>
+            genericIngredientWords.has(word) && inventoryWords.includes(word)
+        );
 
-      return itemNonGenericWords.some((word) =>
-        inventoryNonGenericWords.includes(word)
-      );
-    };
+        if (commonGenericWords.length > 0) {
+          const itemSet = new Set(itemWords);
+          const inventorySet = new Set(inventoryWords);
 
-    const extractQuantity = (original) => {
-      const match = original.match(/\d+(\.\d+)?(\s*\/\s*\d+)?/);
-      if (!match) return 1;
+          if (itemWords.length < inventoryWords.length) {
+            return itemWords.every((word) => inventorySet.has(word));
+          } else {
+            return inventoryWords.every((word) => itemSet.has(word));
+          }
+        }
 
-      const numStr = match[0];
-      if (numStr.includes("/")) {
-        const [num, denom] = numStr.split("/").map((n) => parseFloat(n.trim()));
-        return num / denom;
-      }
-      return parseFloat(numStr);
-    };
+        // Case 3: For all other cases, match on non-generic words
+        const itemNonGenericWords = itemWords.filter(
+          (word) => !genericIngredientWords.has(word)
+        );
+        const inventoryNonGenericWords = inventoryWords.filter(
+          (word) => !genericIngredientWords.has(word)
+        );
 
-    const ingredients = recipe.ingredients.map((ingredient) => {
-      const parsedName = extractItemName(ingredient);
-      const parsedQuantity = extractQuantity(ingredient);
+        return itemNonGenericWords.some((word) =>
+          inventoryNonGenericWords.includes(word)
+        );
+      };
 
-      // Look for match in inventory using our improved matching logic
-      const inventoryMatch = inventory.find((item) => {
-        const inventoryName = extractItemName(item.item_name);
-        return doIngredientsMatch(parsedName, inventoryName);
-      });
+      const extractQuantity = (original) => {
+        const match = original.match(/\d+(\.\d+)?(\s*\/\s*\d+)?/);
+        if (!match) return 1;
 
-      if (inventoryMatch) {
+        const numStr = match[0];
+        if (numStr.includes("/")) {
+          const [num, denom] = numStr
+            .split("/")
+            .map((n) => parseFloat(n.trim()));
+          return num / denom;
+        }
+        return parseFloat(numStr);
+      };
+
+      const ingredients = recipe.ingredients.map((ingredient) => {
+        const parsedName = extractItemName(ingredient);
+        const parsedQuantity = extractQuantity(ingredient);
+
+        // Look for match in inventory using our improved matching logic
+        const inventoryMatch = inventory.find((item) => {
+          const inventoryName = extractItemName(item.item_name);
+          return doIngredientsMatch(parsedName, inventoryName);
+        });
+
+        if (inventoryMatch) {
+          return {
+            original: ingredient,
+            parsed: {
+              quantity: parsedQuantity,
+              name: inventoryMatch.item_name,
+            },
+            status: {
+              type: "in-inventory",
+              hasEnough: inventoryMatch.quantity >= parsedQuantity,
+              available: {
+                quantity: inventoryMatch.quantity,
+                id: inventoryMatch.id,
+              },
+            },
+          };
+        }
+
         return {
           original: ingredient,
           parsed: {
             quantity: parsedQuantity,
-            name: inventoryMatch.item_name,
+            name: parsedName,
           },
           status: {
-            type: "in-inventory",
-            hasEnough: inventoryMatch.quantity >= parsedQuantity,
-            available: {
-              quantity: inventoryMatch.quantity,
-              id: inventoryMatch.id,
-            },
+            type: "missing",
+            hasEnough: false,
           },
         };
-      }
+      });
 
-      return {
-        original: ingredient,
-        parsed: {
-          quantity: parsedQuantity,
-          name: parsedName,
-        },
-        status: {
-          type: "missing",
-          hasEnough: false,
-        },
-      };
-    });
-
-    res.json({
-      ...recipe,
-      ingredients,
-    });
-  } catch (error) {
-    console.error("Recipe analysis error:", error);
-    res.status(500).json({
-      error: "Failed to analyze recipe",
-      details: error.message,
-    });
+      res.json({
+        ...recipe,
+        ingredients,
+      });
+    } catch (error) {
+      console.error("Recipe analysis error:", error);
+      res.status(500).json({
+        error: "Failed to analyze recipe",
+        details: error.message,
+      });
+    }
   }
-});
+);
 
-router.put("/myrecipes/:id", authMiddleware, async (req, res) => {
-  try {
-    const userId = req.user.id;
-    const recipeId = parseInt(req.params.id);
-    const {
-      title,
-      prepTime,
-      cookTime,
-      servings,
-      ingredients,
-      instructions,
-      nutritionalInfo,
-      mealType,
-    } = req.body;
+router.put(
+  "/myrecipes/:id",
+  [authMiddleware, checkPaywall],
+  async (req, res) => {
+    try {
+      const userId = req.user.id;
+      const recipeId = parseInt(req.params.id);
+      const {
+        title,
+        prepTime,
+        cookTime,
+        servings,
+        ingredients,
+        instructions,
+        nutritionalInfo,
+        mealType,
+      } = req.body;
 
-    // Start transaction
-    await pool.query("BEGIN");
+      // Start transaction
+      await pool.query("BEGIN");
 
-    // Check for meal plan
-    const mealPlanResult = await pool.query(
-      "SELECT meals FROM meal_plans WHERE user_id = $1",
-      [userId]
-    );
+      // Check for meal plan
+      const mealPlanResult = await pool.query(
+        "SELECT meals FROM meal_plans WHERE user_id = $1",
+        [userId]
+      );
 
-    // If meal plan exists, update any matching recipes
-    if (mealPlanResult.rows.length > 0) {
-      const meals = mealPlanResult.rows[0].meals;
+      // If meal plan exists, update any matching recipes
+      if (mealPlanResult.rows.length > 0) {
+        const meals = mealPlanResult.rows[0].meals;
 
-      // Check each day and meal for the recipe ID
-      for (const date in meals) {
-        for (const mealTime of ["breakfast", "lunch", "dinner"]) {
-          if (meals[date][mealTime].recipeId === recipeId) {
-            // Update recipe details while preserving isNew and recipeId
-            meals[date][mealTime] = {
-              ...meals[date][mealTime],
-              title,
-              prepTime,
-              cookTime,
-              servings,
-              ingredients,
-              instructions,
-              nutritionalInfo,
-              mealType,
-              // isNew and recipeId remain unchanged
-            };
+        // Check each day and meal for the recipe ID
+        for (const date in meals) {
+          for (const mealTime of ["breakfast", "lunch", "dinner"]) {
+            if (meals[date][mealTime].recipeId === recipeId) {
+              // Update recipe details while preserving isNew and recipeId
+              meals[date][mealTime] = {
+                ...meals[date][mealTime],
+                title,
+                prepTime,
+                cookTime,
+                servings,
+                ingredients,
+                instructions,
+                nutritionalInfo,
+                mealType,
+                // isNew and recipeId remain unchanged
+              };
+            }
           }
         }
+
+        // Update meal plan
+        await pool.query(
+          "UPDATE meal_plans SET meals = $1 WHERE user_id = $2",
+          [meals, userId]
+        );
       }
 
-      // Update meal plan
-      await pool.query("UPDATE meal_plans SET meals = $1 WHERE user_id = $2", [
-        meals,
-        userId,
-      ]);
-    }
-
-    // Update the recipe
-    const result = await pool.query(
-      `UPDATE recipes 
+      // Update the recipe
+      const result = await pool.query(
+        `UPDATE recipes 
    SET title = $1, 
        prep_time = $2, 
        cook_time = $3, 
@@ -806,111 +827,116 @@ router.put("/myrecipes/:id", authMiddleware, async (req, res) => {
        nutritional_info = $7,
        meal_type = $8 WHERE id = $9 AND user_id = $10
    RETURNING *`,
-      [
-        title,
-        prepTime,
-        cookTime,
-        servings,
-        ingredients,
-        instructions,
-        nutritionalInfo,
-        mealType,
-        recipeId,
-        userId,
-      ]
-    );
+        [
+          title,
+          prepTime,
+          cookTime,
+          servings,
+          ingredients,
+          instructions,
+          nutritionalInfo,
+          mealType,
+          recipeId,
+          userId,
+        ]
+      );
 
-    if (result.rows.length === 0) {
-      await pool.query("ROLLBACK");
-      return res.status(404).json({ message: "Recipe not found" });
-    }
-
-    await pool.query("COMMIT");
-    res.json(result.rows[0]);
-  } catch (error) {
-    await pool.query("ROLLBACK");
-    console.error("Error updating recipe:", error);
-    res.status(500).json({
-      message: "Error updating recipe",
-      error: error.message,
-    });
-  }
-});
-
-// recipeRoutes.js
-router.delete("/myrecipes/:id", authMiddleware, async (req, res) => {
-  try {
-    const userId = req.user.id;
-    const recipeId = parseInt(req.params.id);
-
-    // Start a transaction
-    await pool.query("BEGIN");
-
-    // Check if meal plan exists
-    const mealPlanResult = await pool.query(
-      "SELECT meals FROM meal_plans WHERE user_id = $1",
-      [userId]
-    );
-
-    // If meal plan exists, process it
-    if (mealPlanResult.rows.length > 0) {
-      const meals = mealPlanResult.rows[0].meals; // meals is already a JS object
-
-      // Check each day and meal for the recipe ID
-      for (const date in meals) {
-        for (const mealTime of ["breakfast", "lunch", "dinner"]) {
-          if (meals[date][mealTime].recipeId === recipeId) {
-            meals[date][mealTime] = {
-              title: meals[date][mealTime].title,
-              prepTime: meals[date][mealTime].prepTime,
-              cookTime: meals[date][mealTime].cookTime,
-              servings: meals[date][mealTime].servings,
-              ingredients: meals[date][mealTime].ingredients,
-              instructions: meals[date][mealTime].instructions,
-              nutritionalInfo: meals[date][mealTime].nutritionalInfo,
-              mealType: meals[date][mealTime].mealType,
-              recipeId: null,
-              isNew: true,
-            };
-          }
-        }
+      if (result.rows.length === 0) {
+        await pool.query("ROLLBACK");
+        return res.status(404).json({ message: "Recipe not found" });
       }
 
-      // Update the meal plan with modified meals
-      await pool.query(
-        "UPDATE meal_plans SET meals = $1 WHERE user_id = $2",
-        [meals, userId] // PostgreSQL will handle the JSON conversion
-      );
-    }
-
-    // Delete the recipe
-    const deleteResult = await pool.query(
-      "DELETE FROM recipes WHERE id = $1 AND user_id = $2 RETURNING id",
-      [recipeId, userId]
-    );
-
-    if (deleteResult.rows.length === 0) {
+      await pool.query("COMMIT");
+      res.json(result.rows[0]);
+    } catch (error) {
       await pool.query("ROLLBACK");
-      return res.status(404).json({ message: "Recipe not found" });
+      console.error("Error updating recipe:", error);
+      res.status(500).json({
+        message: "Error updating recipe",
+        error: error.message,
+      });
     }
-
-    // Commit the transaction
-    await pool.query("COMMIT");
-
-    res.json({ message: "Recipe deleted successfully" });
-  } catch (error) {
-    await pool.query("ROLLBACK");
-    console.error("Error deleting recipe:", error);
-    res.status(500).json({
-      message: "Error deleting recipe",
-      error: error.message,
-    });
   }
-});
+);
+
+// recipeRoutes.js
+router.delete(
+  "/myrecipes/:id",
+  [authMiddleware, checkPaywall],
+  async (req, res) => {
+    try {
+      const userId = req.user.id;
+      const recipeId = parseInt(req.params.id);
+
+      // Start a transaction
+      await pool.query("BEGIN");
+
+      // Check if meal plan exists
+      const mealPlanResult = await pool.query(
+        "SELECT meals FROM meal_plans WHERE user_id = $1",
+        [userId]
+      );
+
+      // If meal plan exists, process it
+      if (mealPlanResult.rows.length > 0) {
+        const meals = mealPlanResult.rows[0].meals; // meals is already a JS object
+
+        // Check each day and meal for the recipe ID
+        for (const date in meals) {
+          for (const mealTime of ["breakfast", "lunch", "dinner"]) {
+            if (meals[date][mealTime].recipeId === recipeId) {
+              meals[date][mealTime] = {
+                title: meals[date][mealTime].title,
+                prepTime: meals[date][mealTime].prepTime,
+                cookTime: meals[date][mealTime].cookTime,
+                servings: meals[date][mealTime].servings,
+                ingredients: meals[date][mealTime].ingredients,
+                instructions: meals[date][mealTime].instructions,
+                nutritionalInfo: meals[date][mealTime].nutritionalInfo,
+                mealType: meals[date][mealTime].mealType,
+                recipeId: null,
+                isNew: true,
+              };
+            }
+          }
+        }
+
+        // Update the meal plan with modified meals
+        await pool.query(
+          "UPDATE meal_plans SET meals = $1 WHERE user_id = $2",
+          [meals, userId] // PostgreSQL will handle the JSON conversion
+        );
+      }
+
+      // Delete the recipe
+      const deleteResult = await pool.query(
+        "DELETE FROM recipes WHERE id = $1 AND user_id = $2 RETURNING id",
+        [recipeId, userId]
+      );
+
+      if (deleteResult.rows.length === 0) {
+        await pool.query("ROLLBACK");
+        return res.status(404).json({ message: "Recipe not found" });
+      }
+
+      // Commit the transaction
+      await pool.query("COMMIT");
+
+      res.json({ message: "Recipe deleted successfully" });
+    } catch (error) {
+      await pool.query("ROLLBACK");
+      console.error("Error deleting recipe:", error);
+      res.status(500).json({
+        message: "Error deleting recipe",
+        error: error.message,
+      });
+    }
+  }
+);
 
 router.post(
   "/scrape-recipe",
-  [authMiddleware, checkAiActions],
+  [authMiddleware, checkAiActions, checkPaywall],
   async (req, res) => {
     try {
       const userId = req.user.id;
@@ -1014,7 +1040,7 @@ router.post(
 
 router.post(
   "/ocr-recipe",
-  [authMiddleware, checkAiActions],
+  [authMiddleware, checkAiActions, checkPaywall],
   async (req, res) => {
     try {
       const userId = req.user.id;

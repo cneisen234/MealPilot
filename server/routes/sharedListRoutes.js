@@ -1,35 +1,41 @@
 // sharedListRoutes.js
 const express = require("express");
 const router = express.Router();
+const checkPaywall = require("../middleware/checkPaywall");
+const authMiddleware = require("../middleware/auth");
 const pool = require("../db");
 
 // Create shared list
-router.post("/create/:shareid", async (req, res) => {
-  try {
-    const shareId = req.params.shareid;
+router.post(
+  "/create/:shareid",
+  [authMiddleware, checkPaywall],
+  async (req, res) => {
+    try {
+      const shareId = req.params.shareid;
 
-    // Set expiration to exactly 24 hours from now
-    const expirationTime = new Date();
-    expirationTime.setHours(expirationTime.getHours() + 24);
+      // Set expiration to exactly 24 hours from now
+      const expirationTime = new Date();
+      expirationTime.setHours(expirationTime.getHours() + 24);
 
-    await pool.query(
-      `INSERT INTO shared_lists (share_id, items, expires_at) 
+      await pool.query(
+        `INSERT INTO shared_lists (share_id, items, expires_at) 
        VALUES ($1, $2, $3)`,
-      [shareId, req.body.items, expirationTime]
-    );
+        [shareId, req.body.items, expirationTime]
+      );
 
-    // Set up a cleanup task to delete this specific list after 24 hours
-    setTimeout(async () => {
-      await pool.query("DELETE FROM shared_lists WHERE share_id = $1", [
-        shareId,
-      ]);
-    }, 24 * 60 * 60 * 1000);
-    res.sendStatus(200);
-  } catch (error) {
-    console.error("Error creating shared list:", error);
-    res.status(500).json({ message: "Server error" });
+      // Set up a cleanup task to delete this specific list after 24 hours
+      setTimeout(async () => {
+        await pool.query("DELETE FROM shared_lists WHERE share_id = $1", [
+          shareId,
+        ]);
+      }, 24 * 60 * 60 * 1000);
+      res.sendStatus(200);
+    } catch (error) {
+      console.error("Error creating shared list:", error);
+      res.status(500).json({ message: "Server error" });
+    }
   }
-});
+);
 
 // Get shared list by ID
 router.get("/get/:shareId", async (req, res) => {

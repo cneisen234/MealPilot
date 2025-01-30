@@ -1,12 +1,13 @@
 const express = require("express");
 const router = express.Router();
 const authMiddleware = require("../middleware/auth");
+const checkPaywall = require("../middleware/checkPaywall");
 const cleanAIResponse = require("../cleanAiResponse");
 const pool = require("../db");
 const openai = require("../openai");
 
 // Get current meal plan
-router.get("/current", authMiddleware, async (req, res) => {
+router.get("/current", [authMiddleware, checkPaywall], async (req, res) => {
   try {
     const userId = req.user.id;
 
@@ -49,7 +50,7 @@ function formatRecipeForMealPlan(recipe, isGlobal) {
   };
 }
 
-router.post("/generate", authMiddleware, async (req, res) => {
+router.post("/generate", [authMiddleware, checkPaywall], async (req, res) => {
   try {
     const userId = req.user.id;
 
@@ -210,7 +211,7 @@ Nutritional Information:
 
         try {
           const completion = await openai.chat.completions.create({
-            model: "deepseek-reasoner",
+            model: "deepseek-chat",
             messages: [{ role: "user", content: prompt }],
             max_tokens: 1000,
             temperature: 0.7,
@@ -373,7 +374,7 @@ Nutritional Information:
   }
 });
 
-router.post("/update", authMiddleware, async (req, res) => {
+router.post("/update", [authMiddleware, checkPaywall], async (req, res) => {
   try {
     const userId = req.user.id;
     const { date, mealType, recipeId } = req.body;
@@ -439,7 +440,7 @@ router.post("/update", authMiddleware, async (req, res) => {
 });
 
 // Delete meal plan endpoint
-router.delete("/current", authMiddleware, async (req, res) => {
+router.delete("/current", [authMiddleware, checkPaywall], async (req, res) => {
   try {
     const userId = req.user.id;
 

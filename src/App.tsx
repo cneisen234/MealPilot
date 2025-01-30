@@ -31,6 +31,7 @@ import { Elements } from "@stripe/react-stripe-js";
 import { loadStripe } from "@stripe/stripe-js";
 import { ToastContainer } from "./components/common/Toast";
 import { ToastProvider } from "./context/ToastContext";
+import PaywallGuard from "./components/paywall/PaywallGuard";
 
 const AppContent: React.FC = () => {
   const { isAuthenticated, checkAuthStatus } = useAuth();
@@ -57,6 +58,7 @@ const AppContent: React.FC = () => {
             padding: "10px",
           }}>
           <Routes>
+            {/* Public routes */}
             <Route
               path="/"
               element={
@@ -77,32 +79,12 @@ const AppContent: React.FC = () => {
             />
             <Route path="/forgot-password" element={<ForgotPassword />} />
             <Route path="/reset-password/:token" element={<ResetPassword />} />
-            <Route path="/close-account" element={<CloseAccount />} />
             <Route
-              path="/recipe"
-              element={<PrivateRoute element={<Recipe />} />}
+              path="/share/shopping-list/:id"
+              element={<ShareableListPage />}
             />
-            <Route path="/myrecipes" element={<MyRecipes />} />
-            <Route
-              path="/myrecipes/:id"
-              element={<PrivateRoute element={<RecipeDetail />} />}
-            />
-            <Route
-              path="/recipe/create"
-              element={<PrivateRoute element={<CreateRecipe />} />}
-            />
-            <Route
-              path="/mealplan"
-              element={<PrivateRoute element={<MealPlan />} />}
-            />
-            <Route
-              path="/inventory"
-              element={<PrivateRoute element={<Inventory />} />}
-            />
-            <Route
-              path="/shopping-list"
-              element={<PrivateRoute element={<ShoppingList />} />}
-            />
+
+            {/* Account settings is accessible without paywall */}
             <Route
               path="/account-settings"
               element={
@@ -115,13 +97,69 @@ const AppContent: React.FC = () => {
                 />
               }
             />
+
+            {/* Protected routes behind paywall */}
             <Route
-              path="/referral-program"
-              element={<PrivateRoute element={<ReferralProgram />} />}
+              path="/recipe"
+              element={
+                <PrivateRoute element={<PaywallGuard element={<Recipe />} />} />
+              }
             />
             <Route
-              path="/share/shopping-list/:id"
-              element={<ShareableListPage />}
+              path="/myrecipes"
+              element={
+                <PrivateRoute
+                  element={<PaywallGuard element={<MyRecipes />} />}
+                />
+              }
+            />
+            <Route
+              path="/myrecipes/:id"
+              element={
+                <PrivateRoute
+                  element={<PaywallGuard element={<RecipeDetail />} />}
+                />
+              }
+            />
+            <Route
+              path="/recipe/create"
+              element={
+                <PrivateRoute
+                  element={<PaywallGuard element={<CreateRecipe />} />}
+                />
+              }
+            />
+            <Route
+              path="/mealplan"
+              element={
+                <PrivateRoute
+                  element={<PaywallGuard element={<MealPlan />} />}
+                />
+              }
+            />
+            <Route
+              path="/inventory"
+              element={
+                <PrivateRoute
+                  element={<PaywallGuard element={<Inventory />} />}
+                />
+              }
+            />
+            <Route
+              path="/shopping-list"
+              element={
+                <PrivateRoute
+                  element={<PaywallGuard element={<ShoppingList />} />}
+                />
+              }
+            />
+            <Route
+              path="/referral-program"
+              element={
+                <PrivateRoute
+                  element={<PaywallGuard element={<ReferralProgram />} />}
+                />
+              }
             />
           </Routes>
         </main>

@@ -10,7 +10,7 @@ router.get("/status", authMiddleware, async (req, res) => {
   try {
     const result = await pool.query(
       `SELECT stripe_customer_id, stripe_payment_method_id, 
-       stripe_subscription_id, has_subscription 
+       stripe_subscription_id, has_subscription, admin, trial_end_date
        FROM users WHERE id = $1`,
       [req.user.id]
     );
@@ -21,6 +21,7 @@ router.get("/status", authMiddleware, async (req, res) => {
 
     const user = result.rows[0];
     let paymentMethod = null;
+    let subscription = null;
 
     if (user.stripe_payment_method_id) {
       paymentMethod = await stripe.paymentMethods.retrieve(
@@ -28,9 +29,18 @@ router.get("/status", authMiddleware, async (req, res) => {
       );
     }
 
+    if (user.stripe_subscription_id) {
+      subscription = await stripe.subscriptions.retrieve(
+        user.stripe_subscription_id
+      );
+    }
+
     res.json({
       hasPaymentMethod: !!user.stripe_payment_method_id,
       hasSubscription: user.has_subscription,
+      admin: user.admin,
+      trialEndDate: user.trial_end_date,
+      cancelAtPeriodEnd: subscription?.cancel_at_period_end || false,
       paymentMethod: paymentMethod
         ? {
             brand: paymentMethod.card.brand,
@@ -133,6 +143,35 @@ router.post("/subscribe", authMiddleware, async (req, res) => {
 
     const user = userResult.rows[0];
 
+    if (user.stripe_subscription_id) {
+      try {
+        const existingSubscription = await stripe.subscriptions.retrieve(
+          user.stripe_subscription_id
+        );
+
+        // If subscription exists and is still valid, delete it
+        if (existingSubscription) {
+          // Update user record to clear the old subscription
+          await pool.query(
+            `UPDATE users 
+             SET stripe_subscription_id = NULL,
+                 subscription_updated_at = NOW()
+             WHERE id = $1`,
+            [req.user.id]
+          );
+        }
+      } catch (error) {
+        // If error is because subscription doesn't exist, we can proceed
+        if (error.code !== "resource_missing") {
+          console.error("Error handling existing subscription:", error);
+          await pool.query("ROLLBACK");
+          return res.status(500).json({
+            message: "Error handling existing subscription",
+          });
+        }
+      }
+    }
+
     if (!user.stripe_customer_id) {
       await pool.query("ROLLBACK");
       return res.status(400).json({
@@ -161,18 +200,6 @@ router.post("/subscribe", authMiddleware, async (req, res) => {
           .status(500)
           .json({ message: "Error checking subscription status" });
       }
-
-      // If the existing subscription is canceled, proceed with resubscription
-      if (existingSubscription.status === "canceled") {
-        console.log(
-          "Existing subscription is canceled, allowing resubscription."
-        );
-      } else if (existingSubscription.status === "active") {
-        await pool.query("ROLLBACK");
-        return res.status(400).json({
-          message: "You already have an active subscription",
-        });
-      }
     }
 
     // Set up subscription parameters
@@ -181,7 +208,6 @@ router.post("/subscribe", authMiddleware, async (req, res) => {
     let subscriptionParams = {
       customer: user.stripe_customer_id,
       items: [{ price: process.env.STRIPE_PRICE_ID }],
-      payment_behavior: "default_incomplete",
       expand: ["latest_invoice.payment_intent"],
     };
 
@@ -331,24 +357,6 @@ router.post("/cancel-subscription", authMiddleware, async (req, res) => {
       stripe_subscription_id
     );
 
-    // If the subscription is already canceled in Stripe
-    if (subscription.status === "canceled") {
-      // Update the database to reflect the canceled status
-      await pool.query(
-        `UPDATE users 
-         SET has_subscription = false,
-             stripe_subscription_id = NULL,
-             subscription_updated_at = NOW() 
-         WHERE id = $1`,
-        [req.user.id]
-      );
-
-      await pool.query("ROLLBACK");
-      return res.status(400).json({
-        message: "Your subscription has already been canceled",
-      });
-    }
-
     // Get the end date of the current period for the email
     const periodEnd = new Date(subscription.current_period_end * 1000);
     const formattedEndDate = periodEnd.toLocaleDateString("en-US", {
@@ -426,16 +434,6 @@ router.post("/cancel-subscription", authMiddleware, async (req, res) => {
       html: adminCancellationHtml,
       text: `Subscription canceled - Name: ${user.name}, Email: ${user.email}, Subscription ID: ${stripe_subscription_id}, Access until: ${formattedEndDate}`,
     });
-
-    // Update the user's subscription status in the database
-    await pool.query(
-      `UPDATE users 
-       SET has_subscription = false,
-           stripe_subscription_id = NULL,
-           subscription_updated_at = NOW() 
-       WHERE id = $1`,
-      [req.user.id]
-    );
 
     await pool.query("COMMIT");
     res.json({ success: true, message: "Subscription canceled successfully" });

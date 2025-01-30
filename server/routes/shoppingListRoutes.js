@@ -2,6 +2,7 @@ const express = require("express");
 const router = express.Router();
 const authMiddleware = require("../middleware/auth");
 const checkAiActions = require("../middleware/aiActions");
+const checkPaywall = require("../middleware/checkPaywall");
 const openai = require("../openai");
 const pool = require("../db");
 const vision = require("@google-cloud/vision");
@@ -14,7 +15,7 @@ const client = new vision.ImageAnnotatorClient({
 });
 
 // Get all shopping list items for the logged-in user
-router.get("/", authMiddleware, async (req, res) => {
+router.get("/", [authMiddleware, checkPaywall], async (req, res) => {
   try {
     const userId = req.user.id;
     const result = await pool.query(
@@ -154,7 +155,7 @@ router.post("/", authMiddleware, async (req, res) => {
   }
 });
 
-router.put("/:id", authMiddleware, async (req, res) => {
+router.put("/:id", [authMiddleware, checkPaywall], async (req, res) => {
   try {
     const userId = req.user.id;
     const itemId = req.params.id;
@@ -243,7 +244,7 @@ router.put("/:id", authMiddleware, async (req, res) => {
 });
 
 // Delete a shopping list item
-router.put("/delete/:id", authMiddleware, async (req, res) => {
+router.put("/delete/:id", [authMiddleware, checkPaywall], async (req, res) => {
   try {
     const userId = req.user.id;
     const itemId = req.params.id;
@@ -306,92 +307,97 @@ const determineExpirationDate = (existingDate, newDate) => {
 };
 
 // Add item to inventory and delete from shopping list
-router.post("/:id/move-to-inventory", authMiddleware, async (req, res) => {
-  try {
-    const userId = req.user.id;
-    const itemId = req.params.id;
-    let { expiration_date } = req.body;
-    // Check current count plus new items won't exceed limit
-    const currentCount = await pool.query(
-      "SELECT COUNT(*) FROM inventory WHERE user_id = $1",
-      [userId]
-    );
-
-    if (currentCount.rows[0].count > 200) {
-      return res.status(400).json({
-        message:
-          "Adding these items would exceed the inventory limit of 200 items.",
-      });
-    }
-
-    if (expiration_date === "") {
-      expiration_date = null;
-    }
-
-    await pool.query("BEGIN");
-
-    // Get shopping list item
-    const shoppingItem = await pool.query(
-      "SELECT * FROM shopping_list WHERE id = $1 AND user_id = $2",
-      [itemId, userId]
-    );
-
-    if (shoppingItem.rows.length === 0) {
-      await pool.query("ROLLBACK");
-      return res.status(404).json({ message: "Item not found" });
-    }
-
-    const item = shoppingItem.rows[0];
-
-    // Check for existing inventory item
-    const existingItem = await pool.query(
-      "SELECT id, quantity, expiration_date FROM inventory WHERE user_id = $1 AND LOWER(item_name) = LOWER($2)",
-      [userId, item.item_name]
-    );
-
-    if (existingItem.rows.length > 0) {
-      const currentItem = existingItem.rows[0];
-
-      // Determine which expiration date to use
-      const finalExpirationDate = determineExpirationDate(
-        currentItem.expiration_date,
-        expiration_date
+router.post(
+  "/:id/move-to-inventory",
+  [authMiddleware, checkPaywall],
+  async (req, res) => {
+    try {
+      const userId = req.user.id;
+      const itemId = req.params.id;
+      let { expiration_date } = req.body;
+      // Check current count plus new items won't exceed limit
+      const currentCount = await pool.query(
+        "SELECT COUNT(*) FROM inventory WHERE user_id = $1",
+        [userId]
       );
 
-      // Add quantities
-      const newQuantity = Number(item.quantity) + Number(currentItem.quantity);
+      if (currentCount.rows[0].count > 200) {
+        return res.status(400).json({
+          message:
+            "Adding these items would exceed the inventory limit of 200 items.",
+        });
+      }
 
-      // Update existing inventory item
-      await pool.query(
-        `UPDATE inventory 
+      if (expiration_date === "") {
+        expiration_date = null;
+      }
+
+      await pool.query("BEGIN");
+
+      // Get shopping list item
+      const shoppingItem = await pool.query(
+        "SELECT * FROM shopping_list WHERE id = $1 AND user_id = $2",
+        [itemId, userId]
+      );
+
+      if (shoppingItem.rows.length === 0) {
+        await pool.query("ROLLBACK");
+        return res.status(404).json({ message: "Item not found" });
+      }
+
+      const item = shoppingItem.rows[0];
+
+      // Check for existing inventory item
+      const existingItem = await pool.query(
+        "SELECT id, quantity, expiration_date FROM inventory WHERE user_id = $1 AND LOWER(item_name) = LOWER($2)",
+        [userId, item.item_name]
+      );
+
+      if (existingItem.rows.length > 0) {
+        const currentItem = existingItem.rows[0];
+
+        // Determine which expiration date to use
+        const finalExpirationDate = determineExpirationDate(
+          currentItem.expiration_date,
+          expiration_date
+        );
+
+        // Add quantities
+        const newQuantity =
+          Number(item.quantity) + Number(currentItem.quantity);
+
+        // Update existing inventory item
+        await pool.query(
+          `UPDATE inventory 
          SET quantity = $1, expiration_date = $2, updated_at = NOW()
          WHERE id = $3`,
-        [newQuantity, finalExpirationDate, currentItem.id]
-      );
-    } else {
-      // Add new inventory item
-      await pool.query(
-        `INSERT INTO inventory (user_id, item_name, quantity, expiration_date) 
+          [newQuantity, finalExpirationDate, currentItem.id]
+        );
+      } else {
+        // Add new inventory item
+        await pool.query(
+          `INSERT INTO inventory (user_id, item_name, quantity, expiration_date) 
          VALUES ($1, $2, $3, $4)`,
-        [userId, item.item_name, item.quantity, expiration_date]
-      );
+          [userId, item.item_name, item.quantity, expiration_date]
+        );
+      }
+
+      // Delete from shopping list
+      await pool.query("DELETE FROM shopping_list WHERE id = $1", [itemId]);
+
+      await pool.query("COMMIT");
+      res.json({ message: "Item moved to inventory successfully" });
+    } catch (error) {
+      await pool.query("ROLLBACK");
+      console.error("Error moving item to inventory:", error);
+      res.status(500).json({ message: "Server error" });
     }
-
-    // Delete from shopping list
-    await pool.query("DELETE FROM shopping_list WHERE id = $1", [itemId]);
-
-    await pool.query("COMMIT");
-    res.json({ message: "Item moved to inventory successfully" });
-  } catch (error) {
-    await pool.query("ROLLBACK");
-    console.error("Error moving item to inventory:", error);
-    res.status(500).json({ message: "Server error" });
   }
-});
+);
 
 router.post(
   "/:item_name/move-to-inventory-by-name",
-  authMiddleware,
+  [authMiddleware, checkPaywall],
   async (req, res) => {
     try {
       const userId = req.user.id;
@@ -478,7 +484,7 @@ router.post(
 
 router.post(
   "/process-receipt",
-  [authMiddleware, checkAiActions],
+  [authMiddleware, checkAiActions, checkPaywall],
   async (req, res) => {
     try {
       const userId = req.user.id;
@@ -650,7 +656,7 @@ Return a JSON object:
   }
 );
 
-router.post("/bulk-add", authMiddleware, async (req, res) => {
+router.post("/bulk-add", [authMiddleware, checkPaywall], async (req, res) => {
   try {
     const userId = req.user.id;
     const { items } = req.body;
@@ -745,65 +751,68 @@ router.post("/bulk-add", authMiddleware, async (req, res) => {
 
 // Add this route to shoppingListRoutes.js
 
-router.put("/update-by-name/:item_name", authMiddleware, async (req, res) => {
-  try {
-    const userId = req.user.id;
-    const item_name = req.params.item_name;
-    const { quantity, recipe_ids = [] } = req.body;
+router.put(
+  "/update-by-name/:item_name",
+  [authMiddleware, checkPaywall],
+  async (req, res) => {
+    try {
+      const userId = req.user.id;
+      const item_name = req.params.item_name;
+      const { quantity, recipe_ids = [] } = req.body;
 
-    await pool.query("BEGIN");
+      await pool.query("BEGIN");
 
-    // If quantity is 0 or less, delete the item
-    if (Number(quantity) <= 0) {
-      await pool.query(
-        "DELETE FROM shopping_list WHERE user_id = $1 AND LOWER(item_name) = LOWER($2)",
-        [userId, item_name]
-      );
+      // If quantity is 0 or less, delete the item
+      if (Number(quantity) <= 0) {
+        await pool.query(
+          "DELETE FROM shopping_list WHERE user_id = $1 AND LOWER(item_name) = LOWER($2)",
+          [userId, item_name]
+        );
 
-      await pool.query("COMMIT");
-      return res.json({
-        message: "Item removed due to zero or negative quantity",
-      });
-    }
+        await pool.query("COMMIT");
+        return res.json({
+          message: "Item removed due to zero or negative quantity",
+        });
+      }
 
-    // Update the item
-    const result = await pool.query(
-      `UPDATE shopping_list 
+      // Update the item
+      const result = await pool.query(
+        `UPDATE shopping_list 
        SET quantity = $1, updated_at = NOW()
        WHERE user_id = $2 AND LOWER(item_name) = LOWER($3)
        RETURNING *`,
-      [quantity, userId, item_name]
-    );
-
-    if (result.rows.length === 0) {
-      await pool.query("ROLLBACK");
-      return res.status(404).json({ message: "Item not found" });
-    }
-
-    // Update recipe associations
-    if (recipe_ids.length > 0) {
-      // First remove old associations
-      await pool.query(
-        "DELETE FROM shopping_list_recipes WHERE shopping_list_item_id = $1",
-        [result.rows[0].id]
+        [quantity, userId, item_name]
       );
 
-      // Add new associations
-      const values = recipe_ids
-        .map((recipe_id) => `(${result.rows[0].id}, ${recipe_id})`)
-        .join(", ");
+      if (result.rows.length === 0) {
+        await pool.query("ROLLBACK");
+        return res.status(404).json({ message: "Item not found" });
+      }
 
-      await pool.query(`
+      // Update recipe associations
+      if (recipe_ids.length > 0) {
+        // First remove old associations
+        await pool.query(
+          "DELETE FROM shopping_list_recipes WHERE shopping_list_item_id = $1",
+          [result.rows[0].id]
+        );
+
+        // Add new associations
+        const values = recipe_ids
+          .map((recipe_id) => `(${result.rows[0].id}, ${recipe_id})`)
+          .join(", ");
+
+        await pool.query(`
         INSERT INTO shopping_list_recipes (shopping_list_item_id, recipe_id)
         VALUES ${values}
       `);
-    }
+      }
 
-    await pool.query("COMMIT");
+      await pool.query("COMMIT");
 
-    // Fetch updated item with recipes
-    const updatedResult = await pool.query(
-      `
+      // Fetch updated item with recipes
+      const updatedResult = await pool.query(
+        `
       SELECT 
         sl.*,
         ARRAY_AGG(JSONB_BUILD_OBJECT(
@@ -816,19 +825,20 @@ router.put("/update-by-name/:item_name", authMiddleware, async (req, res) => {
       WHERE sl.id = $1
       GROUP BY sl.id
     `,
-      [result.rows[0].id]
-    );
+        [result.rows[0].id]
+      );
 
-    res.json(updatedResult.rows[0]);
-  } catch (error) {
-    await pool.query("ROLLBACK");
-    console.error("Error updating shopping list item:", error);
-    res.status(500).json({
-      message: "Server error",
-      error: error.message,
-    });
+      res.json(updatedResult.rows[0]);
+    } catch (error) {
+      await pool.query("ROLLBACK");
+      console.error("Error updating shopping list item:", error);
+      res.status(500).json({
+        message: "Server error",
+        error: error.message,
+      });
+    }
   }
-});
+);
 
 // Constants for product categories and exclusions
 const PRODUCT_CATEGORIES = [
@@ -861,7 +871,7 @@ const EXCLUSION_CATEGORIES = [
 
 router.post(
   "/analyze-item",
-  [authMiddleware, checkAiActions],
+  [authMiddleware, checkAiActions, checkPaywall],
   async (req, res) => {
     try {
       const userId = req.user.id;
@@ -1072,128 +1082,137 @@ function calculateConfidence(analysis) {
 }
 
 // Add multiple items to shopping list
-router.post("/bulk-add-shopping", authMiddleware, async (req, res) => {
-  try {
-    const userId = req.user.id;
-    const { items } = req.body;
+router.post(
+  "/bulk-add-shopping",
+  [authMiddleware, checkPaywall],
+  async (req, res) => {
+    try {
+      const userId = req.user.id;
+      const { items } = req.body;
 
-    if (!Array.isArray(items) || items.length === 0) {
-      return res.status(400).json({ message: "No items provided" });
-    }
+      if (!Array.isArray(items) || items.length === 0) {
+        return res.status(400).json({ message: "No items provided" });
+      }
 
-    const shoppingListCount = await pool.query(
-      "SELECT COUNT(*) FROM shopping_list WHERE user_id = $1",
-      [userId]
-    );
+      const shoppingListCount = await pool.query(
+        "SELECT COUNT(*) FROM shopping_list WHERE user_id = $1",
+        [userId]
+      );
 
-    if (shoppingListCount.rows[0].count > 200) {
-      return res.status(400).json({
-        message:
-          "Adding these items would exceed the shopping list limit of 200 items.",
+      if (shoppingListCount.rows[0].count > 200) {
+        return res.status(400).json({
+          message:
+            "Adding these items would exceed the shopping list limit of 200 items.",
+        });
+      }
+
+      await pool.query("BEGIN");
+
+      // Process each item
+      for (const item of items) {
+        // Check for existing item with same name
+        const existingItem = await pool.query(
+          "SELECT id, quantity FROM shopping_list WHERE user_id = $1 AND LOWER(item_name) = LOWER($2)",
+          [userId, item.item_name.trim()]
+        );
+
+        if (existingItem.rows.length > 0) {
+          // Update existing item quantity
+          await pool.query(
+            `UPDATE shopping_list 
+           SET quantity = quantity + $1, updated_at = NOW()
+           WHERE id = $2`,
+            [item.quantity, existingItem.rows[0].id]
+          );
+        } else {
+          // Add new item
+          await pool.query(
+            `INSERT INTO shopping_list (user_id, item_name, quantity) 
+           VALUES ($1, $2, $3)`,
+            [userId, item.item_name.trim(), item.quantity]
+          );
+        }
+      }
+
+      await pool.query("COMMIT");
+
+      res.json({
+        message: `Successfully added ${items.length} items to shopping list`,
+        itemsProcessed: items.length,
+      });
+    } catch (error) {
+      await pool.query("ROLLBACK");
+      console.error("Error processing shopping list update:", error);
+      res.status(500).json({
+        message: "Error processing shopping list update",
+        error: error.message,
       });
     }
+  }
+);
 
-    await pool.query("BEGIN");
+router.post(
+  "/from-inventory/:id",
+  [authMiddleware, checkPaywall],
+  async (req, res) => {
+    try {
+      const userId = req.user.id;
+      const itemId = req.params.id;
 
-    // Process each item
-    for (const item of items) {
-      // Check for existing item with same name
+      await pool.query("BEGIN");
+
+      // Get inventory item
+      const inventoryItem = await pool.query(
+        "SELECT * FROM inventory WHERE id = $1 AND user_id = $2",
+        [itemId, userId]
+      );
+
+      if (inventoryItem.rows.length === 0) {
+        await pool.query("ROLLBACK");
+        return res.status(404).json({ message: "Item not found" });
+      }
+
+      const item = inventoryItem.rows[0];
+
+      // Check for existing shopping list item
       const existingItem = await pool.query(
         "SELECT id, quantity FROM shopping_list WHERE user_id = $1 AND LOWER(item_name) = LOWER($2)",
-        [userId, item.item_name.trim()]
+        [userId, item.item_name]
       );
 
       if (existingItem.rows.length > 0) {
-        // Update existing item quantity
+        // Update existing shopping list item
+        const currentItem = existingItem.rows[0];
+        const newQuantity =
+          Number(item.quantity) + Number(currentItem.quantity);
+
+        // Update quantity in shopping list
         await pool.query(
           `UPDATE shopping_list 
-           SET quantity = quantity + $1, updated_at = NOW()
-           WHERE id = $2`,
-          [item.quantity, existingItem.rows[0].id]
-        );
-      } else {
-        // Add new item
-        await pool.query(
-          `INSERT INTO shopping_list (user_id, item_name, quantity) 
-           VALUES ($1, $2, $3)`,
-          [userId, item.item_name.trim(), item.quantity]
-        );
-      }
-    }
-
-    await pool.query("COMMIT");
-
-    res.json({
-      message: `Successfully added ${items.length} items to shopping list`,
-      itemsProcessed: items.length,
-    });
-  } catch (error) {
-    await pool.query("ROLLBACK");
-    console.error("Error processing shopping list update:", error);
-    res.status(500).json({
-      message: "Error processing shopping list update",
-      error: error.message,
-    });
-  }
-});
-
-router.post("/from-inventory/:id", authMiddleware, async (req, res) => {
-  try {
-    const userId = req.user.id;
-    const itemId = req.params.id;
-
-    await pool.query("BEGIN");
-
-    // Get inventory item
-    const inventoryItem = await pool.query(
-      "SELECT * FROM inventory WHERE id = $1 AND user_id = $2",
-      [itemId, userId]
-    );
-
-    if (inventoryItem.rows.length === 0) {
-      await pool.query("ROLLBACK");
-      return res.status(404).json({ message: "Item not found" });
-    }
-
-    const item = inventoryItem.rows[0];
-
-    // Check for existing shopping list item
-    const existingItem = await pool.query(
-      "SELECT id, quantity FROM shopping_list WHERE user_id = $1 AND LOWER(item_name) = LOWER($2)",
-      [userId, item.item_name]
-    );
-
-    if (existingItem.rows.length > 0) {
-      // Update existing shopping list item
-      const currentItem = existingItem.rows[0];
-      const newQuantity = Number(item.quantity) + Number(currentItem.quantity);
-
-      // Update quantity in shopping list
-      await pool.query(
-        `UPDATE shopping_list 
          SET quantity = $1, updated_at = NOW()
          WHERE id = $2`,
-        [newQuantity, currentItem.id]
-      );
-    } else {
-      // Add new shopping list item
-      await pool.query(
-        `INSERT INTO shopping_list (user_id, item_name, quantity) 
+          [newQuantity, currentItem.id]
+        );
+      } else {
+        // Add new shopping list item
+        await pool.query(
+          `INSERT INTO shopping_list (user_id, item_name, quantity) 
          VALUES ($1, $2, $3)`,
-        [userId, item.item_name, item.quantity]
-      );
+          [userId, item.item_name, item.quantity]
+        );
+      }
+
+      // Delete from inventory
+      await pool.query("DELETE FROM inventory WHERE id = $1", [itemId]);
+
+      await pool.query("COMMIT");
+      res.json({ message: "Item moved to shopping list successfully" });
+    } catch (error) {
+      await pool.query("ROLLBACK");
+      console.error("Error moving item to shopping list:", error);
+      res.status(500).json({ message: "Server error" });
     }
-
-    // Delete from inventory
-    await pool.query("DELETE FROM inventory WHERE id = $1", [itemId]);
-
-    await pool.query("COMMIT");
-    res.json({ message: "Item moved to shopping list successfully" });
-  } catch (error) {
-    await pool.query("ROLLBACK");
-    console.error("Error moving item to shopping list:", error);
-    res.status(500).json({ message: "Server error" });
   }
-});
+);
 
 module.exports = router;

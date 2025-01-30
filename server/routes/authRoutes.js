@@ -28,13 +28,75 @@ router.post("/login", async (req, res) => {
       return res.status(401).json({ message: "Invalid email or password" });
     }
 
-    // Generate a JWT token
+    // Define a function to check the user's subscription or trial status
+    const checkUserSubscription = async (user) => {
+      const now = new Date();
+      let hasSubscription = false;
+      let message = "No subscription or trial period";
+
+      // Check if user is admin or has a valid subscription or trial
+      if (user.admin) {
+        hasSubscription = true;
+        message = "Admin access granted";
+      }
+
+      // Check if user is in trial
+      if (!hasSubscription && user.trial_start_date && user.trial_end_date) {
+        const trialEnd = new Date(user.trial_end_date);
+        if (now <= trialEnd) {
+          hasSubscription = true;
+          message = "Trial period active";
+        }
+      }
+
+      // Check if user has an active subscription
+      if (!hasSubscription && user.stripe_subscription_id) {
+        try {
+          const subscription = await stripe.subscriptions.retrieve(
+            user.stripe_subscription_id
+          );
+          if (
+            subscription.status === "active" ||
+            subscription.status === "trialing"
+          ) {
+            hasSubscription = true;
+            message = "Subscription active";
+          } else {
+            // Subscription is inactive, update status
+            await pool.query(
+              "UPDATE users SET has_subscription = false WHERE id = $1",
+              [user.id]
+            );
+            message = "Subscription inactive";
+          }
+        } catch (stripeError) {
+          console.error("Error checking subscription status:", stripeError);
+          message = "Subscription check failed";
+        }
+      }
+
+      // If any of the conditions allow access, update has_subscription
+      if (hasSubscription && user.has_subscription === false) {
+        await pool.query(
+          "UPDATE users SET has_subscription = true WHERE id = $1",
+          [user.id]
+        );
+      }
+
+      return { hasSubscription, message };
+    };
+
+    // Run the subscription check
+    const { hasSubscription } = await checkUserSubscription(user);
+
+    // Generate JWT token
     const token = jwt.sign(
       { userId: user.id, email: user.email.toLowerCase() },
       process.env.JWT_SECRET,
       { expiresIn: "12h" }
     );
-    // Send the response with token and user info, excluding the password
+
+    // Send the response with token and user info, including subscription status
     return res.json({
       message: "Login successful",
       token,
@@ -43,7 +105,7 @@ router.post("/login", async (req, res) => {
         email: user.email.toLowerCase(),
         name: user.name,
         ai_actions: user.ai_actions,
-        has_subscription: user.has_subscription,
+        has_subscription: hasSubscription,
       },
     });
   } catch (error) {

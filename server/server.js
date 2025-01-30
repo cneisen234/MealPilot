@@ -4,7 +4,6 @@ require("dotenv").config();
 const sgMail = require("@sendgrid/mail");
 const cron = require("node-cron");
 const authRoutes = require("./routes/authRoutes");
-const userRoutes = require("./routes/userRoutes");
 const recipeRoutes = require("./routes/recipeRoutes");
 const mealPlanRoutes = require("./routes/mealPlanRoutes");
 const inventoryRoutes = require("./routes/InventoryRoutes");
@@ -40,7 +39,6 @@ sgMail.setApiKey(process.env.SENDGRID_API_KEY);
 
 // Routes
 app.use("/api/auth", authRoutes);
-app.use("/api/users", userRoutes);
 app.use("/api/recipe", recipeRoutes);
 app.use("/api/mealplan", mealPlanRoutes);
 app.use("/api/inventory", inventoryRoutes);

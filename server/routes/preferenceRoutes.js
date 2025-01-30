@@ -2,85 +2,102 @@ const express = require("express");
 const router = express.Router();
 const pool = require("../db");
 const authMiddleware = require("../middleware/auth");
+const checkPaywall = require("../middleware/checkPaywall");
 
 // Get selected meal type
-router.get("/selected-meal-type", authMiddleware, async (req, res) => {
-  try {
-    const userId = req.user.id;
-    const result = await pool.query(
-      "SELECT id, item FROM meal_types WHERE user_id = $1",
-      [userId]
-    );
-    res.json(result.rows);
-  } catch (error) {
-    console.error("Error getting selected meal type:", error);
-    res.status(500).json({ message: "Server error" });
+router.get(
+  "/selected-meal-type",
+  [authMiddleware, checkPaywall],
+  async (req, res) => {
+    try {
+      const userId = req.user.id;
+      const result = await pool.query(
+        "SELECT id, item FROM meal_types WHERE user_id = $1",
+        [userId]
+      );
+      res.json(result.rows);
+    } catch (error) {
+      console.error("Error getting selected meal type:", error);
+      res.status(500).json({ message: "Server error" });
+    }
   }
-});
+);
 
 // Add selected meal type
-router.post("/selected-meal-type", authMiddleware, async (req, res) => {
-  try {
-    const userId = req.user.id;
-    const { item } = req.body;
+router.post(
+  "/selected-meal-type",
+  [authMiddleware, checkPaywall],
+  async (req, res) => {
+    try {
+      const userId = req.user.id;
+      const { item } = req.body;
 
-    // First delete any existing meal type for this user
-    await pool.query("DELETE FROM meal_types WHERE user_id = $1", [userId]);
+      // First delete any existing meal type for this user
+      await pool.query("DELETE FROM meal_types WHERE user_id = $1", [userId]);
 
-    // Then add the new one
-    const result = await pool.query(
-      "INSERT INTO meal_types (user_id, item) VALUES ($1, $2) RETURNING id, item",
-      [userId, item]
-    );
+      // Then add the new one
+      const result = await pool.query(
+        "INSERT INTO meal_types (user_id, item) VALUES ($1, $2) RETURNING id, item",
+        [userId, item]
+      );
 
-    res.status(201).json(result.rows[0]);
-  } catch (error) {
-    console.error("Error adding selected meal type:", error);
-    res.status(500).json({ message: "Server error" });
+      res.status(201).json(result.rows[0]);
+    } catch (error) {
+      console.error("Error adding selected meal type:", error);
+      res.status(500).json({ message: "Server error" });
+    }
   }
-});
+);
 
 // Get selected servings
-router.get("/selected-servings", authMiddleware, async (req, res) => {
-  try {
-    const userId = req.user.id;
-    const result = await pool.query(
-      "SELECT id, item FROM selected_servings WHERE user_id = $1",
-      [userId]
-    );
-    res.json(result.rows);
-  } catch (error) {
-    console.error("Error getting selected servings:", error);
-    res.status(500).json({ message: "Server error" });
+router.get(
+  "/selected-servings",
+  [authMiddleware, checkPaywall],
+  async (req, res) => {
+    try {
+      const userId = req.user.id;
+      const result = await pool.query(
+        "SELECT id, item FROM selected_servings WHERE user_id = $1",
+        [userId]
+      );
+      res.json(result.rows);
+    } catch (error) {
+      console.error("Error getting selected servings:", error);
+      res.status(500).json({ message: "Server error" });
+    }
   }
-});
+);
 
 // Add selected servings
-router.post("/selected-servings", authMiddleware, async (req, res) => {
-  try {
-    const userId = req.user.id;
-    const { item } = req.body;
+router.post(
+  "/selected-servings",
+  [authMiddleware, checkPaywall],
+  async (req, res) => {
+    try {
+      const userId = req.user.id;
+      const { item } = req.body;
 
-    // First delete any existing servings for this user
-    await pool.query("DELETE FROM selected_servings WHERE user_id = $1", [
-      userId,
-    ]);
+      // First delete any existing servings for this user
+      await pool.query("DELETE FROM selected_servings WHERE user_id = $1", [
+        userId,
+      ]);
 
-    // Then add the new one
-    const result = await pool.query(
-      "INSERT INTO selected_servings (user_id, item) VALUES ($1, $2) RETURNING id, item",
-      [userId, item]
-    );
+      // Then add the new one
+      const result = await pool.query(
+        "INSERT INTO selected_servings (user_id, item) VALUES ($1, $2) RETURNING id, item",
+        [userId, item]
+      );
 
-    res.status(201).json(result.rows[0]);
-  } catch (error) {
-    console.error("Error adding selected servings:", error);
-    res.status(500).json({ message: "Server error" });
+      res.status(201).json(result.rows[0]);
+    } catch (error) {
+      console.error("Error adding selected servings:", error);
+      res.status(500).json({ message: "Server error" });
+    }
   }
-});
+);
 
 // Get all can't haves for the logged-in user
-router.get("/cant-haves", authMiddleware, async (req, res) => {
+router.get("/cant-haves", [authMiddleware, checkPaywall], async (req, res) => {
   try {
     const userId = req.user.id;
     const result = await pool.query(
@@ -95,7 +112,7 @@ router.get("/cant-haves", authMiddleware, async (req, res) => {
 });
 
 // Add a new can't have
-router.post("/cant-haves", authMiddleware, async (req, res) => {
+router.post("/cant-haves", [authMiddleware, checkPaywall], async (req, res) => {
   try {
     const userId = req.user.id;
     const { item } = req.body;
@@ -123,29 +140,33 @@ router.post("/cant-haves", authMiddleware, async (req, res) => {
 });
 
 // Delete a can't have
-router.delete("/cant-haves/:id", authMiddleware, async (req, res) => {
-  try {
-    const userId = req.user.id;
-    const itemId = req.params.id;
+router.delete(
+  "/cant-haves/:id",
+  [authMiddleware, checkPaywall],
+  async (req, res) => {
+    try {
+      const userId = req.user.id;
+      const itemId = req.params.id;
 
-    const result = await pool.query(
-      "DELETE FROM cant_haves WHERE id = $1 AND user_id = $2 RETURNING id",
-      [itemId, userId]
-    );
+      const result = await pool.query(
+        "DELETE FROM cant_haves WHERE id = $1 AND user_id = $2 RETURNING id",
+        [itemId, userId]
+      );
 
-    if (result.rows.length === 0) {
-      return res.status(404).json({ message: "Item not found" });
+      if (result.rows.length === 0) {
+        return res.status(404).json({ message: "Item not found" });
+      }
+
+      res.json({ message: "Item removed successfully" });
+    } catch (error) {
+      console.error("Error deleting cant_have:", error);
+      res.status(500).json({ message: "Server error" });
     }
-
-    res.json({ message: "Item removed successfully" });
-  } catch (error) {
-    console.error("Error deleting cant_have:", error);
-    res.status(500).json({ message: "Server error" });
   }
-});
+);
 
 // Get all must haves for the logged-in user
-router.get("/must-haves", authMiddleware, async (req, res) => {
+router.get("/must-haves", [authMiddleware, checkPaywall], async (req, res) => {
   try {
     const userId = req.user.id;
     const result = await pool.query(
@@ -160,7 +181,7 @@ router.get("/must-haves", authMiddleware, async (req, res) => {
 });
 
 // Add a new must have
-router.post("/must-haves", authMiddleware, async (req, res) => {
+router.post("/must-haves", [authMiddleware, checkPaywall], async (req, res) => {
   try {
     const userId = req.user.id;
     const { item } = req.body;
@@ -188,29 +209,33 @@ router.post("/must-haves", authMiddleware, async (req, res) => {
 });
 
 // Delete a must have
-router.delete("/must-haves/:id", authMiddleware, async (req, res) => {
-  try {
-    const userId = req.user.id;
-    const itemId = req.params.id;
+router.delete(
+  "/must-haves/:id",
+  [authMiddleware, checkPaywall],
+  async (req, res) => {
+    try {
+      const userId = req.user.id;
+      const itemId = req.params.id;
 
-    const result = await pool.query(
-      "DELETE FROM must_haves WHERE id = $1 AND user_id = $2 RETURNING id",
-      [itemId, userId]
-    );
+      const result = await pool.query(
+        "DELETE FROM must_haves WHERE id = $1 AND user_id = $2 RETURNING id",
+        [itemId, userId]
+      );
 
-    if (result.rows.length === 0) {
-      return res.status(404).json({ message: "Item not found" });
+      if (result.rows.length === 0) {
+        return res.status(404).json({ message: "Item not found" });
+      }
+
+      res.json({ message: "Item removed successfully" });
+    } catch (error) {
+      console.error("Error deleting must_have:", error);
+      res.status(500).json({ message: "Server error" });
     }
-
-    res.json({ message: "Item removed successfully" });
-  } catch (error) {
-    console.error("Error deleting must_have:", error);
-    res.status(500).json({ message: "Server error" });
   }
-});
+);
 
 // Get all taste preference for the logged-in user
-router.get("/taste", authMiddleware, async (req, res) => {
+router.get("/taste", [authMiddleware, checkPaywall], async (req, res) => {
   try {
     const userId = req.user.id;
     const result = await pool.query(
@@ -225,7 +250,7 @@ router.get("/taste", authMiddleware, async (req, res) => {
 });
 
 // Add a new taste preference
-router.post("/taste", authMiddleware, async (req, res) => {
+router.post("/taste", [authMiddleware, checkPaywall], async (req, res) => {
   try {
     const userId = req.user.id;
     const { item } = req.body;
@@ -253,29 +278,33 @@ router.post("/taste", authMiddleware, async (req, res) => {
 });
 
 // Delete a taste preference
-router.delete("/taste/:id", authMiddleware, async (req, res) => {
-  try {
-    const userId = req.user.id;
-    const itemId = req.params.id;
+router.delete(
+  "/taste/:id",
+  [authMiddleware, checkPaywall],
+  async (req, res) => {
+    try {
+      const userId = req.user.id;
+      const itemId = req.params.id;
 
-    const result = await pool.query(
-      "DELETE FROM taste_preferences WHERE id = $1 AND user_id = $2 RETURNING id",
-      [itemId, userId]
-    );
+      const result = await pool.query(
+        "DELETE FROM taste_preferences WHERE id = $1 AND user_id = $2 RETURNING id",
+        [itemId, userId]
+      );
 
-    if (result.rows.length === 0) {
-      return res.status(404).json({ message: "Item not found" });
+      if (result.rows.length === 0) {
+        return res.status(404).json({ message: "Item not found" });
+      }
+
+      res.json({ message: "Item removed successfully" });
+    } catch (error) {
+      console.error("Error deleting taste_preference:", error);
+      res.status(500).json({ message: "Server error" });
     }
-
-    res.json({ message: "Item removed successfully" });
-  } catch (error) {
-    console.error("Error deleting taste_preference:", error);
-    res.status(500).json({ message: "Server error" });
   }
-});
+);
 
 // Get all dietary goals for the logged-in user
-router.get("/goal", authMiddleware, async (req, res) => {
+router.get("/goal", [authMiddleware, checkPaywall], async (req, res) => {
   try {
     const userId = req.user.id;
     const result = await pool.query(
@@ -290,7 +319,7 @@ router.get("/goal", authMiddleware, async (req, res) => {
 });
 
 // Add a new dietary goal
-router.post("/goal", authMiddleware, async (req, res) => {
+router.post("/goal", [authMiddleware, checkPaywall], async (req, res) => {
   try {
     const userId = req.user.id;
     const { item } = req.body;
@@ -318,7 +347,7 @@ router.post("/goal", authMiddleware, async (req, res) => {
 });
 
 // Delete a dietary goal
-router.delete("/goal/:id", authMiddleware, async (req, res) => {
+router.delete("/goal/:id", [authMiddleware, checkPaywall], async (req, res) => {
   try {
     const userId = req.user.id;
     const itemId = req.params.id;
@@ -340,7 +369,7 @@ router.delete("/goal/:id", authMiddleware, async (req, res) => {
 });
 
 // Get all cuisine preferences for the logged-in user
-router.get("/cuisine", authMiddleware, async (req, res) => {
+router.get("/cuisine", [authMiddleware, checkPaywall], async (req, res) => {
   try {
     const userId = req.user.id;
     const result = await pool.query(
@@ -355,7 +384,7 @@ router.get("/cuisine", authMiddleware, async (req, res) => {
 });
 
 // Add a new cuisine preference
-router.post("/cuisine", authMiddleware, async (req, res) => {
+router.post("/cuisine", [authMiddleware, checkPaywall], async (req, res) => {
   try {
     const userId = req.user.id;
     const { item } = req.body;
@@ -383,25 +412,29 @@ router.post("/cuisine", authMiddleware, async (req, res) => {
 });
 
 // Delete a cuisine preference
-router.delete("/cuisine/:id", authMiddleware, async (req, res) => {
-  try {
-    const userId = req.user.id;
-    const itemId = req.params.id;
+router.delete(
+  "/cuisine/:id",
+  [authMiddleware, checkPaywall],
+  async (req, res) => {
+    try {
+      const userId = req.user.id;
+      const itemId = req.params.id;
 
-    const result = await pool.query(
-      "DELETE FROM cuisine_preferences WHERE id = $1 AND user_id = $2 RETURNING id",
-      [itemId, userId]
-    );
+      const result = await pool.query(
+        "DELETE FROM cuisine_preferences WHERE id = $1 AND user_id = $2 RETURNING id",
+        [itemId, userId]
+      );
 
-    if (result.rows.length === 0) {
-      return res.status(404).json({ message: "Item not found" });
+      if (result.rows.length === 0) {
+        return res.status(404).json({ message: "Item not found" });
+      }
+
+      res.json({ message: "Item removed successfully" });
+    } catch (error) {
+      console.error("Error deleting cuisine_preference:", error);
+      res.status(500).json({ message: "Server error" });
     }
-
-    res.json({ message: "Item removed successfully" });
-  } catch (error) {
-    console.error("Error deleting cuisine_preference:", error);
-    res.status(500).json({ message: "Server error" });
   }
-});
+);
 
 module.exports = router;

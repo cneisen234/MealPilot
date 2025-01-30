@@ -28,6 +28,12 @@ interface AddressInfo {
   country: string;
 }
 
+interface SubscriptionStatus {
+  active: boolean;
+  cancelAtPeriodEnd: boolean;
+  currentPeriodEnd: string | null;
+}
+
 const AccountSettings = () => {
   const { hasSubscription, setHasSubscription } = useAuth();
   const stripe = useStripe();
@@ -41,6 +47,7 @@ const AccountSettings = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [currentPaymentMethod, setCurrentPaymentMethod] =
     useState<PaymentMethod | null>(null);
+  const [cancelAtPeriodEnd, setCancelAtPeriodEnd] = useState(false);
 
   const [address, setAddress] = useState<AddressInfo>({
     line1: "",
@@ -59,18 +66,17 @@ const AccountSettings = () => {
     try {
       setIsLoading(true);
       const info = await checkPrimaryPaymentMethod();
-      //@ts-ignore
+
       if (info?.data.hasPaymentMethod) {
         setCurrentPaymentMethod({
-          //@ts-ignore
           brand: info.data.paymentMethod.brand,
-          //@ts-ignore
           last4: info.data.paymentMethod.last4,
-          //@ts-ignore
           exp_month: info.data.paymentMethod.exp_month,
-          //@ts-ignore
           exp_year: info.data.paymentMethod.exp_year,
         });
+
+        // Set subscription status
+        setCancelAtPeriodEnd(info.data.cancelAtPeriodEnd || false);
       }
     } catch (error) {
       console.error("Error fetching payment method:", error);
@@ -123,25 +129,23 @@ const AccountSettings = () => {
     }
   };
 
-  console.log(hasSubscription);
-
-  // Cancel subscription logic
   const handleCancelSubscription = async () => {
     try {
-      // Perform cancellation logic
-      console.log("Subscription canceled.");
       await cancelSubscription();
-      setHasSubscription(false);
-      localStorage.setItem("hasSubscription", JSON.stringify(false));
+      await fetchCurrentPaymentMethod(); // Refresh subscription status
     } catch (error) {
       console.error("Error cancelling subscription", error);
     }
   };
 
   const handleSubscriptionSuccess = () => {
-    setHasSubscription(true); // Update the subscription state in context
-    localStorage.setItem("hasSubscription", JSON.stringify(true));
+    setHasSubscription(true);
+    fetchCurrentPaymentMethod(); // Refresh subscription status
   };
+
+  console.log(!hasSubscription, cancelAtPeriodEnd);
+
+  const showSubscriptionButton = !hasSubscription || cancelAtPeriodEnd;
 
   return (
     <div
@@ -280,7 +284,7 @@ const AccountSettings = () => {
       <br />
       {currentPaymentMethod && (
         <div className="subscription-section">
-          {!hasSubscription ? (
+          {showSubscriptionButton ? (
             <SubscriptionButton onSuccess={handleSubscriptionSuccess} />
           ) : (
             <CancelSubscription onCancel={handleCancelSubscription} />
