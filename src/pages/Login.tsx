@@ -54,7 +54,9 @@ const Login: React.FC = () => {
       authLogin(
         response.data.token,
         response.data.user.ai_actions,
-        response.data.user.has_subscription
+        response.data.user.has_subscription,
+        response.data.user.name,
+        response.data.user.email
       );
       checkAuthStatus();
       showToast("Successfully logged in!", "success");

@@ -7,7 +7,6 @@ async function resetAIActions() {
       UPDATE users 
       SET ai_actions = 60,
           last_action_reset = NOW() 
-      WHERE admin = false
     `);
     console.log("Successfully reset AI actions for all users at CST midnight");
   } catch (error) {

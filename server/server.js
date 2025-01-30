@@ -11,6 +11,7 @@ const shoppingListRoutes = require("./routes/shoppingListRoutes");
 const sharedListRoutes = require("./routes/sharedListRoutes");
 const preferenceRoutes = require("./routes/preferenceRoutes");
 const paymentRoutes = require("./routes/paymentRoutes");
+const miscRoutes = require("./routes/miscRoutes");
 const path = require("path");
 
 const app = express();
@@ -38,6 +39,7 @@ app.use(express.static(path.join(__dirname, "../build")));
 sgMail.setApiKey(process.env.SENDGRID_API_KEY);
 
 // Routes
+app.use("/api", miscRoutes);
 app.use("/api/auth", authRoutes);
 app.use("/api/recipe", recipeRoutes);
 app.use("/api/mealplan", mealPlanRoutes);

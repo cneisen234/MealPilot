@@ -1,7 +1,13 @@
 import React, { useState, useRef, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../../context/AuthContext";
-import { FaCog, FaUserCog, FaUsers, FaSignOutAlt } from "react-icons/fa";
+import {
+  FaCog,
+  FaUserCog,
+  FaUsers,
+  FaSignOutAlt,
+  FaEnvelope,
+} from "react-icons/fa";
 import "../../styles/header.css";
 
 const Header: React.FC = () => {
@@ -66,6 +72,12 @@ const Header: React.FC = () => {
                   <FaUsers className="dropdown-icon" />
                   Referral Program
                 </button> */}
+                <button
+                  onClick={() => handleMenuClick("/contact-us")}
+                  className="dropdown-item">
+                  <FaEnvelope className="dropdown-icon" />
+                  Contact Us
+                </button>
                 <button onClick={handleLogout} className="dropdown-item">
                   <FaSignOutAlt className="dropdown-icon" />
                   Logout

@@ -30,6 +30,20 @@ ADD COLUMN trial_end_date TIMESTAMP DEFAULT
 (NOW
 () + INTERVAL '30 days');
 
+ALTER TABLE users
+ADD COLUMN address_line1 VARCHAR
+(255),
+ADD COLUMN address_line2 VARCHAR
+(255),
+ADD COLUMN address_city VARCHAR
+(100),
+ADD COLUMN address_state VARCHAR
+(100),
+ADD COLUMN address_postal_code VARCHAR
+(20),
+ADD COLUMN address_country VARCHAR
+(2) DEFAULT 'US';
+
 CREATE TABLE cant_haves
 (
     id SERIAL PRIMARY KEY,

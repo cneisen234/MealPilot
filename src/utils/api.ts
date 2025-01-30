@@ -1,6 +1,5 @@
 // src/utils/api.ts
 import axios, { AxiosError, AxiosResponse } from 'axios';
-import { User } from '../types';
 
 const url = process.env.NODE_ENV === 'production' 
   ? '/api'
@@ -85,25 +84,12 @@ export const checkEmailExists = (email: string) => {
   return api.get(`/auth/check-email-exists?email=${encodeURIComponent(email)}`);
 };
 
-export const getProfile = () => {
-  return api.get('/users/profile');
-};
-
 export const requestPasswordReset = (email: string) => {
   return api.post('/auth/forgot-password', { email });
 };
 
 export const resetPassword = (token: string, password: string) => {
   return api.post(`/auth/reset-password/${token}`, { password });
-};
-
-export const closeAccount = () => {
-  return api.post('/users/close-account');
-};
-
-export const updateProfile = async (userId: number, profileData: Partial<User>) => {
-  const response = await api.put(`/users/${userId}/profile`, profileData);
-  return response.data;
 };
 
 // Get selected meal type
@@ -470,6 +456,15 @@ export const cancelSubscription = async () => {
 
 export const getSubscriptionInfo = async () => {
     return api.get('/payment/subscription-info');
+};
+
+export const sendContactForm = (formData: {
+  name: string;
+  email: string;
+  subject: string;
+  message: string;
+}) => {
+  return api.post('/contact-us', formData);
 };
 
 export default api;

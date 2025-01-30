@@ -40,7 +40,6 @@ const CancelSubscription: React.FC<CancelSubscriptionProps> = ({
         }
       } catch (error) {
         console.error("Error fetching subscription info:", error);
-        showToast("Error fetching subscription info", "error");
       }
     };
 
@@ -63,7 +62,7 @@ const CancelSubscription: React.FC<CancelSubscriptionProps> = ({
   const ConfirmationModal = () => (
     <div className="modal-overlay">
       <div className="modal-content" style={{ maxWidth: "500px" }}>
-        <div className="modal-header">
+        <div className="modal-header" style={{ padding: 0, margin: 0 }}>
           <FaExclamationTriangle
             style={{
               color: "var(--secondary-color)",
@@ -80,20 +79,14 @@ const CancelSubscription: React.FC<CancelSubscriptionProps> = ({
           </button>
         </div>
 
-        <div style={{ padding: "20px" }}>
+        <div>
           <p>Are you sure you want to cancel your subscription?</p>
           <p>
             If you cancel, you'll still have access to all premium features
-            until{" "}
-            {subscriptionInfo?.current_period_end
-              ? new Date(
-                  subscriptionInfo.current_period_end * 1000
-                ).toLocaleDateString()
-              : "N/A"}
-            .
+            until your next billing cycle.
           </p>
           <p>
-            After this date, you will no longer be able to access your account.
+            After that date, you will no longer be able to access your account.
           </p>
         </div>
 
@@ -135,14 +128,14 @@ const CancelSubscription: React.FC<CancelSubscriptionProps> = ({
       <div className="subscription-status">
         <h3>Subscription Status</h3>
         <p>Your subscription is currently active.</p>
-        <p>
-          Next billing date:{" "}
-          {subscriptionInfo?.current_period_end
-            ? new Date(
-                subscriptionInfo.current_period_end * 1000
-              ).toLocaleDateString()
-            : "N/A"}
-        </p>
+        {subscriptionInfo?.current_period_end && (
+          <p>
+            Next billing date:{" "}
+            {new Date(
+              subscriptionInfo.current_period_end * 1000
+            ).toLocaleDateString()}
+          </p>
+        )}
       </div>
       <button
         onClick={() => setShowConfirmModal(true)}

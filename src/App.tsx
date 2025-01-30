@@ -16,7 +16,6 @@ import PrivateRoute from "./components/auth/PrivateRoute";
 import { AuthProvider, useAuth } from "./context/AuthContext";
 import ForgotPassword from "./components/auth/ForgotPassword";
 import ResetPassword from "./components/auth/ResetPassword";
-import CloseAccount from "./components/profile/CloseAccount";
 import BubbleBackground from "./BubbleBackground";
 import MyRecipes from "./pages/MyRecipes";
 import RecipeDetail from "./components/myrecipes/RecipeDetail";
@@ -27,6 +26,7 @@ import ShoppingList from "./pages/shoppingList";
 import ShareableListPage from "./components/shoppingList/SharableListPage";
 import AccountSettings from "./pages/AccountSettings";
 import ReferralProgram from "./pages/ReferralProgram";
+import ContactUs from "./pages/ContactUs";
 import { Elements } from "@stripe/react-stripe-js";
 import { loadStripe } from "@stripe/stripe-js";
 import { ToastContainer } from "./components/common/Toast";
@@ -84,7 +84,7 @@ const AppContent: React.FC = () => {
               element={<ShareableListPage />}
             />
 
-            {/* Account settings is accessible without paywall */}
+            {/* is accessible without paywall */}
             <Route
               path="/account-settings"
               element={
@@ -96,6 +96,11 @@ const AppContent: React.FC = () => {
                   }
                 />
               }
+            />
+
+            <Route
+              path="/contact-us"
+              element={<PrivateRoute element={<ContactUs />} />}
             />
 
             {/* Protected routes behind paywall */}

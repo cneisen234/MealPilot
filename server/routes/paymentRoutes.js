@@ -10,7 +10,7 @@ router.get("/status", authMiddleware, async (req, res) => {
   try {
     const result = await pool.query(
       `SELECT stripe_customer_id, stripe_payment_method_id, 
-       stripe_subscription_id, has_subscription, admin, trial_end_date
+       stripe_subscription_id, has_subscription, admin, trial_end_date, ai_actions
        FROM users WHERE id = $1`,
       [req.user.id]
     );
@@ -38,9 +38,11 @@ router.get("/status", authMiddleware, async (req, res) => {
     res.json({
       hasPaymentMethod: !!user.stripe_payment_method_id,
       hasSubscription: user.has_subscription,
+      hasSubscriptionId: user.stripe_subscription_id ? true : false,
       admin: user.admin,
       trialEndDate: user.trial_end_date,
       cancelAtPeriodEnd: subscription?.cancel_at_period_end || false,
+      aiActions: user.ai_actions,
       paymentMethod: paymentMethod
         ? {
             brand: paymentMethod.card.brand,
@@ -59,11 +61,13 @@ router.get("/status", authMiddleware, async (req, res) => {
 // Update payment method
 router.post("/update-payment-method", authMiddleware, async (req, res) => {
   const { paymentMethodId } = req.body;
+  const { line1, line2, city, state, postal_code, country } = req.body.address;
+  const userId = req.user.id;
 
   try {
     const userResult = await pool.query(
       "SELECT stripe_customer_id FROM users WHERE id = $1",
-      [req.user.id]
+      [userId]
     );
 
     let customerId = userResult.rows[0]?.stripe_customer_id;
@@ -78,7 +82,7 @@ router.post("/update-payment-method", authMiddleware, async (req, res) => {
 
       await pool.query(
         "UPDATE users SET stripe_customer_id = $1 WHERE id = $2",
-        [customerId, req.user.id]
+        [customerId, userId]
       );
     } else {
       // Attach the payment method to the existing customer
@@ -97,9 +101,15 @@ router.post("/update-payment-method", authMiddleware, async (req, res) => {
     // Update the payment method ID in database
     await pool.query(
       `UPDATE users 
-       SET stripe_payment_method_id = $1 
-       WHERE id = $2`,
-      [paymentMethodId, req.user.id]
+       SET stripe_payment_method_id = $1, 
+       address_line1 = $2,
+           address_line2 = $3,
+           address_city = $4,
+           address_state = $5,
+           address_postal_code = $6,
+           address_country = $7
+       WHERE id = $8`,
+      [paymentMethodId, line1, line2, city, state, postal_code, country, userId]
     );
 
     res.json({ success: true });

@@ -28,12 +28,6 @@ interface AddressInfo {
   country: string;
 }
 
-interface SubscriptionStatus {
-  active: boolean;
-  cancelAtPeriodEnd: boolean;
-  currentPeriodEnd: string | null;
-}
-
 const AccountSettings = () => {
   const { hasSubscription, setHasSubscription } = useAuth();
   const stripe = useStripe();
@@ -48,6 +42,8 @@ const AccountSettings = () => {
   const [currentPaymentMethod, setCurrentPaymentMethod] =
     useState<PaymentMethod | null>(null);
   const [cancelAtPeriodEnd, setCancelAtPeriodEnd] = useState(false);
+  const [trialEndDate, setTrialEndDate] = useState();
+  const [hasSubscriptionId, setHasSubscriptionId] = useState();
 
   const [address, setAddress] = useState<AddressInfo>({
     line1: "",
@@ -77,6 +73,8 @@ const AccountSettings = () => {
 
         // Set subscription status
         setCancelAtPeriodEnd(info.data.cancelAtPeriodEnd || false);
+        setTrialEndDate(info.data.trialEndDate);
+        setHasSubscriptionId(info.data.hasSubscriptionId);
       }
     } catch (error) {
       console.error("Error fetching payment method:", error);
@@ -143,9 +141,8 @@ const AccountSettings = () => {
     fetchCurrentPaymentMethod(); // Refresh subscription status
   };
 
-  console.log(!hasSubscription, cancelAtPeriodEnd);
-
-  const showSubscriptionButton = !hasSubscription || cancelAtPeriodEnd;
+  const showSubscriptionButton =
+    !hasSubscriptionId || hasSubscriptionId || cancelAtPeriodEnd;
 
   return (
     <div

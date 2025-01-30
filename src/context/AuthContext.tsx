@@ -3,13 +3,21 @@ import { checkPrimaryPaymentMethod } from "../utils/api";
 
 interface AuthContextType {
   isAuthenticated: boolean;
-  login: (token: string, ai_actions: number, has_subscription: boolean) => void;
+  login: (
+    token: string,
+    ai_actions: number,
+    has_subscription: boolean,
+    name: string,
+    email: string
+  ) => void;
   logout: () => void;
   checkAuthStatus: () => Promise<void>;
   setAiActionsRemaining: (aiActionsRemaining: number) => void;
   aiActionsRemaining: number;
   hasSubscription: boolean;
   setHasSubscription: (value: boolean) => void;
+  userName: string;
+  userEmail: string;
 }
 
 const AuthContext = createContext<AuthContextType | null>(null);
@@ -30,6 +38,18 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
     return storedValue ? JSON.parse(storedValue) : false;
   });
 
+  const [userName, setUserName] = useState(() => {
+    // Initialize from localStorage with a default of false
+    const storedValue = localStorage.getItem("userName");
+    return storedValue ? JSON.parse(storedValue) : null;
+  });
+
+  const [userEmail, setUserEmail] = useState(() => {
+    // Initialize from localStorage with a default of false
+    const storedValue = localStorage.getItem("userEmail");
+    return storedValue ? JSON.parse(storedValue) : null;
+  });
+
   // Persist subscription status to localStorage whenever it changes
   // Persist subscription status to localStorage whenever it changes
   useEffect(() => {
@@ -41,14 +61,22 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
     localStorage.setItem("aiActionsRemaining", aiActionsRemaining.toString());
   }, [aiActionsRemaining]);
 
+  useEffect(() => {
+    localStorage.setItem("userName", JSON.stringify(userName));
+  }, [userName]);
+
+  useEffect(() => {
+    localStorage.setItem("userEmail", JSON.stringify(userEmail));
+  }, [userEmail]);
+
   const checkAuthStatus = async () => {
     const token = localStorage.getItem("token");
     if (token) {
       try {
         // Fetch current user status including subscription and AI actions
-        const response = await checkPrimaryPaymentMethod();
-        setHasSubscription(response.data.hasSubscription);
-        setAiActionsRemaining(response.data.aiActionsRemaining || 60);
+        const paymentResponse = await checkPrimaryPaymentMethod();
+        setHasSubscription(paymentResponse.data.hasSubscription);
+        setAiActionsRemaining(paymentResponse.data.aiActions || 60);
         setIsAuthenticated(true);
       } catch (error) {
         console.error("Error checking auth status:", error);
@@ -68,11 +96,15 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
   const login = (
     token: string,
     ai_actions: number,
-    has_subscription: boolean
+    has_subscription: boolean,
+    name: string,
+    email: string
   ) => {
     localStorage.setItem("token", token);
     setAiActionsRemaining(ai_actions);
     setHasSubscription(has_subscription);
+    setUserName(name);
+    setUserEmail(email);
     setIsAuthenticated(true);
   };
 
@@ -80,6 +112,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
     localStorage.removeItem("token");
     localStorage.removeItem("hasSubscription");
     localStorage.removeItem("aiActionsRemaining");
+    localStorage.removeItem("userName");
+    localStorage.removeItem("userEmail");
     setIsAuthenticated(false);
     setHasSubscription(false);
   };
@@ -95,6 +129,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
         aiActionsRemaining,
         hasSubscription,
         setHasSubscription,
+        userName,
+        userEmail,
       }}>
       {children}
     </AuthContext.Provider>

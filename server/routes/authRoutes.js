@@ -5,6 +5,8 @@ const jwt = require("jsonwebtoken");
 const pool = require("../db");
 const crypto = require("crypto");
 const sgMail = require("@sendgrid/mail");
+const stripe = require("stripe")(process.env.STRIPE_SECRET_KEY);
+const authMiddleware = require("../middleware/auth");
 
 router.post("/login", async (req, res) => {
   const { email, password } = req.body;
