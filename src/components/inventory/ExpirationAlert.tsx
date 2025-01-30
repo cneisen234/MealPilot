@@ -267,36 +267,54 @@ const ExpirationAlert: React.FC<ExpirationAlertProps> = ({
         </div>
 
         <div className="expiring-items-list">
-          {items.map((item, index) => (
-            <div key={index} className="expiring-item">
-              <div className="expiring-item-content">
-                <div className="expiring-item-info">
-                  <p>
-                    <strong>{item.item_name}</strong> - {item.quantity}
-                  </p>
-                  <p className="expiration-date">
-                    Expires:{" "}
-                    {new Date(item.expiration_date).toLocaleDateString()}
-                  </p>
-                </div>
-                {!isLoading && recipeMatches[item.item_name] && (
-                  <div className="matching-recipes">
-                    <p className="recipes-label">Used in:</p>
-                    <div className="recipe-links">
-                      {recipeMatches[item.item_name].map((recipe) => (
-                        <button
-                          key={recipe.recipeId}
-                          className="recipe-link-button"
-                          onClick={() => handleRecipeClick(recipe.recipeId)}>
-                          {recipe.title}
-                        </button>
-                      ))}
+          {items.map((item, index) => {
+            const hasRecipes = !isLoading && recipeMatches[item.item_name];
+            const isExpanded = expandedItems.has(index);
+
+            return (
+              <div key={index} className="expiring-item">
+                <div className="expiring-item-content">
+                  <div className="expiring-item-header">
+                    <div className="expiring-item-info">
+                      <p>
+                        <strong>{item.item_name}</strong> - {item.quantity}
+                      </p>
+                      <p className="expiration-date">
+                        Expires:{" "}
+                        {new Date(item.expiration_date).toLocaleDateString()}
+                      </p>
                     </div>
+                    {hasRecipes && (
+                      <button
+                        onClick={() => toggleExpand(index)}
+                        className="expand-button">
+                        {isExpanded ? <FaChevronUp /> : <FaChevronDown />}
+                      </button>
+                    )}
                   </div>
-                )}
+
+                  {isExpanded && (
+                    <div
+                      className={`matching-recipes ${
+                        isExpanded ? "expanded" : ""
+                      }`}>
+                      <p className="recipes-label">Used in:</p>
+                      <div className="recipe-links">
+                        {recipeMatches[item.item_name].map((recipe) => (
+                          <button
+                            key={recipe.recipeId}
+                            className="recipe-link-button"
+                            onClick={() => handleRecipeClick(recipe.recipeId)}>
+                            {recipe.title}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </div>
               </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
 
         <div className="modal-footer">
