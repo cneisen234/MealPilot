@@ -44,6 +44,19 @@ ADD COLUMN address_postal_code VARCHAR
 ADD COLUMN address_country VARCHAR
 (2) DEFAULT 'US';
 
+
+-- Add referral-related columns to users table
+ALTER TABLE users 
+ADD COLUMN referral_program_reset_date DATE,
+ADD COLUMN referral_program_reset_year INTEGER,
+ADD COLUMN active_referral_discount JSONB;
+
+ALTER TABLE users ADD COLUMN created_at TIMESTAMP DEFAULT NOW
+()
+
+ALTER TABLE users ADD COLUMN referral_code VARCHAR
+(20) UNIQUE;
+
 CREATE TABLE cant_haves
 (
     id SERIAL PRIMARY KEY,
@@ -185,6 +198,42 @@ CREATE TABLE recipes
     meal_type VARCHAR
             (50)
 );
+
+            -- Create referrals table
+            CREATE TABLE referrals
+            (
+                id SERIAL PRIMARY KEY,
+                referrer_id INTEGER REFERENCES users(id),
+                referred_id INTEGER REFERENCES users(id),
+                referrer_code VARCHAR(20) REFERENCES users(referral_code),
+                referred_email VARCHAR
+                (255) NULL UNIQUE,
+                status VARCHAR
+                (20) DEFAULT 'pending',
+                -- pending, successful, expired
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                paid_month_completed_at TIMESTAMP,
+                UNIQUE
+                (referred_id),
+                -- Ensures each user can only be referred once
+                UNIQUE
+                (referral_code)
+            );
+
+            -- Create referral rewards table to track applied rewards
+            CREATE TABLE referrals
+            (
+                id SERIAL PRIMARY KEY,
+                referrer_code VARCHAR(20) REFERENCES users(referral_code),
+                referred_id INTEGER REFERENCES users(id),
+                referred_email VARCHAR(255) NULL UNIQUE,
+                status VARCHAR(20) DEFAULT 'pending',
+                -- pending, successful, expired
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                paid_month_completed_at TIMESTAMP,
+                UNIQUE(referred_id)
+                -- Ensures each user can only be referred once
+            );
 
             -- Index for efficient querying of recipes based on last query date
             CREATE INDEX idx_global_recipes_last_queried 

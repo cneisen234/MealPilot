@@ -6,13 +6,16 @@ const pool = require("../db");
 const crypto = require("crypto");
 const sgMail = require("@sendgrid/mail");
 const stripe = require("stripe")(process.env.STRIPE_SECRET_KEY);
-const authMiddleware = require("../middleware/auth");
+const ReferralService = require("../services/referralService");
 
 router.post("/login", async (req, res) => {
   const { email, password } = req.body;
 
   try {
-    // Fetch the user from the database, excluding the password
+    // Start transaction for potential referral code creation
+    await pool.query("BEGIN");
+
+    // Fetch the user from the database
     const result = await pool.query("SELECT * FROM users WHERE email = $1", [
       email.toLowerCase(),
     ]);
@@ -28,6 +31,23 @@ router.post("/login", async (req, res) => {
 
     if (!isPasswordValid) {
       return res.status(401).json({ message: "Invalid email or password" });
+    }
+
+    // Check if user has a referral code, if not create one
+    if (!user.referral_code) {
+      const userReferralCode = crypto
+        .randomBytes(8)
+        .toString("hex")
+        .slice(0, 12)
+        .toUpperCase();
+
+      await pool.query(`UPDATE users SET referral_code = $1 WHERE id = $2`, [
+        userReferralCode,
+        user.id,
+      ]);
+
+      // Update our user object with the new code
+      user.referral_code = userReferralCode;
     }
 
     // Define a function to check the user's subscription or trial status
@@ -91,12 +111,17 @@ router.post("/login", async (req, res) => {
     // Run the subscription check
     const { hasSubscription } = await checkUserSubscription(user);
 
+    // Check and potentially reset referral program
+    await ReferralService.checkAndResetProgram(user.id);
+
     // Generate JWT token
     const token = jwt.sign(
       { userId: user.id, email: user.email.toLowerCase() },
       process.env.JWT_SECRET,
       { expiresIn: "12h" }
     );
+
+    await pool.query("COMMIT");
 
     // Send the response with token and user info, including subscription status
     return res.json({
@@ -108,18 +133,22 @@ router.post("/login", async (req, res) => {
         name: user.name,
         ai_actions: user.ai_actions,
         has_subscription: hasSubscription,
+        referral_code: user.referral_code, // Include referral code in response
       },
     });
   } catch (error) {
+    await pool.query("ROLLBACK");
     console.error("Error during login:", error);
     return res.status(500).json({ message: "Server error during login" });
   }
 });
 
 router.post("/signup", async (req, res) => {
-  const { name, email, password } = req.body;
+  const { name, email, password, referralCode } = req.body;
 
   try {
+    await pool.query("BEGIN");
+
     const emailCheck = await pool.query(
       "SELECT * FROM users WHERE LOWER(email) = LOWER($1)",
       [email.toLowerCase()]
@@ -131,19 +160,51 @@ router.post("/signup", async (req, res) => {
     const saltRounds = 10;
     const hashedPassword = await bcrypt.hash(password, saltRounds);
 
+    // Generate unique referral code for new user
+    const userReferralCode = crypto
+      .randomBytes(8)
+      .toString("hex")
+      .slice(0, 12)
+      .toUpperCase();
+
     // Calculate trial end date (30 days from now)
     const trialEndDate = new Date();
     trialEndDate.setDate(trialEndDate.getDate() + 30);
 
+    // Create the user with their unique referral code
     const result = await pool.query(
       `INSERT INTO users (
         name, 
         email, 
-        password
-      ) VALUES ($1, $2, $3) 
+        password,
+        trial_end_date,
+        referral_code
+      ) VALUES ($1, $2, $3, $4, $5) 
       RETURNING id, trial_end_date`,
-      [name, email.toLowerCase(), hashedPassword]
+      [
+        name,
+        email.toLowerCase(),
+        hashedPassword,
+        trialEndDate,
+        userReferralCode,
+      ]
     );
+
+    const userId = result.rows[0].id;
+
+    // If referrer code exists, create referral record
+    if (referralCode) {
+      const referralResult = await pool.query(
+        `INSERT INTO referrals (
+          referrer_code, 
+          referred_id,
+          referred_email,
+          status
+        ) VALUES ($1, $2, $3, 'pending')
+        RETURNING referrer_code`,
+        [referralCode, userId, email.toLowerCase()]
+      );
+    }
 
     // Create welcome email HTML content
     const welcomeHtmlContent = `
@@ -220,12 +281,15 @@ router.post("/signup", async (req, res) => {
       text: `New user signup - Name: ${name}, Email: ${email}, Trial End: ${trialEndDate.toLocaleString()}`,
     });
 
+    await pool.query("COMMIT");
+
     res.status(201).json({
       message: "User created successfully",
       userId: result.rows[0].id,
       trialEndDate: result.rows[0].trial_end_date,
     });
   } catch (error) {
+    await pool.query("ROLLBACK");
     console.error("Error during signup:", error);
     res.status(500).json({ message: "Error creating user" });
   }

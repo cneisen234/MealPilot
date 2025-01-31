@@ -4,6 +4,7 @@ const authMiddleware = require("../middleware/auth");
 const pool = require("../db");
 const stripe = require("stripe")(process.env.STRIPE_SECRET_KEY);
 const sgMail = require("@sendgrid/mail");
+const ReferralService = require("../services/referralService");
 
 // Get user's payment and subscription status
 router.get("/status", authMiddleware, async (req, res) => {
@@ -153,6 +154,10 @@ router.post("/subscribe", authMiddleware, async (req, res) => {
 
     const user = userResult.rows[0];
 
+    const { wasReferred } = await ReferralService.handleNewSubscription(
+      req.user.id
+    );
+
     if (user.stripe_subscription_id) {
       try {
         const existingSubscription = await stripe.subscriptions.retrieve(
@@ -196,8 +201,6 @@ router.post("/subscribe", authMiddleware, async (req, res) => {
       });
     }
 
-    let existingSubscription = null;
-
     if (user.stripe_subscription_id) {
       try {
         existingSubscription = await stripe.subscriptions.retrieve(
@@ -218,11 +221,21 @@ router.post("/subscribe", authMiddleware, async (req, res) => {
     let subscriptionParams = {
       customer: user.stripe_customer_id,
       items: [{ price: process.env.STRIPE_PRICE_ID }],
+      trial_end: trialEnd,
       expand: ["latest_invoice.payment_intent"],
     };
 
     if (trialEnd && trialEnd > now) {
       subscriptionParams.trial_end = Math.floor(trialEnd.getTime() / 1000);
+    }
+
+    if (wasReferred) {
+      const coupon = await stripe.coupons.create({
+        percent_off: 20,
+        duration: "once",
+        metadata: { type: "referral_signup" },
+      });
+      subscriptionParams.coupon = coupon.id;
     }
 
     // Create a new subscription

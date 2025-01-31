@@ -1,8 +1,10 @@
 import React from "react";
-import { Link } from "react-router-dom";
+import { Link, useParams } from "react-router-dom"; // Add useParams
 import SignupForm from "../components/auth/SignupForm";
 
 const Signup: React.FC = () => {
+  const { referralCode } = useParams(); // Get referral code from URL
+
   return (
     <div className="center-container">
       <div className="content-wrapper">
@@ -34,7 +36,8 @@ const Signup: React.FC = () => {
               MealSphere
             </h2>
           </div>
-          <SignupForm />
+          {/*@ts-ignore*/}
+          <SignupForm referralCode={referralCode} />
           <p style={{ marginTop: "20px", textAlign: "center" }}>
             <Link to="/login" className="auth-link">
               Log in here

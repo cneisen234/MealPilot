@@ -77,6 +77,12 @@ const AppContent: React.FC = () => {
                 isAuthenticated ? <Navigate to="/recipe" replace /> : <Signup />
               }
             />
+            <Route
+              path="/signup/:referralCode"
+              element={
+                isAuthenticated ? <Navigate to="/recipe" replace /> : <Signup />
+              }
+            />
             <Route path="/forgot-password" element={<ForgotPassword />} />
             <Route path="/reset-password/:token" element={<ResetPassword />} />
             <Route

@@ -10,7 +10,8 @@ import {
 import { InputWithPasswordToggle } from "./InputWithPasswordToggle";
 import { useToast } from "../../context/ToastContext";
 
-const SignupForm: React.FC = () => {
+//@ts-ignore
+const SignupForm: React.FC = ({ referralCode }) => {
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -79,6 +80,7 @@ const SignupForm: React.FC = () => {
         name,
         email: email.toLowerCase(),
         password,
+        ...(referralCode && { referralCode }),
       });
 
       // Login

@@ -77,10 +77,6 @@
     transition: background-color 0.2s ease;
 }
 
-.submit-button:hover {
-    background-color: var(--primary-dark-color);
-}
-
 .submit-button:disabled {
     opacity: 0.7;
     cursor: not-allowed;

@@ -142,7 +142,7 @@ const AccountSettings = () => {
   };
 
   const showSubscriptionButton =
-    !hasSubscriptionId || hasSubscriptionId || cancelAtPeriodEnd;
+    !hasSubscriptionId || (hasSubscriptionId && cancelAtPeriodEnd);
 
   return (
     <div

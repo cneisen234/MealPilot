@@ -11,8 +11,10 @@ const shoppingListRoutes = require("./routes/shoppingListRoutes");
 const sharedListRoutes = require("./routes/sharedListRoutes");
 const preferenceRoutes = require("./routes/preferenceRoutes");
 const paymentRoutes = require("./routes/paymentRoutes");
+const referralRoutes = require("./routes/referralRoutes");
 const miscRoutes = require("./routes/miscRoutes");
 const path = require("path");
+const { application } = require("express");
 
 const app = express();
 const port = process.env.PORT || 5000;
@@ -48,6 +50,7 @@ app.use("/api/shopping-list", shoppingListRoutes);
 app.use("/api/shared-list", sharedListRoutes);
 app.use("/api/preference", preferenceRoutes);
 app.use("/api/payment", paymentRoutes);
+app.use("/api/referrals", referralRoutes);
 
 app.get("*", (req, res) => {
   res.sendFile(path.join(__dirname, "../build", "index.html"));

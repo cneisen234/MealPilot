@@ -72,7 +72,7 @@ export const login = (credentials: { email: string; password: string }) => {
   return api.post('/auth/login', credentials);
 };
 
-export const signup = (userData: { name: string; email: string, password: string; }) => {
+export const signup = (userData: { name: string; email: string; password: string; referralCode: any }) => {
   return api.post('/auth/signup', userData);
 };
 
@@ -466,6 +466,11 @@ export const sendContactForm = (formData: {
 }) => {
   return api.post('/contact-us', formData);
 };
+
+export const getReferralStats = () => {
+  return api.get('/referrals/stats');
+};
+
 
 export default api;
 
