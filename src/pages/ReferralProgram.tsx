@@ -3,7 +3,7 @@ import { FaCopy, FaCheck, FaTrophy } from "react-icons/fa";
 import { useToast } from "../context/ToastContext";
 import AnimatedTechIcon from "../components/common/AnimatedTechIcon";
 import "../styles/referral.css";
-import { getReferralStats } from "../utils/api";
+import { getReferralStats, checkPrimaryPaymentMethod } from "../utils/api";
 
 interface ReferralTier {
   referrals: number;
@@ -16,7 +16,6 @@ interface ReferralStats {
   referralCode: string;
   resetDate: string;
   nextTier: number;
-  activeDiscount: string;
 }
 
 const initialTiers: ReferralTier[] = [
@@ -32,37 +31,66 @@ const ReferralProgram = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [copied, setCopied] = useState(false);
   const [tiers, setTiers] = useState<ReferralTier[]>(initialTiers);
+  const [hasSubscriptionId, setHasSubscriptionId] = useState<boolean | null>(
+    null
+  );
   const { showToast } = useToast();
 
   useEffect(() => {
-    fetchReferralStats();
+    checkSubscriptionStatus();
   }, []);
-  const fetchReferralStats = async () => {
-    try {
-      const { data } = await getReferralStats();
-      setStats(data);
 
-      // Update completed tiers based on total referrals
-      const updatedTiers = initialTiers.map((tier) => ({
-        ...tier,
-        isCompleted: data.totalReferrals >= tier.referrals,
-      }));
-      setTiers(updatedTiers);
+  const checkSubscriptionStatus = async () => {
+    try {
+      const { data } = await checkPrimaryPaymentMethod();
+      setHasSubscriptionId(data.hasSubscriptionId);
+      if (data.hasSubscriptionId) {
+        fetchReferralStats();
+      }
     } catch (error) {
-      showToast("Error loading referral stats", "error");
+      showToast("Error checking subscription status", "error");
+      setHasSubscriptionId(false);
     } finally {
       setIsLoading(false);
     }
   };
 
+  const fetchReferralStats = async () => {
+    try {
+      const { data } = await getReferralStats();
+      const formattedStats: ReferralStats = {
+        totalReferrals: Number(data.totalReferrals) || 0,
+        referralCode: String(data.referralCode || ""),
+        resetDate: String(data.resetDate || new Date().toISOString()),
+        nextTier: Number(data.nextTier) || 0,
+      };
+
+      setStats(formattedStats);
+
+      const updatedTiers = initialTiers.map((tier) => ({
+        ...tier,
+        isCompleted: formattedStats.totalReferrals >= tier.referrals,
+      }));
+      setTiers(updatedTiers);
+    } catch (error) {
+      showToast("Error loading referral stats", "error");
+    }
+  };
+
   const getReferralLink = () => {
     if (!stats?.referralCode) return "";
-    return `${window.location.origin}/signup/${stats.referralCode}`;
+    const origin = window.location.origin;
+    return `${origin}/signup/${stats.referralCode}`;
   };
 
   const handleCopyLink = async () => {
     try {
-      await navigator.clipboard.writeText(getReferralLink());
+      const link = getReferralLink();
+      if (!link) {
+        showToast("No referral link available", "error");
+        return;
+      }
+      await navigator.clipboard.writeText(link);
       setCopied(true);
       showToast("Referral link copied to clipboard!", "success");
       setTimeout(() => setCopied(false), 2000);
@@ -79,22 +107,51 @@ const ReferralProgram = () => {
     );
   }
 
+  if (!hasSubscriptionId) {
+    return (
+      <div
+        className="referral-container"
+        style={{ marginTop: 100, marginBottom: 100 }}>
+        <div className="referral-header">
+          <h1>Referral Program</h1>
+          <div
+            style={{
+              backgroundColor: "rgba(5, 71, 42, 0.1)",
+              padding: "20px",
+              borderRadius: "8px",
+              marginTop: "20px",
+              textAlign: "center",
+            }}>
+            <h2 style={{ color: "var(--primary-color)", marginBottom: "10px" }}>
+              Active Subscription Required
+            </h2>
+            <p>
+              The referral program is only available to users with an active
+              subscription. Please visit the account page to set up your
+              subscription and gain access to our referral program.
+            </p>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div
       className="referral-container"
       style={{ marginTop: 100, marginBottom: 100 }}>
-      {/* Header Section */}
       <div className="referral-header">
         <h1>Referral Program</h1>
         <p>
           Share MealSphere with friends and earn rewards! Your benefits reset
           annually on{" "}
           <span className="reset-date">
-            {new Date(stats?.resetDate || "").toLocaleDateString()}
+            {stats?.resetDate
+              ? new Date(stats.resetDate).toLocaleDateString()
+              : "N/A"}
           </span>
         </p>
 
-        {/* Referral Link Section */}
         <div className="referral-link-section">
           <input
             type="text"
@@ -109,25 +166,16 @@ const ReferralProgram = () => {
         </div>
       </div>
 
-      {/* Stats Section */}
       <div className="stats-section">
         <div className="stats-header">
           <div className="stats-info">
             <h2>Your Progress</h2>
             <p>{stats?.totalReferrals || 0} successful referrals this year</p>
           </div>
-          {stats?.activeDiscount && (
-            <div className="active-discount">
-              <p>Active: {stats.activeDiscount}</p>
-            </div>
-          )}
         </div>
 
-        {/* Tiers List */}
         <div className="tiers-list">
           {tiers.map((tier) => {
-            //@ts-ignore
-            const isNextTier = stats?.totalReferrals < tier.referrals;
             const progress = Math.min(
               ((stats?.totalReferrals || 0) / tier.referrals) * 100,
               100
@@ -137,7 +185,7 @@ const ReferralProgram = () => {
               <div
                 key={tier.referrals}
                 className={`tier-item ${tier.isCompleted ? "completed" : ""} ${
-                  isNextTier ? "next-tier" : ""
+                  !tier.isCompleted ? "next-tier" : ""
                 }`}>
                 <div className="tier-content">
                   <div className="tier-info">
@@ -157,7 +205,6 @@ const ReferralProgram = () => {
                   </div>
                 </div>
 
-                {/* Progress Bar */}
                 <div className="progress-bar">
                   <div
                     className={`progress-fill ${
@@ -172,7 +219,6 @@ const ReferralProgram = () => {
         </div>
       </div>
 
-      {/* Terms Section */}
       <div className="terms-section">
         <h2>Program Terms</h2>
         <ul className="terms-list">

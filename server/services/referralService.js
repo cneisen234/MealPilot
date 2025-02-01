@@ -11,13 +11,13 @@ class ReferralService {
       // Get total successful referrals
       const referralCount = await client.query(
         `SELECT COUNT(*) 
-      FROM referrals 
-      WHERE referrer_code = (SELECT referral_code FROM users WHERE id = $1)
-      AND status = 'successful'`,
+         FROM referrals 
+         WHERE referrer_code = (SELECT referral_code FROM users WHERE id = $1)
+         AND status = 'successful'`,
         [userId]
       );
 
-      const totalReferrals = parseInt(referralCount.rows[0].count);
+      const totalReferrals = parseInt(referralCount.rows[0].count) + 1;
 
       // Define reward tiers
       const rewardTiers = [
@@ -39,12 +39,11 @@ class ReferralService {
         let coupon = null;
 
         if (applicableTier.type === "free_months") {
-          // Free months reward: Apply only for the next billing cycle
           expiresAt.setMonth(expiresAt.getMonth() + applicableTier.value);
         } else if (applicableTier.type === "percentage_discount") {
           coupon = await stripe.coupons.create({
             percent_off: applicableTier.value,
-            duration: "once", // Apply once, not recurring
+            duration: "once",
           });
         }
 
@@ -57,8 +56,8 @@ class ReferralService {
 
         await client.query(
           `UPDATE users 
-        SET active_referral_discount = $1::jsonb 
-        WHERE id = $2`,
+           SET active_referral_discount = $1::jsonb 
+           WHERE id = $2`,
           [JSON.stringify(discountInfo), userId]
         );
 
@@ -67,25 +66,25 @@ class ReferralService {
           [userId]
         );
 
-        const stripeSubscriptionId = userResult.rows[0]?.stripe_subscription_id;
+        const { stripe_subscription_id: subscriptionId } = userResult.rows[0];
 
-        if (!stripeSubscriptionId) {
+        if (!subscriptionId) {
           throw new Error("Stripe subscription ID not found");
         }
 
         // Deactivate current rewards
         await client.query(
           `UPDATE referral_rewards 
-         SET is_active = false 
-         WHERE user_id = $1 AND is_active = true`,
+           SET is_active = false 
+           WHERE user_id = $1 AND is_active = true`,
           [userId]
         );
 
         // Add new reward
         await client.query(
           `INSERT INTO referral_rewards 
-         (user_id, reward_tier, reward_type, reward_value, expires_at)
-         VALUES ($1, $2, $3, $4, $5)`,
+           (user_id, reward_tier, reward_type, reward_value, expires_at)
+           VALUES ($1, $2, $3, $4, $5)`,
           [
             userId,
             applicableTier.count,
@@ -95,33 +94,36 @@ class ReferralService {
           ]
         );
 
-        // If it's a percentage discount, apply the coupon to the user's subscription
-        if (coupon) {
-          await stripe.subscriptions.update(stripeSubscriptionId, {
-            coupon: coupon.id, // Apply coupon
-            proration_behavior: "none", // Do not prorate
+        // Handle the reward application
+        if (applicableTier.type === "percentage_discount" && coupon) {
+          // For percentage discounts, apply the coupon
+          await stripe.subscriptions.update(subscriptionId, {
+            coupon: coupon.id,
+            proration_behavior: "none",
           });
         } else if (applicableTier.type === "free_months") {
-          // Apply free months benefit to the user's next billing cycle (no permanent change to the subscription)
-          // We just adjust the next billing period to apply the reward
-          const currentSubscription = await stripe.subscriptions.retrieve(
-            stripeSubscriptionId
+          // Get current subscription
+          const subscription = await stripe.subscriptions.retrieve(
+            subscriptionId
           );
 
-          // Calculate new billing cycle
-          const currentEndDate = new Date(
-            currentSubscription.current_period_end * 1000
-          ); // Convert from Unix timestamp
-          const newEndDate = new Date(
-            currentEndDate.setMonth(
-              currentEndDate.getMonth() + applicableTier.value
-            )
-          );
+          // Calculate new trial period in seconds
+          const freeMonthsInSeconds = applicableTier.value * 30 * 24 * 60 * 60;
 
-          // Set the new billing cycle anchor, but do not extend the subscription permanently
-          await stripe.subscriptions.update(stripeSubscriptionId, {
-            billing_cycle_anchor: Math.floor(newEndDate.getTime() / 1000), // Update to the new end date
-            proration_behavior: "none", // Do not prorate
+          // If there's an existing trial, add to it
+          let newTrialEnd;
+          if (subscription.trial_end) {
+            // Add new free months to existing trial end
+            newTrialEnd = subscription.trial_end + freeMonthsInSeconds;
+          } else {
+            // Start new trial from now
+            newTrialEnd = Math.floor(Date.now() / 1000) + freeMonthsInSeconds;
+          }
+
+          // Update subscription with new trial period
+          await stripe.subscriptions.update(subscriptionId, {
+            trial_end: newTrialEnd,
+            proration_behavior: "none",
           });
         }
       }
