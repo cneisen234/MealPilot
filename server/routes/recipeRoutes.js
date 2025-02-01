@@ -5,6 +5,7 @@ const checkAiActions = require("../middleware/aiActions");
 const checkPaywall = require("../middleware/checkPaywall");
 const pool = require("../db");
 const openai = require("../openai");
+const deepseek = require("../deepseek");
 const axios = require("axios");
 const cheerio = require("cheerio");
 const cleanAIResponse = require("../cleanAiResponse");
@@ -321,17 +322,48 @@ Nutritional Information:
 - Fat: [number]g
 
 IMPORTANT: All fields must be included and properly formatted as shown above, especially the prep time, cook time, and complete nutritional information.`;
-      console.log("prompt", prompt);
-      // Generate recipe using OpenAI
-      const completion = await openai.chat.completions.create({
-        model: "gpt-3.5-turbo",
+
+      let completion;
+      const timeout = 20000; // Timeout in milliseconds
+      let timeoutId;
+
+      const timeoutPromise = new Promise(
+        (_, reject) =>
+          (timeoutId = setTimeout(() => {
+            console.log("DeepSeek was too slow, forcing fallback to GPT");
+            reject(new Error("DeepSeek took too long"));
+          }, timeout))
+      );
+
+      const deepseekPromise = deepseek.chat.completions.create({
+        model: "deepseek-chat",
         messages: [{ role: "user", content: prompt }],
         max_tokens: 1000,
         temperature: 1.0,
       });
 
-      console.log("completion", completion);
+      try {
+        // Use Promise.race to execute both the DeepSeek and timeout promises
+        completion = await Promise.race([deepseekPromise, timeoutPromise]);
+        console.log("Using DeepSeek model");
+        clearTimeout(timeoutId);
+      } catch (aiError) {
+        // Fallback to GPT if DeepSeek fails or times out
+        if (aiError.message === "DeepSeek took too long") {
+          console.log("Fallback to GPT due to timeout");
+        } else {
+          console.log("Fallback to GPT due to error:", aiError.message);
+        }
 
+        // Generate recipe using GPT
+        completion = await openai.chat.completions.create({
+          model: "gpt-3.5-turbo",
+          messages: [{ role: "user", content: prompt }],
+          max_tokens: 1000,
+          temperature: 1.0,
+        });
+        console.log("Using GPT-3.5 model");
+      }
       const recipeText = completion.choices[0].message.content;
       recipe = cleanAIResponse(recipeText);
       recipe.mealType = mealType;
@@ -1007,8 +1039,20 @@ router.post(
         Extract the information from this webpage content and return it as a valid JSON object:
     ${pageText.substring(0, 8000)}`;
 
-      const completion = await openai.chat.completions.create({
-        model: "gpt-3.5-turbo",
+      let completion;
+      const timeout = 20000; // Timeout in milliseconds
+      let timeoutId;
+
+      const timeoutPromise = new Promise(
+        (_, reject) =>
+          (timeoutId = setTimeout(() => {
+            console.log("DeepSeek was too slow, forcing fallback to GPT");
+            reject(new Error("DeepSeek took too long"));
+          }, timeout))
+      );
+
+      const deepseekPromise = await deepseek.chat.completions.create({
+        model: "deepseek-chat",
         messages: [
           {
             role: "system",
@@ -1020,6 +1064,34 @@ router.post(
         temperature: 0.3,
         response_format: { type: "json_object" },
       });
+
+      try {
+        // Use Promise.race to execute both the DeepSeek and timeout promises
+        completion = await Promise.race([deepseekPromise, timeoutPromise]);
+        console.log("Using DeepSeek model");
+        clearTimeout(timeoutId);
+      } catch (aiError) {
+        // Fallback to GPT if DeepSeek fails or times out
+        if (aiError.message === "DeepSeek took too long") {
+          console.log("Fallback to GPT due to timeout");
+        } else {
+          console.log("Fallback to GPT due to error:", aiError.message);
+        }
+        completion = await openai.chat.completions.create({
+          model: "gpt-3.5-turbo",
+          messages: [
+            {
+              role: "system",
+              content: "You are a recipe extraction expert.",
+            },
+            { role: "user", content: prompt },
+          ],
+          max_tokens: 1000,
+          temperature: 0.3,
+          response_format: { type: "json_object" },
+        });
+        console.log("Using GPT-3.5 model");
+      }
 
       const recipe = JSON.parse(completion.choices[0].message.content);
 
@@ -1210,8 +1282,20 @@ Return a JSON object with exactly this structure:
   "mealType": "string (breakfast/lunch/dinner/dessert/etc)"
 }`;
 
-      const completion = await openai.chat.completions.create({
-        model: "gpt-3.5-turbo",
+      let completion;
+      const timeout = 20000; // Timeout in milliseconds
+      let timeoutId;
+
+      const timeoutPromise = new Promise(
+        (_, reject) =>
+          (timeoutId = setTimeout(() => {
+            console.log("DeepSeek was too slow, forcing fallback to GPT");
+            reject(new Error("DeepSeek took too long"));
+          }, timeout))
+      );
+
+      const deepseekPromise = await deepseek.chat.completions.create({
+        model: "deepseek-chat",
         messages: [
           {
             role: "system",
@@ -1227,6 +1311,37 @@ Return a JSON object with exactly this structure:
         temperature: 0.3,
         response_format: { type: "json_object" },
       });
+
+      try {
+        // Use Promise.race to execute both the DeepSeek and timeout promises
+        completion = await Promise.race([deepseekPromise, timeoutPromise]);
+        console.log("Using DeepSeek model");
+        clearTimeout(timeoutId);
+      } catch (aiError) {
+        if (aiError.message === "DeepSeek took too long") {
+          console.log("Fallback to GPT due to timeout");
+        } else {
+          console.log("Fallback to GPT due to error:", aiError.message);
+        }
+        completion = await openai.chat.completions.create({
+          model: "gpt-3.5-turbo",
+          messages: [
+            {
+              role: "system",
+              content:
+                "You are a professional recipe formatter specializing in converting OCR text into structured recipes.",
+            },
+            {
+              role: "user",
+              content: gptPrompt,
+            },
+          ],
+          max_tokens: 1000,
+          temperature: 0.3,
+          response_format: { type: "json_object" },
+        });
+        console.log("Using GPT-3.5 model");
+      }
 
       const recipe = JSON.parse(completion.choices[0].message.content);
 

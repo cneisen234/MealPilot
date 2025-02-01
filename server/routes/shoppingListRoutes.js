@@ -4,6 +4,7 @@ const authMiddleware = require("../middleware/auth");
 const checkAiActions = require("../middleware/aiActions");
 const checkPaywall = require("../middleware/checkPaywall");
 const openai = require("../openai");
+const deepseek = require("../deepseek");
 const pool = require("../db");
 const vision = require("@google-cloud/vision");
 const client = new vision.ImageAnnotatorClient({
@@ -584,8 +585,20 @@ Return a JSON object:
   ]
 }`;
 
-      const completion = await openai.chat.completions.create({
-        model: "gpt-3.5-turbo",
+      let completion;
+      const timeout = 15000; // Timeout in milliseconds
+      let timeoutId;
+
+      const timeoutPromise = new Promise(
+        (_, reject) =>
+          (timeoutId = setTimeout(() => {
+            console.log("DeepSeek was too slow, forcing fallback to GPT");
+            reject(new Error("DeepSeek took too long"));
+          }, timeout))
+      );
+
+      const deepseekPromise = await deepseek.chat.completions.create({
+        model: "deepseek-chat",
         messages: [
           {
             role: "system",
@@ -601,6 +614,32 @@ Return a JSON object:
         temperature: 0.3,
         response_format: { type: "json_object" },
       });
+
+      try {
+        // Use Promise.race to execute both the DeepSeek and timeout promises
+        completion = await Promise.race([deepseekPromise, timeoutPromise]);
+        console.log("Using DeepSeek model");
+        clearTimeout(timeoutId);
+      } catch (aiError) {
+        completion = await openai.chat.completions.create({
+          model: "gpt-3.5-turbo",
+          messages: [
+            {
+              role: "system",
+              content:
+                "You are a receipt analysis expert that specializes in matching shopping list items with receipt entries.",
+            },
+            {
+              role: "user",
+              content: gptPrompt,
+            },
+          ],
+          max_tokens: 500,
+          temperature: 0.3,
+          response_format: { type: "json_object" },
+        });
+        console.log("Using GPT-3.5 model");
+      }
 
       const analysis = JSON.parse(completion.choices[0].message.content);
 
@@ -988,8 +1027,20 @@ Respond with a JSON object in this format:
   "shoppingListMatches": ["potential matches from shopping list"]
 }`;
 
-      const completion = await openai.chat.completions.create({
-        model: "gpt-3.5-turbo",
+      let completion;
+      const timeout = 8000; // Timeout in milliseconds
+      let timeoutId;
+
+      const timeoutPromise = new Promise(
+        (_, reject) =>
+          (timeoutId = setTimeout(() => {
+            console.log("DeepSeek was too slow, forcing fallback to GPT");
+            reject(new Error("DeepSeek took too long"));
+          }, timeout))
+      );
+
+      const deepseekPromise = await deepseek.chat.completions.create({
+        model: "deepseek-chat",
         messages: [
           {
             role: "system",
@@ -1005,6 +1056,32 @@ Respond with a JSON object in this format:
         temperature: 0.3,
         response_format: { type: "json_object" },
       });
+
+      try {
+        // Use Promise.race to execute both the DeepSeek and timeout promises
+        completion = await Promise.race([deepseekPromise, timeoutPromise]);
+        console.log("Using DeepSeek model");
+        clearTimeout(timeoutId);
+      } catch (aiError) {
+        completion = await openai.chat.completions.create({
+          model: "gpt-3.5-turbo",
+          messages: [
+            {
+              role: "system",
+              content:
+                "You are a precise food item identification expert. You excel at identifying specific food items from image analysis data.",
+            },
+            {
+              role: "user",
+              content: gptPrompt,
+            },
+          ],
+          max_tokens: 500,
+          temperature: 0.3,
+          response_format: { type: "json_object" },
+        });
+        console.log("Using GPT-3.5 model");
+      }
 
       const analysis = JSON.parse(completion.choices[0].message.content);
 

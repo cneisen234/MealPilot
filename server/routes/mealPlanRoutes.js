@@ -208,10 +208,9 @@ Instructions:
 
 Nutritional Information:
 [Details]`;
-
         try {
-          const completion = await openai.chat.completions.create({
-            model: "gpt-3.5-turbo",
+          completion = await openai.chat.completions.create({
+            model: "deepseek-chat",
             messages: [{ role: "user", content: prompt }],
             max_tokens: 1000,
             temperature: 0.7,
