@@ -85,6 +85,9 @@ const Inventory: React.FC = () => {
     if (items.length > 0) {
       const sorted = sortHelper(items, sortConfig);
       setFilteredItems(sorted);
+    } else {
+      // Ensure filteredItems is empty when items is empty
+      setFilteredItems([]);
     }
   }, [items, sortConfig]);
 
@@ -203,7 +206,18 @@ const Inventory: React.FC = () => {
     if (!deleteItem) return;
     try {
       await deleteInventoryItem(deleteItem.id, deleteItem.quantity);
-      setItems((prev) => prev.filter((item) => item.id !== deleteItem.id));
+      setItems((prev) => {
+        const newItems = prev.filter((item) => item.id !== deleteItem.id);
+        // If items array is now empty, make sure filtered items is also empty
+        if (newItems.length === 0) {
+          setFilteredItems([]);
+        } else {
+          // Apply current sort configuration to filtered items
+          const sorted = sortHelper(newItems, sortConfig);
+          setFilteredItems(sorted);
+        }
+        return newItems;
+      });
       showToast("Item deleted successfully", "success");
       setDeleteItem(null);
     } catch (error) {
@@ -344,30 +358,35 @@ const Inventory: React.FC = () => {
           defaultSort={{ field: "id", direction: "desc" }}
         />
       </div>
-
-      <div className="list-grid">
-        {filteredItems.map((item) => (
-          <div key={item.id} className="list-card">
-            <div className="card-header">
-              <h3 className="card-title">{item.item_name}</h3>
-              <div className="card-actions">
-                <button
-                  onClick={() => setEditingItem(item)}
-                  className="card-button edit"
-                  title="Edit item">
-                  <FaPencilAlt />
-                </button>
-                <button
-                  onClick={() => setDeleteItem(item)}
-                  className="card-button delete"
-                  title="Delete item">
-                  <FaTrash />
-                </button>
+      {filteredItems.length === 0 ? (
+        <div className="empty-state">
+          <p>No items in your list</p>
+        </div>
+      ) : (
+        <div className="list-grid">
+          {filteredItems.map((item) => (
+            <div key={item.id} className="list-card">
+              <div className="card-header">
+                <h3 className="card-title">{item.item_name}</h3>
+                <div className="card-actions">
+                  <button
+                    onClick={() => setEditingItem(item)}
+                    className="card-button edit"
+                    title="Edit item">
+                    <FaPencilAlt />
+                  </button>
+                  <button
+                    onClick={() => setDeleteItem(item)}
+                    className="card-button delete"
+                    title="Delete item">
+                    <FaTrash />
+                  </button>
+                </div>
               </div>
             </div>
-          </div>
-        ))}
-      </div>
+          ))}
+        </div>
+      )}
 
       {(isFormOpen || editingItem) && (
         <InventoryForm

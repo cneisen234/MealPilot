@@ -199,26 +199,6 @@ CREATE TABLE recipes
             (50)
 );
 
-            -- Create referrals table
-            CREATE TABLE referrals
-            (
-                id SERIAL PRIMARY KEY,
-                referrer_id INTEGER REFERENCES users(id),
-                referred_id INTEGER REFERENCES users(id),
-                referrer_code VARCHAR(20) REFERENCES users(referral_code),
-                referred_email VARCHAR
-                (255) NULL UNIQUE,
-                status VARCHAR
-                (20) DEFAULT 'pending',
-                -- pending, successful, expired
-                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                paid_month_completed_at TIMESTAMP,
-                UNIQUE
-                (referred_id),
-                -- Ensures each user can only be referred once
-                UNIQUE
-                (referral_code)
-            );
 
             -- Create referral rewards table to track applied rewards
             CREATE TABLE referrals
@@ -233,6 +213,22 @@ CREATE TABLE recipes
                 paid_month_completed_at TIMESTAMP,
                 UNIQUE(referred_id)
                 -- Ensures each user can only be referred once
+            );
+
+            CREATE TABLE referral_rewards
+            (
+                id SERIAL PRIMARY KEY,
+                user_id INTEGER REFERENCES users(id),
+                reward_tier INTEGER NOT NULL,
+                -- 1, 3, 5, 10, or 25
+                reward_type VARCHAR(50) NOT NULL,
+                -- percentage_discount, free_months
+                reward_value DECIMAL NOT NULL,
+                -- percentage or number of months
+                applied_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                expires_at TIMESTAMP NOT NULL,
+                is_active BOOLEAN DEFAULT true,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
             );
 
             -- Index for efficient querying of recipes based on last query date

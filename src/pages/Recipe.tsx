@@ -41,7 +41,7 @@ import {
 } from "../constants/dietaryItems";
 import "../styles/recipe.css";
 import { useLocation, useNavigate } from "react-router-dom";
-import { FaArrowLeft } from "react-icons/fa";
+import { FaArrowLeft, FaUtensils } from "react-icons/fa";
 import { useToast } from "../context/ToastContext";
 import { useAuth } from "../context/AuthContext";
 
@@ -483,7 +483,7 @@ const Recipe = () => {
       className="recipe-container"
       style={{ marginBottom: 150, marginTop: 50 }}>
       <div className="recipe-header">
-        <h1>Generate a Recipe</h1>
+        <h1>Recipe Preferences</h1>
         <p>
           Choose up to 7 dietary preferences to get personalized recipe
           recommendations.
@@ -586,8 +586,10 @@ const Recipe = () => {
       </div>
 
       <div className="generate-container">
-        <button onClick={handleGenerateRecipe} className="generate-button">
-          Generate Recipe
+        <button
+          onClick={() => navigate("/myrecipes")}
+          className="generate-button">
+          <FaUtensils /> View My Recipes
         </button>
       </div>
     </div>

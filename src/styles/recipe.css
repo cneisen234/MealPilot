@@ -694,5 +694,6 @@
     .generate-button {
         width: 100%;
         justify-content: center;
+        margin-bottom: 0px;
     }
 }

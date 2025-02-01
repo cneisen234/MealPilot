@@ -1,11 +1,11 @@
 import React from "react";
 import { Link, useLocation } from "react-router-dom";
 import {
-  FaLightbulb,
   FaBook,
   FaCalendar,
   FaBoxes,
   FaShoppingBasket,
+  FaUtensils,
 } from "react-icons/fa";
 import "../../styles/sidebar.css";
 
@@ -54,7 +54,7 @@ const MobileNavItem: React.FC<MobileNavItemProps> = ({ to, icon, label }) => {
 };
 
 const navItems = [
-  { path: "/recipe", icon: <FaLightbulb />, label: "Generate" },
+  { path: "/recipe", icon: <FaUtensils />, label: "Preferences" },
   { path: "/myrecipes", icon: <FaBook />, label: "Recipes" },
   { path: "/mealplan", icon: <FaCalendar />, label: "Plan" },
   { path: "/inventory", icon: <FaBoxes />, label: "Inventory" },

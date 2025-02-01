@@ -7,6 +7,8 @@ import {
   FaReceipt,
   FaShare,
   FaCamera,
+  FaEye,
+  FaArrowLeft,
 } from "react-icons/fa";
 import AnimatedTechIcon from "../components/common/AnimatedTechIcon";
 import ConfirmationModal from "../components/common/ConfirmationModal";
@@ -29,6 +31,7 @@ import ShareableListModal from "../components/shoppingList/SharableListModal";
 import MatchSelectionModal from "../components/common/MatchSelectionModal";
 import SearchInput from "../components/common/SearchInput";
 import SortInput from "../components/common/SortInput";
+import SharedListPreview from "./SharedListPreview";
 import { sortHelper, SortConfig } from "../helpers/sortHelper";
 import { useToast } from "../context/ToastContext";
 import { useAuth } from "../context/AuthContext";
@@ -71,6 +74,7 @@ const ShoppingList: React.FC = () => {
   const [isItemPhotoModalOpen, setIsItemPhotoModalOpen] = useState(false);
   const [newItemFromPhoto, setNewItemFromPhoto] = useState<string | null>(null);
   const [matches, setMatches] = useState<any[] | null>(null);
+  const [showPreview, setShowPreview] = useState(false);
 
   const sortOptions = [
     { label: "Recently Added", value: "id", type: "number" },
@@ -100,6 +104,9 @@ const ShoppingList: React.FC = () => {
     if (items.length > 0) {
       const sorted = sortHelper(items, sortConfig);
       setFilteredItems(sorted);
+    } else {
+      // Ensure filteredItems is empty when items is empty
+      setFilteredItems([]);
     }
   }, [items, sortConfig]);
 
@@ -290,7 +297,18 @@ const ShoppingList: React.FC = () => {
     if (!deleteItem) return;
     try {
       await deleteShoppingListItem(deleteItem.id, deleteItem.quantity);
-      setItems((prev) => prev.filter((item) => item.id !== deleteItem.id));
+      setItems((prev) => {
+        const newItems = prev.filter((item) => item.id !== deleteItem.id);
+        // If items array is now empty, make sure filtered items is also empty
+        if (newItems.length === 0) {
+          setFilteredItems([]);
+        } else {
+          // Apply current sort configuration to filtered items
+          const sorted = sortHelper(newItems, sortConfig);
+          setFilteredItems(sorted);
+        }
+        return newItems;
+      });
       setDeleteItem(null);
     } catch (error) {
       showToast("Failed to delete item", "error");
@@ -339,6 +357,19 @@ const ShoppingList: React.FC = () => {
     );
   }
 
+  if (showPreview) {
+    return (
+      <div
+        className="inventory-container"
+        style={{ marginBottom: 150, marginTop: 50 }}>
+        <SharedListPreview
+          items={items.filter((item) => selectedItems.has(item.id))}
+          onBack={() => setShowPreview(false)}
+        />
+      </div>
+    );
+  }
+
   return (
     <div
       className="inventory-container"
@@ -382,7 +413,17 @@ const ShoppingList: React.FC = () => {
               backgroundColor:
                 selectedItems.size === 0 ? "grey" : "var(--primary-color)",
             }}>
-            <FaShare /> Share Shopping List
+            <FaShare /> Share List
+          </button>
+          <button
+            onClick={() => setShowPreview(true)}
+            className="add-item-button-list"
+            disabled={selectedItems.size === 0}
+            style={{
+              backgroundColor:
+                selectedItems.size === 0 ? "grey" : "var(--primary-color)",
+            }}>
+            <FaEye /> Preview Shared List
           </button>
         </div>
       </div>
@@ -415,40 +456,45 @@ const ShoppingList: React.FC = () => {
           defaultSort={{ field: "id", direction: "desc" }}
         />
       </div>
-
-      <div className="list-grid">
-        {filteredItems.map((item) => (
-          <div key={item.id} className="list-card">
-            <div className="card-header">
-              <div className="card-header-content">
-                <div className="checkbox-container">
-                  <input
-                    type="checkbox"
-                    checked={selectedItems.has(item.id)}
-                    onChange={() => handleToggleSelect(item.id)}
-                    className="item-checkbox"
-                  />
-                  <h3 className="card-title">{item.item_name}</h3>
+      {filteredItems.length === 0 ? (
+        <div className="empty-state">
+          <p>No items in your list</p>
+        </div>
+      ) : (
+        <div className="list-grid">
+          {filteredItems.map((item) => (
+            <div key={item.id} className="list-card">
+              <div className="card-header">
+                <div className="card-header-content">
+                  <div className="checkbox-container">
+                    <input
+                      type="checkbox"
+                      checked={selectedItems.has(item.id)}
+                      onChange={() => handleToggleSelect(item.id)}
+                      className="item-checkbox"
+                    />
+                    <h3 className="card-title">{item.item_name}</h3>
+                  </div>
+                </div>
+                <div className="card-actions">
+                  <button
+                    onClick={() => setEditingItem(item)}
+                    className="card-button edit"
+                    title="Edit item">
+                    <FaPencilAlt />
+                  </button>
+                  <button
+                    onClick={() => setDeleteItem(item)}
+                    className="card-button delete"
+                    title="Delete item">
+                    <FaTrash />
+                  </button>
                 </div>
               </div>
-              <div className="card-actions">
-                <button
-                  onClick={() => setEditingItem(item)}
-                  className="card-button edit"
-                  title="Edit item">
-                  <FaPencilAlt />
-                </button>
-                <button
-                  onClick={() => setDeleteItem(item)}
-                  className="card-button delete"
-                  title="Delete item">
-                  <FaTrash />
-                </button>
-              </div>
             </div>
-          </div>
-        ))}
-      </div>
+          ))}
+        </div>
+      )}
 
       {(isFormOpen || editingItem) && (
         <ShoppingListForm

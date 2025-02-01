@@ -1,8 +1,11 @@
 import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { getUserRecipes } from "../utils/api";
+import { generateRecipe, getUserRecipes } from "../utils/api";
+import { FaPlus, FaMagic } from "react-icons/fa";
 import AnimatedTechIcon from "../components/common/AnimatedTechIcon";
 import SearchInput from "../components/common/SearchInput";
+import { useToast } from "../context/ToastContext";
+import { useAuth } from "../context/AuthContext";
 import "../styles/myrecipes.css";
 
 interface Recipe {
@@ -21,6 +24,9 @@ const MyRecipes: React.FC = () => {
   const [recipes, setRecipes] = useState<Recipe[]>([]);
   const [filteredRecipes, setFilteredRecipes] = useState<Recipe[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [isGenerating, setIsGenerating] = useState(false);
+  const { showToast } = useToast();
+  const { aiActionsRemaining, setAiActionsRemaining } = useAuth();
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -39,10 +45,32 @@ const MyRecipes: React.FC = () => {
     }
   };
 
-  if (isLoading) {
+  const handleGenerateRecipe = async () => {
+    setIsGenerating(true);
+    try {
+      if (aiActionsRemaining <= 0) {
+        showToast("You've reached your daily AI action limit", "error");
+        return;
+      }
+
+      const response = await generateRecipe();
+      if (response.data.recipe) {
+        navigate("/recipe", { state: { recipe: response.data.recipe } });
+        const remainingActions = aiActionsRemaining - 1;
+        setAiActionsRemaining(remainingActions);
+      }
+    } catch (error) {
+      showToast("Error generating recipe", "error");
+    } finally {
+      setIsGenerating(false);
+    }
+  };
+
+  if (isLoading || isGenerating) {
     return (
       <div className="loading-container">
-        <AnimatedTechIcon size={100} speed={4} />
+        <AnimatedTechIcon size={100} speed={4} />{" "}
+        {isGenerating && "thinking on it!"}
       </div>
     );
   }
@@ -53,11 +81,16 @@ const MyRecipes: React.FC = () => {
       style={{ marginBottom: 150, marginTop: 50 }}>
       <div className="page-header">
         <h1>My Recipes</h1>
-        <button
-          onClick={() => navigate("/recipe/create")}
-          className="generate-button">
-          Create New Recipe
-        </button>
+        <div style={{ display: "flex", gap: "1rem", flexWrap: "wrap" }}>
+          <button
+            onClick={() => navigate("/recipe/create")}
+            className="generate-button">
+            <FaPlus /> Create New Recipe
+          </button>
+          <button onClick={handleGenerateRecipe} className="generate-button">
+            <FaMagic /> Generate Recipe
+          </button>
+        </div>
       </div>
 
       {recipes.length > 0 && (
