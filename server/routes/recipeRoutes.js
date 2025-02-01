@@ -326,7 +326,7 @@ IMPORTANT: All fields must be included and properly formatted as shown above, es
       const completion = await openai.chat.completions.create({
         model: "gpt-3.5-turbo",
         messages: [{ role: "user", content: prompt }],
-        max_tokens: 800,
+        max_tokens: 1000,
         temperature: 1.0,
       });
 
@@ -982,8 +982,8 @@ router.post(
     Return a JSON object with exactly this structure:
     {
       "title": "Recipe title",
-      "prepTime": "30 minutes",
-      "cookTime": "45 minutes",
+      "prepTime": "2 hours and 15 min",
+      "cookTime": "1 hour and 40 min",
       "servings": "4",
         "ingredients": [
     "Include complete ingredient descriptions with measurements and names, like:",
