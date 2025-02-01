@@ -78,9 +78,6 @@ const Recipe = () => {
   const [recipe, setRecipe] = useState<Recipe | null>(null);
   const [isSaving, setIsSaving] = useState(false);
   const [selectedServings, setSelectedServings] = useState<string>("4");
-  const [selectedMealTypes, setSelectedMealTypes] = useState<any[]>([]);
-  const [selectedServingsList, setSelectedServingsList] = useState<any[]>([]);
-  const [isThinking, setIsThinking] = useState<boolean>(false);
   let currentStep = 1;
 
   useEffect(() => {
@@ -145,8 +142,6 @@ const Recipe = () => {
       setTastePreferences(tastePreferencesRes.data);
       setDietaryGoals(dietaryGoalsRes.data);
       setCuisinePreferences(cuisinePreferencesRes.data);
-      setSelectedMealTypes(selectedMealTypeRes.data);
-      setSelectedServingsList(selectedServingsRes.data);
 
       // Set default selected values if they exist
       if (selectedMealTypeRes.data.length > 0) {
@@ -163,7 +158,6 @@ const Recipe = () => {
   };
 
   const handleMealTypeChange = async (item: string) => {
-    setSelectedMealType(item);
     try {
       await addSelectedMealType(item);
     } catch (error) {
@@ -280,36 +274,6 @@ const Recipe = () => {
     }
   };
 
-  const handleGenerateRecipe = async () => {
-    setIsLoading(true);
-    setTimeout(() => {
-      setIsThinking(true);
-    }, 5000);
-    try {
-      const response = await generateRecipe(selectedMealType, selectedServings);
-      if (aiActionsRemaining === 10) {
-        showToast(`You are running low on AI actions for today`, "warning");
-      }
-      if (aiActionsRemaining <= 0) {
-        showToast(
-          "You've reached your daily AI action limit. Try another method.",
-          "error"
-        );
-        setIsThinking(false);
-        setIsLoading(false);
-        return;
-      }
-      setRecipe(response.data.recipe);
-      const remainingActions = aiActionsRemaining - 1;
-      setAiActionsRemaining(remainingActions);
-    } catch (error) {
-      showToast("Error generating recipe", "error");
-      console.error("Error generating recipe:", error);
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
   const handleSaveRecipe = async () => {
     if (!recipe || isSaving) return;
 
@@ -371,7 +335,6 @@ const Recipe = () => {
     return (
       <div className="loading-container">
         <AnimatedTechIcon size={100} speed={4} />
-        {isThinking && <p>Thinking on it!</p>}
       </div>
     );
   }

@@ -105,7 +105,6 @@ router.post(
   async (req, res) => {
     try {
       const userId = req.user.id;
-      const { mealType, servings } = req.body; // Add servings to destructuring
 
       // Fetch user data and preferences in parallel
       const [
@@ -116,6 +115,8 @@ router.post(
         tastePreferencesQuery,
         dietaryGoalsQuery,
         cuisinePreferencesQuery,
+        selectedMealTypeResult,
+        selectedServingsResult,
       ] = await Promise.all([
         pool.query("SELECT id, name FROM users WHERE id = $1", [userId]),
         pool.query("SELECT title FROM recipes WHERE user_id = $1", [userId]),
@@ -128,6 +129,10 @@ router.post(
           userId,
         ]),
         pool.query("SELECT item FROM cuisine_preferences WHERE user_id = $1", [
+          userId,
+        ]),
+        pool.query("SELECT item FROM meal_types WHERE user_id = $1", [userId]),
+        pool.query("SELECT item FROM selected_servings WHERE user_id = $1", [
           userId,
         ]),
       ]);
@@ -143,6 +148,15 @@ router.post(
       const cuisinePreferences = cuisinePreferencesQuery.rows.map(
         (row) => row.item
       );
+      const mealType =
+        selectedMealTypeResult.rows.length > 0
+          ? selectedMealTypeResult.rows[0].item
+          : "main course";
+
+      const servings =
+        selectedServingsResult.rows.length > 0
+          ? selectedServingsResult.rows[0].item
+          : "4";
 
       // Check for matching recipes in global_recipes
       const threeDaysAgo = new Date();
