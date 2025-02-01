@@ -88,7 +88,7 @@ const Recipe = () => {
   }, []);
 
   useEffect(() => {
-    if (preferencesCount > 6) {
+    if (preferencesCount > 6 && !recipe) {
       showToast("Can't have more than 7 items selected", "warning");
     }
   }, [preferencesCount]);
@@ -333,7 +333,7 @@ const Recipe = () => {
     if (routeLocation.state?.fromMealPlan) {
       navigate("/mealplan");
     } else {
-      setRecipe(null);
+      navigate("/myrecipes");
     }
   };
 
