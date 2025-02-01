@@ -299,8 +299,8 @@ router.post(
       prompt += `\nPlease format the recipe exactly as follows and include ALL fields:
 
 Name: [Recipe Name]
-Prep Time: [Exact time in minutes, e.g. "20 minutes"]
-Cook Time: [Exact time in minutes, e.g. "30 minutes"]
+Prep Time: [Exact time, e.g. "20 minutes" OR "1 hour"]
+Cook Time: [Exact time, e.g. "30 minutes" OR "1 hour"]
 Servings: ${servings || "4"}
 
 Ingredients:
