@@ -319,18 +319,18 @@ Nutritional Information:
 - Protein: [number]g
 - Carbohydrates: [number]g
 - Fat: [number]g
-- Fiber: [number]g
-- Sodium: [number]mg
 
 IMPORTANT: All fields must be included and properly formatted as shown above, especially the prep time, cook time, and complete nutritional information.`;
-
+      console.log("prompt", prompt);
       // Generate recipe using OpenAI
       const completion = await openai.chat.completions.create({
-        model: "deepseek-chat",
+        model: "gpt-3.5-turbo",
         messages: [{ role: "user", content: prompt }],
-        max_tokens: 1500,
+        max_tokens: 800,
         temperature: 1.0,
       });
+
+      console.log("completion", completion);
 
       const recipeText = completion.choices[0].message.content;
       recipe = cleanAIResponse(recipeText);
@@ -1008,7 +1008,7 @@ router.post(
     ${pageText.substring(0, 8000)}`;
 
       const completion = await openai.chat.completions.create({
-        model: "deepseek-chat",
+        model: "gpt-3.5-turbo",
         messages: [
           {
             role: "system",
@@ -1211,7 +1211,7 @@ Return a JSON object with exactly this structure:
 }`;
 
       const completion = await openai.chat.completions.create({
-        model: "deepseek-chat",
+        model: "gpt-3.5-turbo",
         messages: [
           {
             role: "system",
