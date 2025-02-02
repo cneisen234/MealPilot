@@ -145,10 +145,11 @@ const MyRecipes: React.FC = () => {
             <div
               key={recipe.id}
               className="recipe-card"
+              style={{ paddingBottom: 10 }}
               onClick={() => navigate(`/myrecipes/${recipe.id}`)}>
               <h2 className="recipe-card-title">{recipe.title}</h2>
 
-              <div className="recipe-card-meta">
+              {/* <div className="recipe-card-meta">
                 {recipe.prep_time && (
                   <div className="recipe-card-meta-item">
                     <span className="meta-label">Prep</span>
@@ -167,7 +168,7 @@ const MyRecipes: React.FC = () => {
                     <span className="meta-value">{recipe.servings}</span>
                   </div>
                 )}
-              </div>
+              </div> */}
             </div>
           ))}
         </div>
