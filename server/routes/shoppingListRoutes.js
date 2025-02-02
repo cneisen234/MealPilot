@@ -597,7 +597,7 @@ Return a JSON object:
           }, timeout))
       );
 
-      const deepseekPromise = await deepseek.chat.completions.create({
+      const deepseekPromise = deepseek.chat.completions.create({
         model: "deepseek-chat",
         messages: [
           {
