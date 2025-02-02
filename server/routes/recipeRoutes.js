@@ -101,6 +101,111 @@ const standardizeUnit = (unit) => {
 };
 
 router.post(
+  "/generate-random",
+  [authMiddleware, checkAiActions, checkPaywall],
+  async (req, res) => {
+    try {
+      // Generate base prompt without any preferences
+      const prompt = `Generate a unique and detailed recipe.
+
+Please format the recipe exactly as follows and include ALL fields:
+
+Name: [Recipe Name]
+Prep Time: [Exact time, e.g. "20 minutes" OR "1 hour"]
+Cook Time: [Exact time, e.g. "30 minutes" OR "1 hour"]
+Servings: [2-8]
+
+Ingredients:
+[List each ingredient on a new line with precise measurements]
+
+Instructions:
+**[Main Step Title]:**
+[Sub-steps with details]
+[Additional sub-steps if needed]
+**[Next Main Step Title]:**
+[Sub-steps with details]
+[Continue pattern for all steps]
+
+Nutritional Information:
+- Calories: [number] kcal
+- Protein: [number]g
+- Carbohydrates: [number]g
+- Fat: [number]g
+
+IMPORTANT: All fields must be included and properly formatted as shown above, especially the prep time, cook time, and complete nutritional information.`;
+
+      let completion;
+      const timeout = 20000;
+      let timeoutId;
+
+      const timeoutPromise = new Promise(
+        (_, reject) =>
+          (timeoutId = setTimeout(() => {
+            console.log("DeepSeek was too slow, forcing fallback to GPT");
+            reject(new Error("DeepSeek took too long"));
+          }, timeout))
+      );
+
+      const deepseekPromise = deepseek.chat.completions.create({
+        model: "deepseek-chat",
+        messages: [{ role: "user", content: prompt }],
+        max_tokens: 1000,
+        temperature: 1.0,
+      });
+
+      try {
+        completion = await Promise.race([deepseekPromise, timeoutPromise]);
+        console.log("Using DeepSeek model");
+        clearTimeout(timeoutId);
+      } catch (aiError) {
+        if (aiError.message === "DeepSeek took too long") {
+          console.log("Fallback to GPT due to timeout");
+        } else {
+          console.log("Fallback to GPT due to error:", aiError.message);
+        }
+
+        completion = await openai.chat.completions.create({
+          model: "gpt-3.5-turbo",
+          messages: [{ role: "user", content: prompt }],
+          max_tokens: 1000,
+          temperature: 1.0,
+        });
+        console.log("Using GPT-3.5 model");
+      }
+
+      const recipeText = completion.choices[0].message.content;
+      const recipe = cleanAIResponse(recipeText);
+
+      // Save to global_recipes table with minimal metadata
+      await pool.query(
+        `INSERT INTO global_recipes (
+          title, prep_time, cook_time, servings, 
+          ingredients, instructions, nutritional_info,
+          meal_type
+        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`,
+        [
+          recipe.title,
+          recipe.prepTime,
+          recipe.cookTime,
+          recipe.servings,
+          recipe.ingredients,
+          recipe.instructions,
+          recipe.nutritionalInfo,
+          "meal", // Default meal type
+        ]
+      );
+
+      res.json({ recipe });
+    } catch (error) {
+      console.error("Error generating random recipe:", error);
+      res.status(500).json({
+        error: "An error occurred while generating the recipe",
+      });
+    }
+  }
+);
+
+router.post(
   "/create-recipe",
   [authMiddleware, checkAiActions, checkPaywall],
   async (req, res) => {

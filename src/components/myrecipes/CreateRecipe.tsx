@@ -141,7 +141,7 @@ const CreateRecipe: React.FC = () => {
         </div>
 
         <div className="recipe-meta">
-          <div className="recipe-meta-item">
+          {/* <div className="recipe-meta-item">
             <label className="meta-label">Prep Time</label>
             <input
               type="text"
@@ -160,7 +160,7 @@ const CreateRecipe: React.FC = () => {
               onChange={handleBasicInputChange}
               className="meta-input"
             />
-          </div>
+          </div> */}
           <div className="recipe-meta-item">
             <label className="meta-label">Servings</label>
             <input

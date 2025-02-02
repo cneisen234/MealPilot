@@ -471,6 +471,10 @@ export const getReferralStats = () => {
   return api.get('/referrals/stats');
 };
 
+export const generateRandomRecipe = () => {
+  return api.post('/recipe/generate-random');
+};
+
 
 export default api;
 

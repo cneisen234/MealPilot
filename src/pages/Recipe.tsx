@@ -24,7 +24,6 @@ import {
   getCuisinePreferences,
   addCuisinePreference,
   removeCuisinePreference,
-  generateRecipe,
   saveRecipe,
   addSelectedMealType,
   addSelectedServings,
@@ -41,7 +40,7 @@ import {
 } from "../constants/dietaryItems";
 import "../styles/recipe.css";
 import { useLocation, useNavigate } from "react-router-dom";
-import { FaArrowLeft, FaUtensils } from "react-icons/fa";
+import { FaArrowLeft, FaUtensils, FaUndo } from "react-icons/fa";
 import { useToast } from "../context/ToastContext";
 import { useAuth } from "../context/AuthContext";
 
@@ -60,8 +59,6 @@ const Recipe = () => {
   const navigate = useNavigate();
   const routeLocation = useLocation();
   const { showToast } = useToast();
-  //@ts-ignore
-  const { aiActionsRemaining, setAiActionsRemaining } = useAuth();
   const [cantHaves, setCantHaves] = useState<CantHave[]>([]);
   const [mustHaves, setMustHaves] = useState<MustHave[]>([]);
   const [tastePreferences, setTastePreferences] = useState<TastePreference[]>(
@@ -78,9 +75,6 @@ const Recipe = () => {
   const [recipe, setRecipe] = useState<Recipe | null>(null);
   const [isSaving, setIsSaving] = useState(false);
   const [selectedServings, setSelectedServings] = useState<string>("4");
-  const [selectedMealTypes, setSelectedMealTypes] = useState<any[]>([]);
-  const [selectedServingsList, setSelectedServingsList] = useState<any[]>([]);
-  const [isThinking, setIsThinking] = useState<boolean>(false);
   let currentStep = 1;
 
   useEffect(() => {
@@ -145,8 +139,6 @@ const Recipe = () => {
       setTastePreferences(tastePreferencesRes.data);
       setDietaryGoals(dietaryGoalsRes.data);
       setCuisinePreferences(cuisinePreferencesRes.data);
-      setSelectedMealTypes(selectedMealTypeRes.data);
-      setSelectedServingsList(selectedServingsRes.data);
 
       // Set default selected values if they exist
       if (selectedMealTypeRes.data.length > 0) {
@@ -157,6 +149,40 @@ const Recipe = () => {
       }
     } catch (error) {
       console.error("Error loading preferences:", error);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleResetPreferences = async () => {
+    setIsLoading(true);
+    try {
+      // Remove all preferences from database
+      await Promise.all([
+        ...cantHaves.map((item) => removeCantHave(item.id)),
+        ...mustHaves.map((item) => removeMustHave(item.id)),
+        ...tastePreferences.map((item) => removeTastePreference(item.id)),
+        ...dietaryGoals.map((item) => removeDietaryGoal(item.id)),
+        ...cuisinePreferences.map((item) => removeCuisinePreference(item.id)),
+      ]);
+
+      // Reset meal type and servings to defaults
+      await addSelectedMealType("main course");
+      await addSelectedServings("4");
+
+      // Clear all state
+      setCantHaves([]);
+      setMustHaves([]);
+      setTastePreferences([]);
+      setDietaryGoals([]);
+      setCuisinePreferences([]);
+      setSelectedMealType("main course");
+      setSelectedServings("4");
+      setPreferencesCount(0);
+
+      showToast("Preferences reset successfully", "success");
+    } catch (error) {
+      showToast("Error resetting preferences", "error");
     } finally {
       setIsLoading(false);
     }
@@ -337,11 +363,14 @@ const Recipe = () => {
     }
   };
 
+  const handlePreferences = () => {
+    setRecipe(null);
+  };
+
   if (isLoading) {
     return (
       <div className="loading-container">
         <AnimatedTechIcon size={100} speed={4} />
-        {isThinking && <p>Thinking on it!</p>}
       </div>
     );
   }
@@ -373,6 +402,11 @@ const Recipe = () => {
               <FaArrowLeft className="button-icon" />
             </button>
             <button
+              onClick={handlePreferences}
+              className="recipe-action-button back-button">
+              Preferences
+            </button>
+            <button
               onClick={handleSaveRecipe}
               className="recipe-action-button save-button"
               disabled={isSaving}>
@@ -382,14 +416,14 @@ const Recipe = () => {
           <h1 className="recipe-title">{recipe.title}</h1>
 
           <div className="recipe-meta">
-            <div className="recipe-meta-item">
+            {/* <div className="recipe-meta-item">
               <span className="meta-label">Prep Time:</span>
               <span className="meta-value">{recipe.prepTime}</span>
             </div>
             <div className="recipe-meta-item">
               <span className="meta-label">Cook Time:</span>
               <span className="meta-value">{recipe.cookTime}</span>
-            </div>
+            </div> */}
             <div className="recipe-meta-item">
               <span className="meta-label">Servings:</span>
               <span className="meta-value">{recipe.servings}</span>
@@ -553,6 +587,15 @@ const Recipe = () => {
           options={COMMON_CUISINE_PREFERENCES}
           disabled={preferencesCount > 6}
         />
+      </div>
+
+      <div className="generate-container">
+        <button
+          onClick={handleResetPreferences}
+          className="generate-button"
+          style={{ backgroundColor: "var(--secondary-color)" }}>
+          <FaUndo /> Reset Preferences
+        </button>
       </div>
 
       <div className="generate-container">

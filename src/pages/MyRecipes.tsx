@@ -1,6 +1,10 @@
 import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { generateRecipe, getUserRecipes } from "../utils/api";
+import {
+  generateRandomRecipe,
+  generateRecipe,
+  getUserRecipes,
+} from "../utils/api";
 import { FaPlus, FaMagic } from "react-icons/fa";
 import AnimatedTechIcon from "../components/common/AnimatedTechIcon";
 import SearchInput from "../components/common/SearchInput";
@@ -45,6 +49,27 @@ const MyRecipes: React.FC = () => {
     }
   };
 
+  const handleGenerateRandomRecipe = async () => {
+    setIsGenerating(true); // Use existing loading state
+    try {
+      if (aiActionsRemaining <= 0) {
+        showToast("You've reached your daily AI action limit", "error");
+        return;
+      }
+
+      const response = await generateRandomRecipe();
+      if (response.data.recipe) {
+        navigate("/recipe", { state: { recipe: response.data.recipe } });
+        const remainingActions = aiActionsRemaining - 1;
+        setAiActionsRemaining(remainingActions);
+      }
+    } catch (error) {
+      showToast("Error generating recipe", "error");
+    } finally {
+      setIsGenerating(false);
+    }
+  };
+
   const handleGenerateRecipe = async () => {
     setIsGenerating(true);
     try {
@@ -85,10 +110,15 @@ const MyRecipes: React.FC = () => {
           <button
             onClick={() => navigate("/recipe/create")}
             className="generate-button">
-            <FaPlus /> Create New Recipe
+            <FaPlus /> Create/Import New Recipe
+          </button>
+          <button
+            onClick={handleGenerateRandomRecipe}
+            className="generate-button">
+            <FaMagic /> Generate Any Recipe
           </button>
           <button onClick={handleGenerateRecipe} className="generate-button">
-            <FaMagic /> Generate Recipe
+            <FaMagic /> Generate Recipe By Preference
           </button>
         </div>
       </div>

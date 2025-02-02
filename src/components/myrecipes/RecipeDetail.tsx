@@ -406,7 +406,7 @@ const RecipeDetail: React.FC = () => {
         </div>
 
         <div className="recipe-meta">
-          <div className="recipe-meta-item">
+          {/* <div className="recipe-meta-item">
             <label className="meta-label">Prep Time</label>
             <input
               type="text"
@@ -425,7 +425,7 @@ const RecipeDetail: React.FC = () => {
               onChange={handleBasicInputChange}
               className="meta-input"
             />
-          </div>
+          </div> */}
           <div className="recipe-meta-item">
             <label className="meta-label">Servings</label>
             <input
@@ -587,7 +587,7 @@ const RecipeDetail: React.FC = () => {
         }}
       />
       <div className="recipe-meta">
-        {recipe.prep_time && (
+        {/* {recipe.prep_time && (
           <div className="recipe-meta-item">
             <span className="meta-label">Prep Time</span>
             <span className="meta-value">{recipe.prep_time}</span>
@@ -598,7 +598,7 @@ const RecipeDetail: React.FC = () => {
             <span className="meta-label">Cook Time</span>
             <span className="meta-value">{recipe.cook_time}</span>
           </div>
-        )}
+        )} */}
         {recipe.servings && (
           <div className="recipe-meta-item">
             <span className="meta-label">Servings</span>

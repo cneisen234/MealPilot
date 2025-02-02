@@ -83,7 +83,9 @@ const RecipePDF: React.FC<RecipePDFProps> = ({ recipe }) => {
       pdf.setFillColor(248, 249, 250);
       pdf.roundedRect(margin - 1, yPos - 7, contentWidth, 12, 3, 3, "F");
 
-      const metaInfo = `Prep Time: ${recipe.prep_time} | Cook Time: ${recipe.cook_time} | Servings: ${recipe.servings}`;
+      //Prep Time: ${recipe.prep_time} | Cook Time: ${recipe.cook_time} |
+
+      const metaInfo = `Servings: ${recipe.servings}`;
       addText(metaInfo, 12);
       yPos += 5;
 
