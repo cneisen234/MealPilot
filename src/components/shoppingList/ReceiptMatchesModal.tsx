@@ -66,8 +66,10 @@ const ReceiptMatchesModal: React.FC<ReceiptMatchesModalProps> = ({
   };
 
   return (
-    <div className="modal-overlay">
-      <div className="modal-content">
+    <div
+      className="recipe-result"
+      style={{ marginTop: 100, marginBottom: 100 }}>
+      <div className="recipe-section">
         <div className="modal-header">
           <h2>Found Items</h2>
           <p>

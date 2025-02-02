@@ -343,6 +343,16 @@ const ShoppingList: React.FC = () => {
     setMatches(null);
   };
 
+  if (receiptMatches) {
+    return (
+      <ReceiptMatchesModal
+        matches={receiptMatches}
+        onClose={() => setReceiptMatches(null)}
+        onAddToInventory={handleMultiAddToInventory}
+      />
+    );
+  }
+
   if (matches) {
     return (
       <MatchSelectionModal
@@ -528,14 +538,6 @@ const ShoppingList: React.FC = () => {
         onClose={() => setIsItemPhotoModalOpen(false)}
         apiFunction={handleItemPhotoProcessing}
       />
-
-      {receiptMatches && (
-        <ReceiptMatchesModal
-          matches={receiptMatches}
-          onClose={() => setReceiptMatches(null)}
-          onAddToInventory={handleMultiAddToInventory}
-        />
-      )}
 
       <ShareableListModal
         isOpen={isShareModalOpen}
