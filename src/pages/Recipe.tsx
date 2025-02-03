@@ -82,8 +82,8 @@ const Recipe = () => {
   }, []);
 
   useEffect(() => {
-    if (preferencesCount > 6 && !recipe) {
-      showToast("Can't have more than 7 items selected", "warning");
+    if (preferencesCount > 9 && !recipe) {
+      showToast("Can't have more than 10 items selected", "warning");
     }
   }, [preferencesCount]);
 
@@ -489,7 +489,7 @@ const Recipe = () => {
       <div className="recipe-header">
         <h1>Recipe Preferences</h1>
         <p>
-          Choose up to 7 dietary preferences to get personalized recipe
+          Choose up to 10 dietary preferences to get personalized recipe
           recommendations.
         </p>
         <div
@@ -537,7 +537,7 @@ const Recipe = () => {
           onRemove={handleRemoveCantHave}
           type="combo"
           options={COMMON_CANT_HAVES}
-          disabled={preferencesCount > 6}
+          disabled={preferencesCount > 9}
         />
 
         <PreferenceInput
@@ -549,7 +549,7 @@ const Recipe = () => {
           onRemove={handleRemoveMustHave}
           type="combo"
           options={COMMON_MUST_HAVES}
-          disabled={preferencesCount > 6}
+          disabled={preferencesCount > 9}
         />
 
         <PreferenceInput
@@ -561,7 +561,7 @@ const Recipe = () => {
           onRemove={handleRemoveTastePreference}
           type="combo"
           options={COMMON_TASTE_PREFERENCES}
-          disabled={preferencesCount > 6}
+          disabled={preferencesCount > 9}
         />
 
         <PreferenceInput
@@ -573,7 +573,7 @@ const Recipe = () => {
           onRemove={handleRemoveDietaryGoal}
           type="combo"
           options={COMMON_DIETARY_GOALS}
-          disabled={preferencesCount > 6}
+          disabled={preferencesCount > 9}
         />
 
         <PreferenceInput
@@ -585,7 +585,7 @@ const Recipe = () => {
           onRemove={handleRemoveCuisinePreference}
           type="combo"
           options={COMMON_CUISINE_PREFERENCES}
-          disabled={preferencesCount > 6}
+          disabled={preferencesCount > 9}
         />
       </div>
 
