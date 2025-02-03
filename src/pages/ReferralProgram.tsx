@@ -4,6 +4,7 @@ import { useToast } from "../context/ToastContext";
 import AnimatedTechIcon from "../components/common/AnimatedTechIcon";
 import "../styles/referral.css";
 import { getReferralStats, checkPrimaryPaymentMethod } from "../utils/api";
+import { Link } from "react-router-dom";
 
 interface ReferralTier {
   referrals: number;
@@ -129,6 +130,19 @@ const ReferralProgram = () => {
               The referral program is only available to users with an active
               subscription. Please visit the account page to set up your
               subscription and gain access to our referral program.
+              <br />
+              <br />
+              <Link
+                to="/account-settings"
+                style={{
+                  color: "var(--primary-color)",
+                  textDecoration: "none",
+                  fontWeight: "600",
+                  marginLeft: "4px",
+                }}
+                className="hover:underline">
+                Manage subscription →
+              </Link>
             </p>
           </div>
         </div>
