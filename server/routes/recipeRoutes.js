@@ -1156,7 +1156,7 @@ router.post(
           }, timeout))
       );
 
-      const deepseekPromise = await deepseek.chat.completions.create({
+      const deepseekPromise = deepseek.chat.completions.create({
         model: "deepseek-chat",
         messages: [
           {
@@ -1399,7 +1399,7 @@ Return a JSON object with exactly this structure:
           }, timeout))
       );
 
-      const deepseekPromise = await deepseek.chat.completions.create({
+      const deepseekPromise = deepseek.chat.completions.create({
         model: "deepseek-chat",
         messages: [
           {

@@ -1039,7 +1039,7 @@ Respond with a JSON object in this format:
           }, timeout))
       );
 
-      const deepseekPromise = await deepseek.chat.completions.create({
+      const deepseekPromise = deepseek.chat.completions.create({
         model: "deepseek-chat",
         messages: [
           {
