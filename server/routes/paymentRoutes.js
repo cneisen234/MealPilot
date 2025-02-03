@@ -318,7 +318,7 @@ router.post("/subscribe", authMiddleware, async (req, res) => {
     await sgMail.send({
       to: "christopherjay71186@gmail.com",
       from: process.env.SENDGRID_FROM_EMAIL,
-      subject: "MealSphere: New Premium Subscription",
+      subject: "MealSphere: New Subscription",
       html: adminNotificationHtml,
       text: `New subscription - Name: ${user.name}, Email: ${user.email}, Subscription ID: ${subscription.id}, Status: ${subscription.status}`,
     });

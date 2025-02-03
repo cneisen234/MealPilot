@@ -82,8 +82,8 @@ const CancelSubscription: React.FC<CancelSubscriptionProps> = ({
         <div>
           <p>Are you sure you want to cancel your subscription?</p>
           <p>
-            If you cancel, you'll still have access to all premium features
-            until your next billing cycle.
+            If you cancel, you'll still have access to all features until your
+            next billing cycle.
           </p>
           <p>
             After that date, you will no longer be able to access your account.
