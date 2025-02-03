@@ -105,15 +105,51 @@ router.post(
   [authMiddleware, checkAiActions, checkPaywall],
   async (req, res) => {
     try {
-      // Generate base prompt without any preferences
-      const prompt = `Generate a unique and detailed recipe.
+      const userId = req.user.id;
+      const [recipesQuery, cantHavesQuery] = await Promise.all([
+        pool.query("SELECT title FROM recipes WHERE user_id = $1", [userId]),
+        pool.query("SELECT item FROM cant_haves WHERE user_id = $1", [userId]),
+      ]);
 
-Please format the recipe exactly as follows and include ALL fields:
+      const cantHaves = cantHavesQuery.rows.map((row) => row.item);
+      const todayGlobalRecipesQuery = await pool.query(
+        `SELECT title
+        FROM global_recipes 
+        WHERE DATE(last_queried_at) = CURRENT_DATE
+        AND ($1::text[] = '{}' OR (cant_haves @> $1::text[] AND array_length($1::text[], 1) = array_length(ARRAY(
+          SELECT DISTINCT unnest($1::text[])
+          INTERSECT
+          SELECT DISTINCT unnest(cant_haves)
+        ), 1)))`,
+        [cantHaves]
+      );
+
+      const existingRecipes = [
+        ...recipesQuery.rows.map((recipe) => recipe.title),
+        ...todayGlobalRecipesQuery.rows.map((recipe) => recipe.title),
+      ];
+      // Generate base prompt without any preferences
+      let prompt = `Generate a detailed recipe.`;
+
+      // Add dietary restrictions
+      if (cantHaves.length > 0) {
+        prompt += `\nThe recipe MUST NOT include the following ingredients under any circumstances: ${cantHaves.join(
+          ", "
+        )}.`;
+      }
+      if (existingRecipes.length > 0) {
+        prompt += `\nIMPORTANT: The recipe must be unique and MUST NOT be any of these existing recipes: ${existingRecipes.join(
+          ", "
+        )}.`;
+      }
+
+      // Add formatting instructions
+      prompt += `\nPlease format the recipe exactly as follows and include ALL fields:
 
 Name: [Recipe Name]
 Prep Time: [Exact time, e.g. "20 minutes" OR "1 hour"]
 Cook Time: [Exact time, e.g. "30 minutes" OR "1 hour"]
-Servings: [2-8]
+Servings: ["4"]
 
 Ingredients:
 [List each ingredient on a new line with precise measurements]
@@ -214,7 +250,6 @@ router.post(
 
       // Fetch user data and preferences in parallel
       const [
-        userQuery,
         recipesQuery,
         cantHavesQuery,
         mustHavesQuery,
@@ -224,7 +259,6 @@ router.post(
         selectedMealTypeResult,
         selectedServingsResult,
       ] = await Promise.all([
-        pool.query("SELECT id, name FROM users WHERE id = $1", [userId]),
         pool.query("SELECT title FROM recipes WHERE user_id = $1", [userId]),
         pool.query("SELECT item FROM cant_haves WHERE user_id = $1", [userId]),
         pool.query("SELECT item FROM must_haves WHERE user_id = $1", [userId]),
@@ -243,8 +277,6 @@ router.post(
         ]),
       ]);
 
-      const user = userQuery.rows[0];
-      const existingRecipes = recipesQuery.rows.map((recipe) => recipe.title);
       const cantHaves = cantHavesQuery.rows.map((row) => row.item);
       const mustHaves = mustHavesQuery.rows.map((row) => row.item);
       const tastePreferences = tastePreferencesQuery.rows.map(
@@ -263,6 +295,51 @@ router.post(
         selectedServingsResult.rows.length > 0
           ? selectedServingsResult.rows[0].item
           : "4";
+
+      const todayGlobalRecipesQuery = await pool.query(
+        `SELECT title
+        FROM global_recipes 
+        WHERE meal_type = $1
+        AND DATE(last_queried_at) = CURRENT_DATE
+        AND ($2::text[] = '{}' OR (cant_haves @> $2::text[] AND array_length($2::text[], 1) = array_length(ARRAY(
+          SELECT DISTINCT unnest($2::text[])
+          INTERSECT
+          SELECT DISTINCT unnest(cant_haves)
+        ), 1)))
+        AND ($3::text[] = '{}' OR (must_haves @> $3::text[] AND array_length($3::text[], 1) = array_length(ARRAY(
+          SELECT DISTINCT unnest($3::text[])
+          INTERSECT
+          SELECT DISTINCT unnest(must_haves)
+        ), 1)))
+        AND ($4::text[] = '{}' OR (taste_preferences @> $4::text[] AND array_length($4::text[], 1) = array_length(ARRAY(
+          SELECT DISTINCT unnest($4::text[])
+          INTERSECT
+          SELECT DISTINCT unnest(taste_preferences)
+        ), 1)))
+        AND ($5::text[] = '{}' OR (dietary_goals @> $5::text[] AND array_length($5::text[], 1) = array_length(ARRAY(
+          SELECT DISTINCT unnest($5::text[])
+          INTERSECT
+          SELECT DISTINCT unnest(dietary_goals)
+        ), 1)))
+        AND ($6::text[] = '{}' OR (cuisine_preferences @> $6::text[] AND array_length($6::text[], 1) = array_length(ARRAY(
+          SELECT DISTINCT unnest($6::text[])
+          INTERSECT
+          SELECT DISTINCT unnest(cuisine_preferences)
+        ), 1)))`,
+        [
+          mealType || "meal",
+          cantHaves,
+          mustHaves,
+          tastePreferences,
+          dietaryGoals,
+          cuisinePreferences,
+        ]
+      );
+
+      const existingRecipes = [
+        ...recipesQuery.rows.map((recipe) => recipe.title),
+        ...todayGlobalRecipesQuery.rows.map((recipe) => recipe.title),
+      ];
 
       // Check for matching recipes in global_recipes
       const threeDaysAgo = new Date();
@@ -297,8 +374,7 @@ router.post(
           SELECT DISTINCT unnest($7::text[])
           INTERSECT
           SELECT DISTINCT unnest(cuisine_preferences)
-        ), 1)))
-        AND title NOT IN (SELECT unnest($8::text[]));`,
+        ), 1)));`,
         [
           mealType || "meal",
           threeDaysAgo.toISOString(),
@@ -307,7 +383,6 @@ router.post(
           tastePreferences,
           dietaryGoals,
           cuisinePreferences,
-          existingRecipes,
         ]
       );
 
@@ -334,8 +409,10 @@ router.post(
             return ingredient;
           });
 
+          console.log(recipe);
+
           // Adjust nutritional info proportionally
-          recipe.nutritionalInfo = recipe.nutritionalInfo.map((info) => {
+          recipe.nutritionalInfo = recipe.nutritional_info.map((info) => {
             const match = info.match(/^(.*?):\s*([\d.]+)\s*([a-zA-Z]+)$/);
             if (match) {
               const [_, label, amount, unit] = match;
@@ -363,11 +440,9 @@ router.post(
       }
 
       // If no matching recipe found, generate new one using AI
-      let prompt = `Generate a detailed recipe for ${
-        user.name
-      }. This should be a ${mealType || "meal"} recipe for ${
-        servings || "4"
-      } servings.`;
+      let prompt = `Generate a detailed recipe. This should be a ${
+        mealType || "meal"
+      } recipe for ${servings || "4"} servings.`;
 
       // Add dietary restrictions
       if (cantHaves.length > 0) {
