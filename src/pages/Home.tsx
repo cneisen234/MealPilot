@@ -63,20 +63,41 @@ const Home: React.FC = () => {
               {
                 icon: <FaUtensils />,
                 title: "Personalized Recipe Creation",
-                description:
-                  "Tell us your dietary restrictions, preferences, and must-have ingredients. Our AI creates custom recipes that perfectly match your needs - whether you want gluten-free, need high-protein meals, or prefer specific cuisines. Save your recipes, customize them, and even add your own personal recipes with a snap of a photo. Have a cookbook laying around? Just take a picture of a favorite recipe and it's in the app and integrated into the system!",
+                description: (
+                  <ul>
+                    <li>Custom recipes based on your diet and preferences</li>
+                    <li>From food allergies to lifestyle choices - we adapt</li>
+                    <li>Save and edit your favorite recipes</li>
+                    <li>Import recipes from photos or websites</li>
+                    <li>Preserve family recipes digitally</li>
+                  </ul>
+                ),
               },
               {
                 icon: <FaCalendar />,
                 title: "One-Click Meal Planning",
-                description:
-                  "Generate a complete week of balanced meals with a single click. Get breakfast, lunch, and dinner plans that work together. Generate a mix from your saved recipes as well as recommendations for new ones. Our system intelligently knows the difference between breakfast, lunch, and dinner and creates a meal plan with appropriate meals. Don't like a suggestion? Simply swap it with another recipe that fits your plan.",
+                description: (
+                  <ul>
+                    <li>Generate weekly meal plans instantly</li>
+                    <li>Personalized breakfast, lunch, and dinner options</li>
+                    <li>Mix favorites with new recipes</li>
+                    <li>Smart meal timing suggestions</li>
+                    <li>Easy meal swapping</li>
+                  </ul>
+                ),
               },
               {
                 icon: <FaCamera />,
                 title: "Effortless Kitchen Management",
-                description:
-                  "Simply take a photo of your groceries or speak into the app to update your inventory. No barcode scanning needed. Take photos of receipts to update your shopping list and inventory seemlessly. Almost no manual entry required! The same easy process works for building shopping lists and finding items you already have. Our system searches your list for matches based solely on the content of the photo, and knows what to look for to find a match!",
+                description: (
+                  <ul>
+                    <li>Update inventory with photos or voice</li>
+                    <li>No barcode scanning needed</li>
+                    <li>Scan receipts for instant updates</li>
+                    <li>Minimal manual entry</li>
+                    <li>Smart item recognition</li>
+                  </ul>
+                ),
               },
             ].map((feature, index) => (
               <div key={index} className="mealpilot-home__feature">
@@ -86,9 +107,9 @@ const Home: React.FC = () => {
                 <h3 className="mealpilot-home__feature-title">
                   {feature.title}
                 </h3>
-                <p className="mealpilot-home__feature-text">
+                <div className="mealpilot-home__feature-text">
                   {feature.description}
-                </p>
+                </div>
               </div>
             ))}
           </div>
@@ -101,20 +122,39 @@ const Home: React.FC = () => {
               {
                 icon: <FaShoppingCart />,
                 title: "True Recipe Integration",
-                description:
-                  "Check recipe ingredients against your pantry with one click. Get alerts when items are expiring with suggestions for saved recipes that use them. Every feature communicates - your recipes know your inventory, and your inventory knows your recipes.",
+                description: (
+                  <ul>
+                    <li>Instant pantry-to-recipe matching</li>
+                    <li>Smart expiration alerts with recipe ideas</li>
+                    <li>Seamless recipe-inventory sync</li>
+                    <li>Never miss an ingredient</li>
+                  </ul>
+                ),
               },
               {
                 icon: <FaChartLine />,
                 title: "Inventory Tracking",
-                description:
-                  "Track expiration dates, and automatically update quantities when you cook. Your pantry stays organized without the hassle.",
+                description: (
+                  <ul>
+                    <li>Track expiration dates</li>
+                    <li>Auto-updating quantities</li>
+                    <li>Organized pantry tracking</li>
+                    <li>Smart stock management</li>
+                  </ul>
+                ),
               },
               {
                 icon: <FaMicrophone />,
                 title: "Voice & Photo Integration",
-                description:
-                  "Use voice commands or photos to find items, add to shopping lists, or update inventory. The AI understands context and matches items intelligently.",
+                description: (
+                  <ul>
+                    <li>Hands-free updates</li>
+                    <li>Quick photo detection</li>
+                    <li>Natural voice commands</li>
+                    <li>Fast visual recognition</li>
+                    <li>Works across all features</li>
+                  </ul>
+                ),
               },
             ].map((feature, index) => (
               <div key={index} className="mealpilot-home__feature">
@@ -124,9 +164,9 @@ const Home: React.FC = () => {
                 <h3 className="mealpilot-home__feature-title">
                   {feature.title}
                 </h3>
-                <p className="mealpilot-home__feature-text">
+                <div className="mealpilot-home__feature-text">
                   {feature.description}
-                </p>
+                </div>
               </div>
             ))}
           </div>

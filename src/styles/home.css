@@ -146,6 +146,7 @@
 .mealpilot-home__feature-text {
     color: var(--text-color);
     font-size: 0.9rem;
+    text-align: left;
     margin: 0;
     line-height: 1.5;
 }
