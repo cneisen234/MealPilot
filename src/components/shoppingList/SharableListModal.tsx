@@ -33,7 +33,7 @@ const ShareableListModal: React.FC<ShareableListModalProps> = ({
           );
           const result = await incrementAchievement("lists_shared");
           if (result.toast) {
-            showToast(result.toast.message, "success");
+            showToast(result.toast.message, "info");
           }
           setShareableLink(`${baseUrl}/share/shopping-list/${shareId}`);
         } catch (error) {

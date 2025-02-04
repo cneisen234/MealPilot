@@ -4,6 +4,7 @@ import SpeechRecognition, {
   useSpeechRecognition,
 } from "react-speech-recognition";
 import { incrementAchievement } from "../../utils/api";
+import { useToast } from "../../context/ToastContext";
 
 interface SpeechRecognitionProps {
   items: Array<{ id: number; item_name: string }>;
@@ -90,6 +91,7 @@ const SpeechRecognitionComponent: React.FC<SpeechRecognitionProps> = ({
 
   // Custom state to manage listening control
   const [isListening, setIsListening] = useState(false);
+  const { showToast } = useToast();
 
   const findMatches = useCallback(
     (spokenText: string) => {
@@ -132,7 +134,7 @@ const SpeechRecognitionComponent: React.FC<SpeechRecognitionProps> = ({
   const handleOnClose = async () => {
     const result = await incrementAchievement("items_voice_added");
     if (result.toast) {
-      showToast(result.toast.message, result.toast.type);
+      showToast(result.toast.message, "info");
     }
     findMatches(transcript);
     resetTranscript();
@@ -161,6 +163,3 @@ const SpeechRecognitionComponent: React.FC<SpeechRecognitionProps> = ({
 };
 
 export default SpeechRecognitionComponent;
-function showToast(message: string, type: string) {
-  throw new Error("Function not implemented.");
-}

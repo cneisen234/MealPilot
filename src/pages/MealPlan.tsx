@@ -115,7 +115,7 @@ const MealPlan: React.FC = () => {
       const response = await generateMealPlan();
       const result = await incrementAchievement("meal_plans_created");
       if (result.toast) {
-        showToast(result.toast.message, "success");
+        showToast(result.toast.message, "info");
       }
       setMealPlan(response.data.mealPlan);
       showToast("New meal plan generated successfully", "success");

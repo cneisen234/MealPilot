@@ -173,7 +173,7 @@ const ShoppingList: React.FC = () => {
       const response = await processReceipt(imageData);
       const result = await incrementAchievement("receipt_updates");
       if (result.toast) {
-        showToast(result.toast.message, "success");
+        showToast(result.toast.message, "info");
       }
       if (aiActionsRemaining === 10) {
         showToast(`You are running low on AI actions for today`, "warning");
@@ -209,7 +209,7 @@ const ShoppingList: React.FC = () => {
       const response = await processShoppingItemPhoto(imageData);
       const result = await incrementAchievement("items_photo_added");
       if (result.toast) {
-        showToast(result.toast.message, "success");
+        showToast(result.toast.message, "info");
       }
       if (aiActionsRemaining === 10) {
         showToast(`You are running low on AI actions for today`, "warning");

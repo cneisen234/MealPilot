@@ -79,7 +79,7 @@ const RecipeImport: React.FC<RecipeImportProps> = ({ onRecipeImported }) => {
       const response = await extractRecipeFromImage(imageData);
       const result = await incrementAchievement("recipes_imported");
       if (result.toast) {
-        showToast(result.toast.message, "success");
+        showToast(result.toast.message, "info");
       }
       if (aiActionsRemaining === 10) {
         showToast(`You are running low on AI actions for today`, "warning");
@@ -113,7 +113,9 @@ const RecipeImport: React.FC<RecipeImportProps> = ({ onRecipeImported }) => {
           margin: "20px auto",
         }}>
         DISCLAIMER: Please review recipes from web and photo imports before
-        saving as minor adjustments may be needed.
+        saving as minor adjustments may be needed. <br />
+        <br />
+        Some websites may not allow you to import their recipes.
       </div>
       <div className="import-method-toggle">
         {isExpanded ? (

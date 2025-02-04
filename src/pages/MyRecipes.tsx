@@ -61,7 +61,7 @@ const MyRecipes: React.FC = () => {
       const response = await generateRandomRecipe();
       const result = await incrementAchievement("recipes_generated");
       if (result.toast) {
-        showToast(result.toast.message, "success");
+        showToast(result.toast.message, "info");
       }
       if (response.data.recipe) {
         navigate("/recipe", { state: { recipe: response.data.recipe } });
@@ -85,7 +85,7 @@ const MyRecipes: React.FC = () => {
       const response = await generateRecipe();
       const result = await incrementAchievement("recipes_generated");
       if (result.toast) {
-        showToast(result.toast.message, "success");
+        showToast(result.toast.message, "info");
       }
       if (response.data.recipe) {
         navigate("/recipe", { state: { recipe: response.data.recipe } });
