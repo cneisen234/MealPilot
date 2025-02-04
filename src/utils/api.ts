@@ -475,6 +475,41 @@ export const generateRandomRecipe = () => {
   return api.post('/recipe/generate-random');
 };
 
+export const getAchievements = () => {
+  return api.get('/achievements');
+};
+
+interface AchievementResponse {
+  data: any;
+  toast?: {
+    message: string;
+    type: string;
+  };
+}
+
+export const incrementAchievement = async (type: string): Promise<AchievementResponse> => {
+  const response = await api.put('/achievements/increment', { type });
+  
+  // If a milestone was reached, show toast
+  if (response.data.achievement) {
+    const { milestone, type: achievementType, isFirst } = response.data.achievement;
+    const message = isFirst 
+      ? `Congratulations on your first ${achievementType}!`
+      : `Achievement unlocked! ${milestone} ${achievementType}`;
+    
+    // Return both the response data and toast info
+    return {
+      data: response.data,
+      toast: {
+        message,
+        type: 'success'
+      }
+    };
+  }
+  
+  return { data: response.data };
+};
+
 
 export default api;
 

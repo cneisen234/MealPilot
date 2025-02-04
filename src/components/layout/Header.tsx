@@ -7,6 +7,7 @@ import {
   FaUsers,
   FaSignOutAlt,
   FaEnvelope,
+  FaTrophy,
 } from "react-icons/fa";
 import "../../styles/header.css";
 
@@ -72,6 +73,12 @@ const Header: React.FC = () => {
                   <FaUsers className="dropdown-icon" />
                   Referral Program
                 </button> */}
+                <button
+                  onClick={() => handleMenuClick("/achievements")}
+                  className="dropdown-item">
+                  <FaTrophy className="dropdown-icon" />
+                  Achievements
+                </button>
                 <button
                   onClick={() => handleMenuClick("/contact-us")}
                   className="dropdown-item">

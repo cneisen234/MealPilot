@@ -231,6 +231,22 @@ CREATE TABLE recipes
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
             );
 
+            CREATE TABLE achievements
+            (
+                id SERIAL PRIMARY KEY,
+                user_id INTEGER REFERENCES users(id),
+                recipes_generated INTEGER DEFAULT 0,
+                recipes_imported INTEGER DEFAULT 0,
+                meal_plans_created INTEGER DEFAULT 0,
+                items_photo_added INTEGER DEFAULT 0,
+                items_voice_added INTEGER DEFAULT 0,
+                receipt_updates INTEGER DEFAULT 0,
+                lists_shared INTEGER DEFAULT 0,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                UNIQUE(user_id)
+            );
+
             -- Index for efficient querying of recipes based on last query date
             CREATE INDEX idx_global_recipes_last_queried 
 ON global_recipes(last_queried_at);

@@ -32,6 +32,7 @@ import { loadStripe } from "@stripe/stripe-js";
 import { ToastContainer } from "./components/common/Toast";
 import { ToastProvider } from "./context/ToastContext";
 import PaywallGuard from "./components/paywall/PaywallGuard";
+import Achievements from "./pages/Achievements";
 
 const AppContent: React.FC = () => {
   const { isAuthenticated, checkAuthStatus } = useAuth();
@@ -169,6 +170,14 @@ const AppContent: React.FC = () => {
               element={
                 <PrivateRoute
                   element={<PaywallGuard element={<ReferralProgram />} />}
+                />
+              }
+            />
+            <Route
+              path="/achievements"
+              element={
+                <PrivateRoute
+                  element={<PaywallGuard element={<Achievements />} />}
                 />
               }
             />

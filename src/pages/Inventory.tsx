@@ -14,6 +14,7 @@ import {
   deleteInventoryItem,
   processInventoryItemPhoto,
   moveToShoppingList,
+  incrementAchievement,
 } from "../utils/api";
 import "../styles/inventory.css";
 import SearchInput from "../components/common/SearchInput";
@@ -228,6 +229,10 @@ const Inventory: React.FC = () => {
   const handleItemPhotoProcessing = async (imageData: string) => {
     try {
       const response = await processInventoryItemPhoto(imageData);
+      const result = await incrementAchievement("items_photo_added");
+      if (result.toast) {
+        showToast(result.toast.message, "success");
+      }
       if (aiActionsRemaining === 10) {
         showToast(`You are running low on AI actions for today`, "warning");
       }

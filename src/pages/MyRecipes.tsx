@@ -4,6 +4,7 @@ import {
   generateRandomRecipe,
   generateRecipe,
   getUserRecipes,
+  incrementAchievement,
 } from "../utils/api";
 import { FaPlus, FaMagic } from "react-icons/fa";
 import AnimatedTechIcon from "../components/common/AnimatedTechIcon";
@@ -58,6 +59,10 @@ const MyRecipes: React.FC = () => {
       }
 
       const response = await generateRandomRecipe();
+      const result = await incrementAchievement("recipes_generated");
+      if (result.toast) {
+        showToast(result.toast.message, "success");
+      }
       if (response.data.recipe) {
         navigate("/recipe", { state: { recipe: response.data.recipe } });
         const remainingActions = aiActionsRemaining - 1;
@@ -77,8 +82,11 @@ const MyRecipes: React.FC = () => {
         showToast("You've reached your daily AI action limit", "error");
         return;
       }
-
       const response = await generateRecipe();
+      const result = await incrementAchievement("recipes_generated");
+      if (result.toast) {
+        showToast(result.toast.message, "success");
+      }
       if (response.data.recipe) {
         navigate("/recipe", { state: { recipe: response.data.recipe } });
         const remainingActions = aiActionsRemaining - 1;

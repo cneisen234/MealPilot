@@ -24,6 +24,7 @@ import {
   addMultiItemsToInventory,
   processReceipt,
   processShoppingItemPhoto,
+  incrementAchievement,
 } from "../utils/api";
 import "../styles/inventory.css";
 import ReceiptMatchesModal from "../components/shoppingList/ReceiptMatchesModal";
@@ -170,6 +171,10 @@ const ShoppingList: React.FC = () => {
     try {
       setIsUploadingReceipt(true);
       const response = await processReceipt(imageData);
+      const result = await incrementAchievement("receipt_updates");
+      if (result.toast) {
+        showToast(result.toast.message, "success");
+      }
       if (aiActionsRemaining === 10) {
         showToast(`You are running low on AI actions for today`, "warning");
       }
@@ -202,6 +207,10 @@ const ShoppingList: React.FC = () => {
   const handleItemPhotoProcessing = async (imageData: string) => {
     try {
       const response = await processShoppingItemPhoto(imageData);
+      const result = await incrementAchievement("items_photo_added");
+      if (result.toast) {
+        showToast(result.toast.message, "success");
+      }
       if (aiActionsRemaining === 10) {
         showToast(`You are running low on AI actions for today`, "warning");
       }

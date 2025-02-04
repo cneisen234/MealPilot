@@ -6,6 +6,7 @@ import {
   swapMealWithSaved,
   getUserRecipes,
   deleteMealPlan,
+  incrementAchievement,
 } from "../utils/api";
 import AnimatedTechIcon from "../components/common/AnimatedTechIcon";
 import ConfirmationModal from "../components/common/ConfirmationModal";
@@ -112,6 +113,10 @@ const MealPlan: React.FC = () => {
     setIsLoading(true);
     try {
       const response = await generateMealPlan();
+      const result = await incrementAchievement("meal_plans_created");
+      if (result.toast) {
+        showToast(result.toast.message, "success");
+      }
       setMealPlan(response.data.mealPlan);
       showToast("New meal plan generated successfully", "success");
     } catch (error) {

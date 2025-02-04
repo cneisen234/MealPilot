@@ -1,6 +1,10 @@
 import React, { useState } from "react";
 import { FaLink, FaCamera, FaArrowLeft } from "react-icons/fa";
-import { extractRecipeFromImage, scrapeRecipe } from "../../utils/api";
+import {
+  extractRecipeFromImage,
+  incrementAchievement,
+  scrapeRecipe,
+} from "../../utils/api";
 import AnimatedTechIcon from "../common/AnimatedTechIcon";
 import PhotoCaptureModal from "../common/PhotoCaptureComponent";
 import { useToast } from "../../context/ToastContext";
@@ -40,6 +44,10 @@ const RecipeImport: React.FC<RecipeImportProps> = ({ onRecipeImported }) => {
 
     try {
       const response = await scrapeRecipe(url);
+      const result = await incrementAchievement("recipes_imported");
+      if (result.toast) {
+        showToast(result.toast.message, "success");
+      }
       if (aiActionsRemaining === 10) {
         showToast(`You are running low on AI actions for today`, "warning");
       }
@@ -69,6 +77,10 @@ const RecipeImport: React.FC<RecipeImportProps> = ({ onRecipeImported }) => {
   const handleImageProcessing = async (imageData: string) => {
     try {
       const response = await extractRecipeFromImage(imageData);
+      const result = await incrementAchievement("recipes_imported");
+      if (result.toast) {
+        showToast(result.toast.message, "success");
+      }
       if (aiActionsRemaining === 10) {
         showToast(`You are running low on AI actions for today`, "warning");
       }

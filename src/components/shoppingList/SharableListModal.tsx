@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { FaLink, FaCopy, FaCheck } from "react-icons/fa";
-import { createSharedList } from "../../utils/api";
+import { createSharedList, incrementAchievement } from "../../utils/api";
 import { useToast } from "../../context/ToastContext";
 import AnimatedTechIcon from "../common/AnimatedTechIcon";
 
@@ -31,6 +31,10 @@ const ShareableListModal: React.FC<ShareableListModalProps> = ({
             items.filter((item) => item.isSelected),
             shareId
           );
+          const result = await incrementAchievement("lists_shared");
+          if (result.toast) {
+            showToast(result.toast.message, "success");
+          }
           setShareableLink(`${baseUrl}/share/shopping-list/${shareId}`);
         } catch (error) {
           console.error("Error creating shared list:", error);

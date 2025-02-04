@@ -1,0 +1,142 @@
+.achievements-container {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 0 20px;
+}
+
+.achievements-header {
+    text-align: center;
+    margin-bottom: 40px;
+}
+
+.achievements-header h1 {
+    font-size: 2.5rem;
+    color: var(--primary-color);
+    margin-bottom: 10px;
+}
+
+.achievements-header p {
+    color: var(--text-color);
+    opacity: 0.8;
+}
+
+.achievements-grid {
+    display: grid;
+    gap: 24px;
+}
+
+.achievement-card {
+    background: var(--surface-color);
+    border-radius: 12px;
+    padding: 24px;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.achievement-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 20px;
+}
+
+.achievement-title {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+}
+
+.achievement-icon {
+    font-size: 2rem;
+}
+
+.achievement-info h3 {
+    font-size: 1.2rem;
+    color: var(--primary-color);
+    margin-bottom: 4px;
+}
+
+.achievement-info p {
+    font-size: 0.9rem;
+    color: var(--text-color);
+    opacity: 0.8;
+}
+
+.achievement-count {
+    text-align: right;
+}
+
+.current-count {
+    font-size: 1.5rem;
+    font-weight: bold;
+    color: var(--primary-color);
+}
+
+.next-milestone {
+    color: var(--text-color);
+    opacity: 0.6;
+    margin-left: 4px;
+}
+
+.progress-bar-container {
+    height: 8px;
+    background-color: rgba(0, 0, 0, 0.1);
+    border-radius: 4px;
+    overflow: hidden;
+    margin-bottom: 20px;
+}
+
+.progress-bar-fill {
+    height: 100%;
+    background-color: var(--primary-color);
+    transition: width 0.3s ease;
+}
+
+.milestone-badges {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+}
+
+.milestone-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 4px 12px;
+    border-radius: 16px;
+    font-size: 0.9rem;
+    background-color: rgba(0, 0, 0, 0.05);
+    color: var(--text-color);
+    transition: all 0.3s ease;
+}
+
+.milestone-badge.completed {
+    background-color: var(--primary-color);
+    color: white;
+}
+
+.milestone-star {
+    width: 12px;
+    height: 12px;
+}
+
+@media (max-width: 768px) {
+    .achievements-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .achievement-header {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 12px;
+    }
+
+    .achievement-count {
+        text-align: left;
+    }
+}
+
+@media (min-width: 769px) {
+    .achievements-grid {
+        grid-template-columns: repeat(auto-fit, minmax(450px, 1fr));
+    }
+}

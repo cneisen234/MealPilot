@@ -3,6 +3,7 @@ import { FaMicrophone } from "react-icons/fa";
 import SpeechRecognition, {
   useSpeechRecognition,
 } from "react-speech-recognition";
+import { incrementAchievement } from "../../utils/api";
 
 interface SpeechRecognitionProps {
   items: Array<{ id: number; item_name: string }>;
@@ -128,7 +129,11 @@ const SpeechRecognitionComponent: React.FC<SpeechRecognitionProps> = ({
     setIsListening((prev) => !prev);
   };
 
-  const handleOnClose = () => {
+  const handleOnClose = async () => {
+    const result = await incrementAchievement("items_voice_added");
+    if (result.toast) {
+      showToast(result.toast.message, result.toast.type);
+    }
     findMatches(transcript);
     resetTranscript();
     setIsListening(false); // Stop manually when closing
@@ -156,3 +161,6 @@ const SpeechRecognitionComponent: React.FC<SpeechRecognitionProps> = ({
 };
 
 export default SpeechRecognitionComponent;
+function showToast(message: string, type: string) {
+  throw new Error("Function not implemented.");
+}
