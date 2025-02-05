@@ -3,7 +3,7 @@ const router = express.Router();
 const authMiddleware = require("../middleware/auth");
 const pool = require("../db");
 
-const MILESTONES = [1, 5, 10, 20, 50, 100, 1000, 10000, 100000];
+const MILESTONES = [1, 5, 10, 20, 50, 100, 500, 1250, 5000];
 
 // Get user's achievements
 router.get("/", authMiddleware, async (req, res) => {

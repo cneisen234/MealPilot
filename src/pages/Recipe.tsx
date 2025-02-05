@@ -29,6 +29,9 @@ import {
   addSelectedServings,
   getSelectedMealType,
   getSelectedServings,
+  generateRandomRecipe,
+  incrementAchievement,
+  generateRecipe,
 } from "../utils/api";
 import { MEAL_TYPES } from "../constants/mealTypes";
 import {
@@ -40,7 +43,7 @@ import {
 } from "../constants/dietaryItems";
 import "../styles/recipe.css";
 import { useLocation, useNavigate } from "react-router-dom";
-import { FaArrowLeft, FaUtensils, FaUndo } from "react-icons/fa";
+import { FaArrowLeft, FaUtensils, FaUndo, FaMagic } from "react-icons/fa";
 import { useToast } from "../context/ToastContext";
 import { useAuth } from "../context/AuthContext";
 
@@ -75,6 +78,7 @@ const Recipe = () => {
   const [recipe, setRecipe] = useState<Recipe | null>(null);
   const [isSaving, setIsSaving] = useState(false);
   const [selectedServings, setSelectedServings] = useState<string>("4");
+  const { aiActionsRemaining, setAiActionsRemaining } = useAuth();
   let currentStep = 1;
 
   useEffect(() => {
@@ -355,6 +359,55 @@ const Recipe = () => {
     }
   };
 
+  const handleGenerateRandomRecipe = async () => {
+    setIsLoading(true); // Use existing loading state
+    try {
+      if (aiActionsRemaining <= 0) {
+        showToast("You've reached your daily AI action limit", "error");
+        return;
+      }
+
+      const response = await generateRandomRecipe();
+      const result = await incrementAchievement("recipes_generated");
+      if (result.toast) {
+        showToast(result.toast.message, "info");
+      }
+      if (response.data.recipe) {
+        setRecipe(response.data.recipe);
+        const remainingActions = aiActionsRemaining - 1;
+        setAiActionsRemaining(remainingActions);
+      }
+    } catch (error) {
+      showToast("Error generating recipe", "error");
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleGenerateRecipe = async () => {
+    setIsLoading(true);
+    try {
+      if (aiActionsRemaining <= 0) {
+        showToast("You've reached your daily AI action limit", "error");
+        return;
+      }
+      const response = await generateRecipe();
+      const result = await incrementAchievement("recipes_generated");
+      if (result.toast) {
+        showToast(result.toast.message, "info");
+      }
+      if (response.data.recipe) {
+        navigate("/recipe", { state: { recipe: response.data.recipe } });
+        const remainingActions = aiActionsRemaining - 1;
+        setAiActionsRemaining(remainingActions);
+      }
+    } catch (error) {
+      showToast("Error generating recipe", "error");
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   const handleBack = () => {
     if (routeLocation.state?.fromMealPlan) {
       navigate("/mealplan");
@@ -370,7 +423,7 @@ const Recipe = () => {
   if (isLoading) {
     return (
       <div className="loading-container">
-        <AnimatedTechIcon size={100} speed={4} />
+        <AnimatedTechIcon size={100} speed={4} /> Thinking on it!
       </div>
     );
   }
@@ -476,6 +529,21 @@ const Recipe = () => {
                 </li>
               ))}
             </ul>
+          </div>
+          <div className="recipe-actions">
+            <button
+              onClick={handleGenerateRandomRecipe}
+              className="recipe-action-button back-button"
+              disabled={isLoading}>
+              <FaMagic /> Regenerate Any
+            </button>
+            <button
+              onClick={handleGenerateRecipe}
+              className="recipe-action-button back-button"
+              disabled={isLoading}>
+              <FaMagic />
+              <br /> Regenerate By Preference
+            </button>
           </div>
         </div>
       </div>

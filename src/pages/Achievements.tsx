@@ -1,11 +1,11 @@
-import React, { useState, useEffect } from "react";
+import { useState, useEffect } from "react";
 import { FaStar } from "react-icons/fa";
 import AnimatedTechIcon from "../components/common/AnimatedTechIcon";
 import { getAchievements } from "../utils/api";
 import { useToast } from "../context/ToastContext";
 import "../styles/achievements.css";
 
-const MILESTONES = [1, 5, 10, 20, 50, 100, 1000, 10000, 100000];
+const MILESTONES = [1, 5, 10, 20, 50, 100, 500, 1250, 5000];
 
 const ACHIEVEMENT_CATEGORIES = {
   recipes_generated: {
@@ -129,15 +129,9 @@ const Achievements = () => {
               </div>
 
               <div className="milestone-badges">
-                {MILESTONES.map((milestone) => (
-                  <div
-                    key={milestone}
-                    className={`milestone-badge ${
-                      count >= milestone ? "completed" : ""
-                    }`}>
-                    {count >= milestone && (
-                      <FaStar className="milestone-star" />
-                    )}
+                {MILESTONES.filter((m) => count >= m).map((milestone) => (
+                  <div key={milestone} className="milestone-badge completed">
+                    <FaStar className="milestone-star" />
                     <span>{milestone}</span>
                   </div>
                 ))}
