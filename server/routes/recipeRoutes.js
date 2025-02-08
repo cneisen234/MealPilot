@@ -1223,6 +1223,7 @@ router.post(
             "Recipe limit reached. Maximum 100 recipes allowed per account.",
         });
       }
+
       const { imageData } = req.body;
 
       // Input validation
@@ -1258,106 +1259,70 @@ router.post(
         .filter((label) => label.score > 0.7)
         .map((label) => label.description);
 
-      // 2. Process the OCR text into logical sections
-      const lines = fullText.text.split("\n");
+      // 2. Process the OCR text into a single block
+      const rawText = fullText.text;
 
-      // Common section identifiers
-      const sectionPatterns = {
-        ingredients: /^ingredients:?|what you(')?ll need:?/i,
-        instructions: /^(instructions|directions|method|steps):?/i,
-        nutrition: /^nutrition(al)?( facts| information)?:?/i,
-        servings: /^(serves|servings|yield):?\s*(\d+)/i,
-        prepTime: /(prep(aration)? time):?\s*(\d+)/i,
-        cookTime: /(cook(ing)? time):?\s*(\d+)/i,
-      };
+      // 3. Construct a prompt for GPT to structure the recipe
+      const gptPrompt = `
+      You are an AI recipe expert. Based on the extracted recipe text, please:
 
-      // Initialize sections
-      const sections = {
-        title: [],
-        ingredients: [],
-        instructions: [],
-        nutrition: [],
-        meta: [],
-      };
+      1. Correct any misspelled or non-sensical words (e.g., "jor" to "jar").
+      2. Identify the recipe title and make it clear and concise.
+      3. Break the ingredients and instructions into logical sections and structure them properly.
+      4. Remove any unnecessary or promotional text (e.g., disclaimers, irrelevant details).
+      5. Ensure the formatting follows a typical recipe structure (title, ingredients, instructions, prep/cook time, servings, etc.).
+      6. Output the final recipe in this JSON format:
 
-      // Track current section
-      let currentSection = "title";
-
-      // Process lines into sections
-      lines.forEach((line) => {
-        const trimmedLine = line.trim();
-        if (!trimmedLine) return;
-
-        // Check for section headers
-        if (sectionPatterns.ingredients.test(trimmedLine)) {
-          currentSection = "ingredients";
-          return;
-        } else if (sectionPatterns.instructions.test(trimmedLine)) {
-          currentSection = "instructions";
-          return;
-        } else if (sectionPatterns.nutrition.test(trimmedLine)) {
-          currentSection = "nutrition";
-          return;
-        }
-
-        // Check for meta information
-        const servingsMatch = trimmedLine.match(sectionPatterns.servings);
-        const prepTimeMatch = trimmedLine.match(sectionPatterns.prepTime);
-        const cookTimeMatch = trimmedLine.match(sectionPatterns.cookTime);
-
-        if (servingsMatch || prepTimeMatch || cookTimeMatch) {
-          sections.meta.push(trimmedLine);
-          return;
-        }
-
-        // Add line to current section
-        sections[currentSection].push(trimmedLine);
-      });
-
-      // 3. Instructions Parsing: Split by sentence-ending punctuation or line breaks
-      const parseInstructions = (instructions) => {
-        const stepSeparator = /(?<=\.|\?|\!)(\s+|\n+|\r+)+/;
-        const steps = instructions
-          .join("\n")
-          .split(stepSeparator)
-          .filter(Boolean);
-
-        // Clean each step by trimming excess whitespace
-        return steps.map((step) => step.trim());
-      };
-
-      // Only parse instructions if there are any
-      if (sections.instructions.length > 0) {
-        sections.instructions = parseInstructions(sections.instructions);
+      {
+        "title": "Recipe title",
+        "prepTime": "30 minutes",
+        "cookTime": "45 minutes",
+        "servings": "4",
+        "ingredients": ["ingredient 1", "ingredient 2", ...],
+        "instructions": ["step 1", "step 2", ...],
+        "nutritionalInfo": ["calories: 200", "protein: 5g", ...],
+        "mealType": "main course"
       }
 
-      // Filter out any empty strings or blank values from ingredients and instructions
-      sections.ingredients = sections.ingredients.filter(
-        (ingredient) => ingredient.trim() !== ""
-      );
-      sections.instructions = sections.instructions.filter(
-        (instruction) => instruction.trim() !== ""
-      );
+      Here is the extracted text from the recipe:
 
-      // 4. Assemble the structured recipe object
-      const recipe = {
-        title: sections.title.join(" ") || "Untitled Recipe",
-        prepTime:
-          sections.meta.find((line) => sectionPatterns.prepTime.test(line)) ||
-          "N/A",
-        cookTime:
-          sections.meta.find((line) => sectionPatterns.cookTime.test(line)) ||
-          "N/A",
-        servings:
-          sections.meta.find((line) => sectionPatterns.servings.test(line)) ||
-          "N/A",
-        ingredients: sections.ingredients,
-        instructions: sections.instructions,
-        nutritionalInfo: sections.nutrition,
-        mealType: foodLabels.join(", ") || "Main Course", // Based on detected labels
+      ${rawText}
+      `;
+
+      // Call GPT (OpenAI or other) to structure the recipe
+      const completion = await openai.chat.completions.create({
+        model: "gpt-3.5-turbo",
+        messages: [
+          {
+            role: "system",
+            content:
+              "You are a recipe expert. Your job is to structure OCR-extracted recipe text into a complete and clean recipe.",
+          },
+          {
+            role: "user",
+            content: gptPrompt,
+          },
+        ],
+        max_tokens: 1500,
+        temperature: 0.5,
+        response_format: { type: "json_object" },
+      });
+
+      const recipe = JSON.parse(completion.choices[0].message.content);
+
+      // Validate and format the final recipe object
+      const validatedRecipe = {
+        title: recipe.title || "Untitled Recipe",
+        prepTime: recipe.prepTime || "N/A",
+        cookTime: recipe.cookTime || "N/A",
+        servings: recipe.servings || "N/A",
+        ingredients: recipe.ingredients || [],
+        instructions: recipe.instructions || [],
+        nutritionalInfo: recipe.nutritionalInfo || [],
+        mealType: recipe.mealType || "main course",
       };
 
-      res.json({ recipe });
+      res.json({ recipe: validatedRecipe });
     } catch (error) {
       console.error("Error processing recipe image:", error);
       if (error.response) {
