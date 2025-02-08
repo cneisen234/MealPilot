@@ -496,7 +496,6 @@ router.post(
         [userId]
       );
 
-      // Since we don't know how many items will be found, we should ensure there's room
       if (currentCount.rows[0].count >= 200) {
         return res.status(400).json({
           message: "Shopping list limit reached. Maximum 200 items allowed.",
@@ -508,22 +507,20 @@ router.post(
         return res.status(400).json({ message: "Image data is required" });
       }
 
-      // Validate base64 image format
       if (!/^data:image\/[a-z]+;base64,/.test(imageData)) {
         return res.status(400).json({ message: "Invalid image data format" });
       }
 
-      // Clean up base64 image data
       const base64Image = imageData.replace(/^data:image\/[a-z]+;base64,/, "");
 
-      // Get user's shopping list items
+      // Get shopping list items first to include in OCR context
       const shoppingListResult = await pool.query(
         `SELECT id, item_name, quantity FROM shopping_list WHERE user_id = $1`,
         [userId]
       );
       const shoppingList = shoppingListResult.rows;
 
-      // 1. Use Google Vision API for text detection (OCR)
+      // Perform OCR with enhanced text detection settings
       const [result] = await client.documentTextDetection({
         image: { content: Buffer.from(base64Image, "base64") },
       });
@@ -533,77 +530,115 @@ router.post(
         return res.status(400).json({ message: "No text detected in receipt" });
       }
 
-      // 2. Extract structured data from the text
-      // Get each line from the OCR result
+      // Enhanced receipt line processing with better structure preservation
       const receiptLines = fullText.text.split("\n");
 
-      // Pre-process receipt lines to extract potential items and prices
-      const receiptItems = receiptLines
-        .map((line) => {
-          // More thorough text cleanup
-          let itemText = line
-            .replace(/^[\d\s]+/, "") // Remove leading numbers
-            .replace(/\s+@\s+.*$/, "") // Remove @ price indicators
-            .replace(/\bQTY\b.*$/i, "") // Remove quantity indicators
-            .replace(/\d+\s*(?:PC|EA|PK|CT)\b/i, "") // Remove unit measurements
-            .replace(/\d+\.\d{2}/, "") // Remove prices
-            .replace(/\s{2,}/g, " ") // Normalize spaces
-            .trim();
+      // Track line relationships and context
+      const processedLines = receiptLines.map((line, index) => {
+        // Store original line for reference
+        const original = line.trim();
 
-          return {
-            text: itemText,
-            original: line,
-          };
-        })
-        .filter((item) => item.text && item.text.length > 1);
+        // Basic price detection
+        const priceMatch = line.match(/\d+\.\d{2}\b/);
+        const price = priceMatch ? priceMatch[0] : null;
 
-      // 3. Use GPT to match receipt items with shopping list
-      const gptPrompt = `Given these receipt items:
-${receiptItems.map((item) => item.text).join("\n")}
+        // Quantity detection patterns
+        const qtyPatterns = [
+          /(\d+)\s*@/, // Standard @ pattern
+          /QTY[:\s]*(\d+)/i, // QTY prefix
+          /^\s*(\d+)\s+/, // Leading number
+          /(\d+)\s*(?:PC|EA|PK|CT)\b/i, // Unit indicators
+        ];
 
-And these shopping list items:
+        let quantity = null;
+        for (const pattern of qtyPatterns) {
+          const match = line.match(pattern);
+          if (match) {
+            quantity = parseInt(match[1]);
+            break;
+          }
+        }
+
+        // Clean item text while preserving important details
+        let itemText = line
+          .replace(/^[\d\s]+/, "") // Remove leading numbers
+          .replace(/\s+@\s+.*$/, "") // Remove @ price indicators
+          .replace(/\bQTY\b.*$/i, "") // Remove quantity indicators
+          .replace(/\d+\s*(?:PC|EA|PK|CT)\b/i, "") // Remove unit measurements
+          .replace(/\d+\.\d{2}\b.*$/, "") // Remove price and anything after
+          .replace(/\s{2,}/g, " ") // Normalize spaces
+          .trim();
+
+        // Look for brand names or product identifiers (often in CAPS)
+        const brandMatch = itemText.match(/[A-Z]{2,}(?:\s+[A-Z]+)*/);
+        const brandName = brandMatch ? brandMatch[0] : null;
+
+        return {
+          original,
+          itemText,
+          price,
+          quantity,
+          brandName,
+          lineNumber: index + 1,
+        };
+      });
+
+      // Enhanced GPT prompt with better context and matching instructions
+      const gptPrompt = `You are a receipt analysis expert. Your task is to match receipt items with shopping list items.
+
+RECEIPT CONTEXT:
+The receipt appears to be from a store and contains ${
+        processedLines.length
+      } items.
+Here are the detected items with their details:
+
+${processedLines
+  .map(
+    (line) =>
+      `Line ${line.lineNumber}: ${line.original}
+   → Cleaned text: "${line.itemText}"
+   ${line.brandName ? `→ Brand detected: ${line.brandName}` : ""}
+   ${line.quantity ? `→ Quantity: ${line.quantity}` : ""}
+   ${line.price ? `→ Price: $${line.price}` : ""}`
+  )
+  .join("\n\n")}
+
+SHOPPING LIST ITEMS:
 ${shoppingList
   .map(
-    (item) => `ID ${item.id}: ${item.item_name} (Quantity: ${item.quantity})`
+    (item) =>
+      `ID ${item.id}: ${item.item_name} (Quantity needed: ${item.quantity})`
   )
   .join("\n")}
 
-Find matches between receipt items and shopping list items.
-Be very lenient - better to have false positives than miss matches.
-Match partial words, brands with generic items, common abbreviations, and ignore spaces/punctuation.
-Match singular/plural forms and items that are part of larger descriptions.
+MATCHING RULES:
+1. EXACT MATCHES: Look for exact matches first
+2. BRAND MATCHES: Match brand names with generic items (e.g., "KRAFT CHEESE" matches "cheese")
+3. PARTIAL MATCHES: Match partial words if they're specific enough (e.g., "yogurt" matches "Greek yogurt")
+4. QUANTITY HANDLING:
+   - Use detected quantities when available
+   - Default to shopping list quantity if no quantity detected
 
-Return a JSON object:
+Return a JSON object with this structure:
 {
   "matches": [
     {
       "shopping_list_id": number,
-      "shopping_list_item": "item name from shopping list",
-      "receipt_match": "exact text found on receipt",
+      "shopping_list_item": "exact item name from shopping list",
+      "receipt_match": "exact line from receipt",
       "quantity": number
     }
   ]
 }`;
 
-      let completion;
-      const timeout = 15000; // Timeout in milliseconds
-      let timeoutId;
-
-      const timeoutPromise = new Promise(
-        (_, reject) =>
-          (timeoutId = setTimeout(() => {
-            console.log("DeepSeek was too slow, forcing fallback to GPT");
-            reject(new Error("DeepSeek took too long"));
-          }, timeout))
-      );
-
-      const deepseekPromise = deepseek.chat.completions.create({
-        model: "deepseek-chat",
+      // Use GPT-3.5-turbo for consistent, accurate matching
+      const completion = await openai.chat.completions.create({
+        model: "gpt-3.5-turbo",
         messages: [
           {
             role: "system",
             content:
-              "You are a receipt analysis expert that specializes in matching shopping list items with receipt entries.",
+              "You are a receipt analysis expert specializing in accurate item matching and quantity detection. You prioritize accuracy over quantity of matches.",
           },
           {
             role: "user",
@@ -615,38 +650,12 @@ Return a JSON object:
         response_format: { type: "json_object" },
       });
 
-      try {
-        // Use Promise.race to execute both the DeepSeek and timeout promises
-        completion = await Promise.race([deepseekPromise, timeoutPromise]);
-        console.log("Using DeepSeek model");
-        clearTimeout(timeoutId);
-      } catch (aiError) {
-        completion = await openai.chat.completions.create({
-          model: "gpt-3.5-turbo",
-          messages: [
-            {
-              role: "system",
-              content:
-                "You are a receipt analysis expert that specializes in matching shopping list items with receipt entries.",
-            },
-            {
-              role: "user",
-              content: gptPrompt,
-            },
-          ],
-          max_tokens: 500,
-          temperature: 0.3,
-          response_format: { type: "json_object" },
-        });
-        console.log("Using GPT-3.5 model");
-      }
-
       const analysis = JSON.parse(completion.choices[0].message.content);
 
-      // 4. Validate and clean up matches
+      // Enhanced validation with more sophisticated rules
       const validatedMatches = {
         matches: analysis.matches.filter((match) => {
-          // Ensure all required fields are present
+          // Basic field validation
           if (
             !match.shopping_list_id ||
             !match.shopping_list_item ||
@@ -656,7 +665,7 @@ Return a JSON object:
             return false;
           }
 
-          // Verify shopping_list_id exists in original shopping list
+          // Verify shopping list item exists
           const validItem = shoppingList.find(
             (item) => item.id === match.shopping_list_id
           );
@@ -664,33 +673,38 @@ Return a JSON object:
             return false;
           }
 
-          // Verify quantity is reasonable (not zero or negative)
-          if (match.quantity <= 0) {
-            match.quantity = validItem.quantity; // Use original quantity if invalid
+          // Verify receipt match exists in processed lines
+          const validReceipt = processedLines.some(
+            (line) =>
+              line.original.includes(match.receipt_match) ||
+              match.receipt_match.includes(line.itemText)
+          );
+          if (!validReceipt) {
+            return false;
+          }
+
+          // Quantity validation
+          if (match.quantity <= 0 || match.quantity > validItem.quantity) {
+            match.quantity = validItem.quantity;
           }
 
           return true;
         }),
       };
 
-      // 5. Return the processed matches
       res.json(validatedMatches);
     } catch (error) {
       console.error("Error processing receipt:", error);
-      // Handle specific types of errors
       if (error.response) {
-        // API-specific errors (Google Vision or OpenAI)
         return res.status(error.response.status).json({
           message: "Error processing receipt",
           details: error.response.data.message,
         });
-      } else {
-        // Other errors (network, parsing, etc.)
-        return res.status(500).json({
-          message: "Error processing receipt image",
-          error: error.message,
-        });
       }
+      return res.status(500).json({
+        message: "Error processing receipt image",
+        error: error.message,
+      });
     }
   }
 );

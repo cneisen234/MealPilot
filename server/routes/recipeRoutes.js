@@ -1097,6 +1097,7 @@ router.post(
             "Recipe limit reached. Maximum 100 recipes allowed per account.",
         });
       }
+
       const { url } = req.body;
 
       // Fetch the webpage content
@@ -1107,93 +1108,103 @@ router.post(
       const $ = cheerio.load(html);
       const pageText = $("body").text().replace(/\s+/g, " ").trim();
 
-      const prompt = `Extract recipe information from this webpage content and format it as a JSON object. The webpage is from ${url}.
+      // Track parenthetical measurements to preserve them
+      const measurementMatches = [...pageText.matchAll(/\(([^)]+)\)/g)];
+      const preservedMeasurements = measurementMatches.map((match) => match[1]);
 
-    Return a JSON object with exactly this structure:
-    {
-      "title": "Recipe title",
-      "prepTime": "2 hours and 15 min",
-      "cookTime": "1 hour and 40 min",
-      "servings": "4",
-        "ingredients": [
-    "Include complete ingredient descriptions with measurements and names, like:",
-    "2 cups all-purpose flour",
-    "1.5 tablespoons olive oil",
-    "1/2 teaspoon salt"
-  ],
-      "instructions": [
-        "**Preparation:**",
-        "First step details",
-        "**Cooking:**",
-        "Cooking steps"
-      ],
-      "nutritionalInfo": [
-        "Calories: 350",
-        "Protein: 12g"
-      ],
-      "mealType": "dinner"
-    }
+      const gptPrompt = `
+      You are an AI recipe expert specialized in EXACT transcription. Your primary rule is to maintain EXACT measurements and packaging information. Based on the extracted webpage content, please:
+      
+      CRITICAL RULES:
+      1. NEVER convert measurements between units (e.g., never convert oz to cups)
+      2. ALWAYS preserve parenthetical measurements exactly as written - e.g., "(8 oz.)" must stay exactly as "(8 oz.)"
+      3. ALWAYS preserve brand names and package descriptions exactly
+      4. NEVER add interpretive text like "for serving" or "for dusting" unless it appears in the original
+      5. NEVER assume or infer measurements - use exactly what's in the text
+      6. Correct any misspelled or non-sensical words (e.g., "jor" to "jar")
+      7. Identify the recipe title and make it clear and concise
+      8. Break the ingredients and instructions into logical sections and structure them properly
+      9. Remove any unnecessary or promotional text (e.g., disclaimers, irrelevant details)
+      10. Ensure the formatting follows a typical recipe structure
 
-        Extract the information from this webpage content and return it as a valid JSON object:
-    ${pageText.substring(0, 8000)}`;
+      Return the recipe in this JSON format:
+      {
+        "title": "Recipe title",
+        "prepTime": "30 minutes",
+        "cookTime": "45 minutes",
+        "servings": "4",
+        "ingredients": ["ingredient 1", "ingredient 2", ...],
+        "instructions": ["step 1", "step 2", ...],
+        "nutritionalInfo": ["calories: 200", "protein: 5g", ...],
+        "mealType": "main course"
+      }
 
-      let completion;
-      const timeout = 20000; // Timeout in milliseconds
-      let timeoutId;
+      Here is the extracted webpage content:
+      ${pageText.substring(0, 8000)}
+      
+      Source URL: ${url}`;
 
-      const timeoutPromise = new Promise(
-        (_, reject) =>
-          (timeoutId = setTimeout(() => {
-            console.log("DeepSeek was too slow, forcing fallback to GPT");
-            reject(new Error("DeepSeek took too long"));
-          }, timeout))
-      );
-
-      const deepseekPromise = deepseek.chat.completions.create({
-        model: "deepseek-chat",
+      const completion = await openai.chat.completions.create({
+        model: "gpt-3.5-turbo",
         messages: [
           {
             role: "system",
-            content: "You are a recipe extraction expert.",
+            content:
+              "You are a recipe expert who excels at maintaining exact measurements and formatting recipes clearly. Your primary focus is on preserving precise ingredient quantities and packaging information.",
           },
-          { role: "user", content: prompt },
+          {
+            role: "user",
+            content: gptPrompt,
+          },
         ],
-        max_tokens: 1000,
-        temperature: 0.3,
+        max_tokens: 1500,
+        temperature: 0.5,
         response_format: { type: "json_object" },
       });
 
-      try {
-        // Use Promise.race to execute both the DeepSeek and timeout promises
-        completion = await Promise.race([deepseekPromise, timeoutPromise]);
-        console.log("Using DeepSeek model");
-        clearTimeout(timeoutId);
-      } catch (aiError) {
-        // Fallback to GPT if DeepSeek fails or times out
-        if (aiError.message === "DeepSeek took too long") {
-          console.log("Fallback to GPT due to timeout");
-        } else {
-          console.log("Fallback to GPT due to error:", aiError.message);
-        }
-        completion = await openai.chat.completions.create({
-          model: "gpt-3.5-turbo",
-          messages: [
-            {
-              role: "system",
-              content: "You are a recipe extraction expert.",
-            },
-            { role: "user", content: prompt },
-          ],
-          max_tokens: 1000,
-          temperature: 0.3,
-          response_format: { type: "json_object" },
-        });
-        console.log("Using GPT-3.5 model");
-      }
-
       const recipe = JSON.parse(completion.choices[0].message.content);
 
-      res.json({ recipe });
+      // Post-process ingredients to verify exact measurements are preserved
+      const processedRecipe = {
+        ...recipe,
+        ingredients:
+          recipe.ingredients?.map((ingredient) => {
+            // Verify each preserved measurement appears in the ingredient text
+            preservedMeasurements.forEach((measurement) => {
+              if (!ingredient.includes(`(${measurement})`)) {
+                // If a parenthetical measurement is missing, reinsert it
+                const measurementMatch = measurement.match(
+                  /(\d+)\s*(oz\.|ounces?|lbs?\.?|pounds?|pkg\.?|packages?)/i
+                );
+                if (measurementMatch) {
+                  const [_, num, unit] = measurementMatch;
+                  const searchNum = new RegExp(`\\b${num}\\b`);
+                  if (searchNum.test(ingredient)) {
+                    ingredient = ingredient.replace(
+                      searchNum,
+                      `(${measurement})`
+                    );
+                  }
+                }
+              }
+            });
+            return ingredient.trim();
+          }) || [],
+      };
+
+      // Validate and format the final recipe object
+      const validatedRecipe = {
+        title: processedRecipe.title || "Untitled Recipe",
+        prepTime: processedRecipe.prepTime || "N/A",
+        cookTime: processedRecipe.cookTime || "N/A",
+        servings: processedRecipe.servings || "4",
+        ingredients: processedRecipe.ingredients,
+        instructions: processedRecipe.instructions || [],
+        nutritionalInfo: processedRecipe.nutritionalInfo || [],
+        mealType: processedRecipe.mealType || "main course",
+      };
+
+      res.json({ recipe: validatedRecipe });
     } catch (error) {
       console.error("Error scraping recipe:", error);
       res.status(500).json({
