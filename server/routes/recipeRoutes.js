@@ -18,160 +18,12 @@ const client = new vision.ImageAnnotatorClient({
   },
 });
 
-// Helper to parse ingredient strings
-// Helper function to parse ingredient strings more comprehensively
 const parseIngredient = (text) => {
-  // Standardize fractions and formatting
-  text = text
-    .toLowerCase()
-    .trim()
-    .replace(/(\d+)\s+(\d+\/\d+)/g, (_, whole, fraction) => {
-      const [num, denom] = fraction.split("/");
-      return (parseInt(whole) + parseInt(num) / parseInt(denom)).toString();
-    })
-    .replace(/(\d+)\/(\d+)/g, (_, num, denom) =>
-      (parseInt(num) / parseInt(denom)).toString()
-    );
-
-  // Match units and common measurements more precisely
-  const unitPatterns = {
-    cup: /\b(cups?|c\.?)\b/i,
-    tablespoon: /\b(tablespoons?|tbsps?|tbs?\.?)\b/i,
-    teaspoon: /\b(teaspoons?|tsps?|tsp\.?)\b/i,
-    pound: /\b(pounds?|lbs?\.?)\b/i,
-    ounce: /\b(ounces?|ozs?\.?)\b/i,
-    gram: /\b(grams?|g\.?)\b/i,
-    milliliter: /\b(milliliters?|ml\.?)\b/i,
-    quantity: /\b(pieces?|whole|cloves?|slices?)\b/i,
-  };
-
-  // Extract quantity with strict pattern matching
-  const quantityPattern = /^(\d*\.?\d+)\s*/;
-  const quantityMatch = text.match(quantityPattern);
-
-  if (!quantityMatch) {
-    return {
-      original: text,
-      quantity: 1,
-      unit: null,
-      ingredient: text.trim(),
-    };
-  }
-
-  const quantity = parseFloat(quantityMatch[1]);
-  let remainingText = text.slice(quantityMatch[0].length);
-
-  // Find matching unit
-  let unit = null;
-  let unitMatch = null;
-  for (const [standardUnit, pattern] of Object.entries(unitPatterns)) {
-    const match = remainingText.match(pattern);
-    if (match) {
-      unit = standardUnit;
-      unitMatch = match;
-      break;
-    }
-  }
-
-  // Extract ingredient name
-  let ingredient = remainingText;
-  if (unitMatch) {
-    ingredient = remainingText.slice(unitMatch[0].length);
-  }
-
-  // Clean up ingredient name
-  ingredient = ingredient
-    .replace(/^\s*of\s+/, "")
-    .replace(/[,.]\s*$/, "")
-    .trim();
-
-  // Validation
-  if (!ingredient || quantity <= 0) {
-    return {
-      original: text,
-      quantity: 1,
-      unit: null,
-      ingredient: text.trim(),
-    };
-  }
-
+  // Return the text exactly as it is without any changes
   return {
     original: text,
-    quantity,
-    unit,
-    ingredient,
-    formatted: `${quantity}${unit ? ` ${unit} ` : " "}${ingredient}`,
+    ingredient: text.trim(), // Optionally trim leading/trailing spaces
   };
-};
-
-const processSections = (text) => {
-  const sections = {
-    title: [],
-    ingredients: [],
-    instructions: [],
-    nutrition: [],
-    meta: [],
-  };
-
-  const sectionPatterns = {
-    ingredients: /^ingredients:?|what you(')?ll need:?/i,
-    instructions: /^(instructions|directions|method|steps):?/i,
-    nutrition: /^nutrition(al)?( facts| information)?:?/i,
-    meta: /^(serves|servings|yield|prep time|cook time):?/i,
-  };
-
-  let currentSection = "title";
-  const lines = text
-    .split("\n")
-    .map((line) => line.trim())
-    .filter(Boolean);
-
-  for (const line of lines) {
-    let sectionChanged = false;
-    for (const [section, pattern] of Object.entries(sectionPatterns)) {
-      if (pattern.test(line)) {
-        currentSection = section;
-        sectionChanged = true;
-        break;
-      }
-    }
-    if (!sectionChanged && line) {
-      sections[currentSection].push(line);
-    }
-  }
-
-  return sections;
-};
-
-// Helper function to standardize units
-const standardizeUnit = (unit) => {
-  const unitMappings = {
-    tablespoon: "tbsp",
-    tablespoons: "tbsp",
-    tbsp: "tbsp",
-    teaspoon: "tsp",
-    teaspoons: "tsp",
-    tsp: "tsp",
-    cup: "cup",
-    cups: "cup",
-    pound: "lb",
-    pounds: "lb",
-    lb: "lb",
-    lbs: "lb",
-    ounce: "oz",
-    ounces: "oz",
-    oz: "oz",
-    gram: "g",
-    grams: "g",
-    g: "g",
-    milliliter: "ml",
-    milliliters: "ml",
-    ml: "ml",
-    pinch: "pinch",
-    pinches: "pinch",
-  };
-
-  return unitMappings[unit] || unit;
 };
 
 router.post(
@@ -1354,13 +1206,8 @@ router.post(
           const parsed = parseIngredient(ingredient);
           if (!parsed) return ingredient;
 
-          // Only return a formatted string if we have all components
-          if (parsed.quantity && parsed.ingredient) {
-            return `${parsed.quantity}${
-              parsed.unit ? ` ${parsed.unit} ` : " "
-            }${parsed.ingredient}`;
-          }
-          return ingredient;
+          // Directly return the ingredient text without modification
+          return parsed.formatted; // Return the text as it is, no changes
         } catch (error) {
           console.error(`Error parsing ingredient: ${ingredient}`, error);
           return ingredient;
@@ -1602,16 +1449,12 @@ Return a JSON object with exactly this structure:
       // 4. Post-process and validate the recipe
       recipe.ingredients = recipe.ingredients.map((ingredient) => {
         try {
+          // Use the simplified version of parseIngredient
           const parsed = parseIngredient(ingredient);
           if (!parsed) return ingredient;
 
-          // Match the web scraper's format exactly
-          if (parsed.quantity && parsed.ingredient) {
-            return `${parsed.quantity}${
-              parsed.unit ? ` ${parsed.unit} ` : " "
-            }${parsed.ingredient}`;
-          }
-          return ingredient;
+          // Return the ingredient as is without modification
+          return parsed.formatted; // Return the text as it is, no changes
         } catch (error) {
           console.error(`Error parsing ingredient: ${ingredient}`, error);
           return ingredient;
