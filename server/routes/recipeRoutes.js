@@ -1314,130 +1314,40 @@ router.post(
         sections[currentSection].push(trimmedLine);
       });
 
-      // 3. Use GPT to interpret and structure the extracted text
-      const gptPrompt = `Based on this extracted recipe text and detected food items:
+      // 3. Parse ingredients into a structured format
+      sections.ingredients = sections.ingredients.map((ingredient) => {
+        try {
+          // Use the original ingredient parsing logic
+          const parsed = parseIngredient(ingredient);
+          if (!parsed) return ingredient;
 
-Food items detected: ${foodLabels.join(", ")}
-
-Title candidates:
-${sections.title.join("\n")}
-
-Meta information:
-${sections.meta.join("\n")}
-
-Ingredients section:
-${sections.ingredients.join("\n")}
-
-Instructions section:
-${sections.instructions.join("\n")}
-
-Nutrition section:
-${sections.nutrition.join("\n")}
-
-Convert this into a structured recipe. Guidelines:
-1. Choose the most appropriate title based on the content
-2. For ingredients, ALWAYS include quantity and measurement unit for each ingredient. For example:
-   - "2 cups flour"
-   - "1 tablespoon butter"
-   - "3 large eggs"
-   If no specific measurement exists, use numeric quantities like "1 onion" or "2 cloves"
-3. Format instructions into clear, numbered steps
-4. Identify the meal type based on ingredients and context
-5. Extract exact prep/cook times and servings from meta information
-6. Organize nutritional info into clear bullet points
-
-Return a JSON object with exactly this structure:
-{
-  "title": "Recipe title",
-  "prepTime": "30 minutes",
-  "cookTime": "45 minutes",
-  "servings": "4",
-  "ingredients": [
-    "2 cups all-purpose flour",
-    "1.5 tablespoons olive oil",
-    "1/2 teaspoon salt"
-  ],
-  "instructions": ["array of strings"],
-  "nutritionalInfo": ["array of strings"],
-  "mealType": "string (breakfast/lunch/dinner/dessert/etc)"
-}`;
-
-      let completion;
-      const timeout = 20000; // Timeout in milliseconds
-      let timeoutId;
-
-      const timeoutPromise = new Promise(
-        (_, reject) =>
-          (timeoutId = setTimeout(() => {
-            console.log("DeepSeek was too slow, forcing fallback to GPT");
-            reject(new Error("DeepSeek took too long"));
-          }, timeout))
-      );
-
-      const deepseekPromise = deepseek.chat.completions.create({
-        model: "deepseek-chat",
-        messages: [
-          {
-            role: "system",
-            content:
-              "You are a professional recipe formatter specializing in converting OCR text into structured recipes.",
-          },
-          {
-            role: "user",
-            content: gptPrompt,
-          },
-        ],
-        max_tokens: 1000,
-        temperature: 0.3,
-        response_format: { type: "json_object" },
+          // Directly return the ingredient text in the proper format
+          return `${parsed.quantity} ${parsed.unit || ""} ${parsed.ingredient}`;
+        } catch (error) {
+          console.error(`Error parsing ingredient: ${ingredient}`, error);
+          return ingredient;
+        }
       });
 
-      try {
-        // Use Promise.race to execute both the DeepSeek and timeout promises
-        completion = await Promise.race([deepseekPromise, timeoutPromise]);
-        console.log("Using DeepSeek model");
-        clearTimeout(timeoutId);
-      } catch (aiError) {
-        if (aiError.message === "DeepSeek took too long") {
-          console.log("Fallback to GPT due to timeout");
-        } else {
-          console.log("Fallback to GPT due to error:", aiError.message);
-        }
-        completion = await openai.chat.completions.create({
-          model: "gpt-3.5-turbo",
-          messages: [
-            {
-              role: "system",
-              content:
-                "You are a professional recipe formatter specializing in converting OCR text into structured recipes.",
-            },
-            {
-              role: "user",
-              content: gptPrompt,
-            },
-          ],
-          max_tokens: 1000,
-          temperature: 0.3,
-          response_format: { type: "json_object" },
-        });
-        console.log("Using GPT-3.5 model");
-      }
-
-      const recipe = JSON.parse(completion.choices[0].message.content);
-
-      // Validate all required fields
-      const validatedRecipe = {
-        title: recipe.title || "Untitled Recipe",
-        prepTime: recipe.prepTime || "N/A",
-        cookTime: recipe.cookTime || "N/A",
-        servings: recipe.servings || "N/A",
-        ingredients: recipe.ingredients || [],
-        instructions: recipe.instructions || [],
-        nutritionalInfo: recipe.nutritionalInfo || [],
-        mealType: recipe.mealType || "main course",
+      // 4. Assemble the structured recipe object
+      const recipe = {
+        title: sections.title.join(" ") || "Untitled Recipe",
+        prepTime:
+          sections.meta.find((line) => sectionPatterns.prepTime.test(line)) ||
+          "N/A",
+        cookTime:
+          sections.meta.find((line) => sectionPatterns.cookTime.test(line)) ||
+          "N/A",
+        servings:
+          sections.meta.find((line) => sectionPatterns.servings.test(line)) ||
+          "N/A",
+        ingredients: sections.ingredients,
+        instructions: sections.instructions,
+        nutritionalInfo: sections.nutrition,
+        mealType: foodLabels.join(", ") || "Main Course", // Based on detected labels
       };
 
-      res.json({ recipe: validatedRecipe });
+      res.json({ recipe });
     } catch (error) {
       console.error("Error processing recipe image:", error);
       if (error.response) {
