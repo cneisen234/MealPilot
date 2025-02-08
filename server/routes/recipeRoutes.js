@@ -1331,6 +1331,14 @@ router.post(
         sections.instructions = parseInstructions(sections.instructions);
       }
 
+      // Filter out any empty strings or blank values from ingredients and instructions
+      sections.ingredients = sections.ingredients.filter(
+        (ingredient) => ingredient.trim() !== ""
+      );
+      sections.instructions = sections.instructions.filter(
+        (instruction) => instruction.trim() !== ""
+      );
+
       // 4. Assemble the structured recipe object
       const recipe = {
         title: sections.title.join(" ") || "Untitled Recipe",
