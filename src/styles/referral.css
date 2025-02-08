@@ -186,7 +186,7 @@
     min-height: 50vh;
 }
 
-@media (max-width: 768px) {
+@media (max-width: 1068px) {
     .referral-link-section {
         flex-direction: column;
     }

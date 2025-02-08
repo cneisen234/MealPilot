@@ -264,7 +264,7 @@
     opacity: 0.8;
 }
 
-@media (max-width: 768px) {
+@media (max-width: 1068px) {
     .my-recipes-container {
         padding: 20px;
     }

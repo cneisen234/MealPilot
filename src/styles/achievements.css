@@ -119,7 +119,7 @@
     height: 12px;
 }
 
-@media (max-width: 768px) {
+@media (max-width: 1068px) {
     .achievements-grid {
         grid-template-columns: 1fr;
     }

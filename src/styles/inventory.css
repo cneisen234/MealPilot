@@ -80,7 +80,7 @@
     color: #dc3545;
 }
 
-@media (max-width: 768px) {
+@media (max-width: 1068px) {
     .list-grid {
         grid-template-columns: 1fr;
         gap: 16px;
@@ -574,7 +574,7 @@ max-height: 75vh;
     transform: translateY(-1px);
 }
 
-@media (max-width: 768px) {
+@media (max-width: 1068px) {
     .inventory-filters {
             flex-direction: column;
             gap: 12px;

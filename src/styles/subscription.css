@@ -109,7 +109,7 @@
     cursor: not-allowed;
 }
 
-@media (max-width: 768px) {
+@media (max-width: 1068px) {
     .subscription-terms-container {
         margin: 16px;
         padding: 20px;

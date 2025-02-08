@@ -527,7 +527,7 @@
 }
 
 /* Mobile responsiveness */
-@media (max-width: 768px) {
+@media (max-width: 1068px) {
 
     .share-link-section {
         flex-direction: row;

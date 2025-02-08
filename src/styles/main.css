@@ -411,7 +411,7 @@ main {
 }
 
 /* Responsive styles */
-@media (max-width: 768px) {
+@media (max-width: 1068px) {
        .main-content {
         margin-top: 50px; /* Only add margin-top on mobile */
     }

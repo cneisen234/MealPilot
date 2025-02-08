@@ -129,7 +129,7 @@
     }
 }
 
-@media (max-width: 768px) {
+@media (max-width: 1068px) {
 .dropdown-menu {
         position: absolute;
         top: 40px;
@@ -144,7 +144,7 @@
     }
 }
 
-@media (max-width: 768px) {
+@media (max-width: 1068px) {
     .header {
         position: fixed;
         /* Fixed position only on mobile */

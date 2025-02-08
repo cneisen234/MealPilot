@@ -137,7 +137,7 @@
     gap: 8px;
 }
 
-@media (max-width: 768px) {
+@media (max-width: 1068px) {
     .meal-plan-header {
         flex-direction: column;
         gap: 20px;

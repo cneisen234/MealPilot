@@ -12,7 +12,9 @@ import "../styles/home.css";
 
 const Home: React.FC = () => {
   return (
-    <div className="mealpilot-home" style={{ marginBottom: 100 }}>
+    <div
+      className="mealpilot-home"
+      style={{ marginTop: 100, marginBottom: 100 }}>
       <div className="mealpilot-home__container">
         <div className="mealpilot-home__content">
           <div className="mealpilot-home__logo-wrapper">
@@ -25,77 +27,102 @@ const Home: React.FC = () => {
           </div>
 
           <h1 className="mealpilot-home__title">
-            Your Holistic
-            <span className="mealpilot-home__title-accent">
-              Kitchen Solution
-            </span>
+            Your Kitchen's{" "}
+            <span className="mealpilot-home__title-accent">AI Revolution</span>
           </h1>
 
+          <h2 className="mealpilot-home__tagline">
+            Where Convenience Meets Innovation
+          </h2>
+
           <p className="mealpilot-home__description">
-            Unleash the power of AI to effortlessly streamline your kitchen.
-            From personalized meal planning to intelligent pantry management,
-            MealSphere is your personal chef, grocery assistant, and meal
-            architect—all in one.
+            Imagine your kitchen running itself. No more "what's for dinner"
+            stress. No more wasted food. No more hours spent planning meals.
+            MealSphere uses advanced AI to transform your kitchen into an
+            effortless cooking command center.
           </p>
 
-          <Link to="/signup" className="mealpilot-home__cta">
-            Start your 30 Day Free Trial
-          </Link>
-          <p>No credit card required</p>
-
-          <div className="mealpilot-home__auth-links">
-            <Link
-              to="/login"
-              className="mealpilot-home__auth-link"
-              style={{ textDecoration: "underline" }}>
-              Login
-            </Link>
-            <Link
-              to="/signup"
-              className="mealpilot-home__auth-link"
-              style={{ textDecoration: "underline" }}>
-              Sign Up
-            </Link>
+          <div className="mealpilot-home__stats">
+            <div className="mealpilot-home__stat">
+              <span className="mealpilot-home__stat-number">$1,500</span>
+              <span className="mealpilot-home__stat-text">
+                Average annual food waste eliminated
+              </span>
+            </div>
+            <div className="mealpilot-home__stat">
+              <span className="mealpilot-home__stat-number">5+ Hours</span>
+              <span className="mealpilot-home__stat-text">
+                Weekly time saved on meal planning
+              </span>
+            </div>
+            <div className="mealpilot-home__stat">
+              <span className="mealpilot-home__stat-number">80%</span>
+              <span className="mealpilot-home__stat-text">
+                Reduction in meal-related stress
+              </span>
+            </div>
           </div>
+
+          <div className="mealpilot-home__highlight-banner">
+            <span className="mealpilot-home__highlight-text">
+              Kitchen management like you've never seen it before!
+            </span>
+          </div>
+
+          <Link to="/signup" className="mealpilot-home__cta">
+            Start Your Free 30-Day Trial
+          </Link>
+          <p className="mealpilot-home__no-card">No credit card required</p>
 
           <div className="mealpilot-home__features">
             {[
               {
                 icon: <FaUtensils />,
-                title: "Personalized Recipe Creation",
+                title: "Perfect Recipes Every Time",
                 description: (
                   <ul>
-                    <li>Custom recipes based on your diet and preferences</li>
-                    <li>From food allergies to lifestyle choices - we adapt</li>
-                    <li>Save and edit your favorite recipes</li>
-                    <li>Import recipes from photos or websites</li>
-                    <li>Preserve family recipes digitally</li>
-                  </ul>
-                ),
-              },
-              {
-                icon: <FaCalendar />,
-                title: "One-Click Meal Planning",
-                description: (
-                  <ul>
-                    <li>Generate weekly meal plans instantly</li>
-                    <li>Personalized breakfast, lunch, and dinner options</li>
-                    <li>Mix favorites with new recipes</li>
-                    <li>Smart meal timing suggestions</li>
-                    <li>Easy meal swapping</li>
+                    <li>
+                      AI creates recipes that match your exact dietary needs
+                    </li>
+                    <li>Never worry about ingredient substitutions</li>
+                    <li>Automatically adjust portions for any group size</li>
+                    <li>Save your favorite recipes in one place</li>
+                    <li>Import recipes from photos or websites with ease</li>
                   </ul>
                 ),
               },
               {
                 icon: <FaCamera />,
-                title: "Effortless Kitchen Management",
+                title: "Smart Kitchen Management",
                 description: (
                   <ul>
-                    <li>Update inventory with photos or voice</li>
-                    <li>No barcode scanning needed</li>
-                    <li>Scan receipts for instant updates</li>
-                    <li>Minimal manual entry</li>
-                    <li>Smart item recognition</li>
+                    <li>
+                      Simply take a photo to identify ingredients - no barcodes
+                      required!
+                    </li>
+                    <li>
+                      Update your pantry by voice or photo. Completely keyboard
+                      free!
+                    </li>
+                    <li>Know exactly what's in your kitchen at all times</li>
+                    <li>Track expiration dates automatically</li>
+                    <li>Never throw away forgotten food again</li>
+                  </ul>
+                ),
+              },
+              {
+                icon: <FaCalendar />,
+                title: "Stress-Free Meal Planning",
+                description: (
+                  <ul>
+                    <li>
+                      Get a full week of personalized meals in seconds with a
+                      simple button click!
+                    </li>
+                    <li>No more "what's for dinner?" stress</li>
+                    <li>Easily swap meals on the fly</li>
+                    <li>Perfect portions every time</li>
+                    <li>Save hours of weekly planning time</li>
                   </ul>
                 ),
               },
@@ -113,7 +140,7 @@ const Home: React.FC = () => {
               </div>
             ))}
           </div>
-          <br />
+
           <h2 className="mealpilot-home__section-title">
             Everything Works Together
           </h2>
@@ -121,38 +148,37 @@ const Home: React.FC = () => {
             {[
               {
                 icon: <FaShoppingCart />,
-                title: "True Recipe Integration",
+                title: "Shopping Made Simple",
                 description: (
                   <ul>
-                    <li>Instant pantry-to-recipe matching</li>
-                    <li>Smart expiration alerts with recipe ideas</li>
-                    <li>Seamless recipe-inventory sync</li>
-                    <li>Never miss an ingredient</li>
+                    <li>Generate smart shopping lists instantly</li>
+                    <li>Share lists with family members</li>
+                    <li>Never forget an ingredient again</li>
+                    <li>Scan receipts to update your pantry</li>
                   </ul>
                 ),
               },
               {
                 icon: <FaChartLine />,
-                title: "Inventory Tracking",
+                title: "Stay Organized Effortlessly",
                 description: (
                   <ul>
-                    <li>Track expiration dates</li>
-                    <li>Auto-updating quantities</li>
-                    <li>Organized pantry tracking</li>
-                    <li>Smart stock management</li>
+                    <li>Know what's about to expire</li>
+                    <li>Track everything in your kitchen</li>
+                    <li>Access your data from any device</li>
+                    <li>Keep your family in sync</li>
                   </ul>
                 ),
               },
               {
                 icon: <FaMicrophone />,
-                title: "Voice & Photo Integration",
+                title: "Hands-Free Kitchen Help",
                 description: (
                   <ul>
-                    <li>Hands-free updates</li>
-                    <li>Quick photo detection</li>
-                    <li>Natural voice commands</li>
-                    <li>Fast visual recognition</li>
-                    <li>Works across all features</li>
+                    <li>Update your kitchen by voice</li>
+                    <li>Quick photo ingredient detection</li>
+                    <li>Step-by-step cooking guidance</li>
+                    <li>Perfect for busy cooks</li>
                   </ul>
                 ),
               },
@@ -170,27 +196,27 @@ const Home: React.FC = () => {
               </div>
             ))}
           </div>
-          <br />
+
           <div className="mealpilot-home__closing-section">
             <h2 className="mealpilot-home__closing-title">
-              Stop Wasting Food. Start Saving Time.
+              Stop Stressing. Start Enjoying.
             </h2>
             <div className="mealpilot-home__feature">
               <p className="mealpilot-home__feature-text">
-                The average household throws away $1,500 worth of food every
-                year because of poor planning and expired ingredients. Over 5
-                hours a week are spent on meal planning and management. These
-                factors are compounded if you have unique dietary restrictions.
-                MealSphere doesn't just help you plan meals - it actively works
-                to save you money, time, and stress. by making sure nothing,
-                including your time, goes to waste. Ready to turn your kitchen
-                into a well-oiled machine?
+                How much time do you spend worrying about meals each week? How
+                much food do you throw away because it got lost in the back of
+                your fridge? How often do you struggle with dietary
+                restrictions? MealSphere transforms your kitchen from a source
+                of stress into a place of confidence and creativity. Ready to
+                take control of your kitchen?
               </p>
             </div>
             <br />
+
             <Link to="/signup" className="mealpilot-home__cta">
-              Start Today
+              Start Your Free 30-Day Trial
             </Link>
+            <p className="mealpilot-home__no-card">No credit card required</p>
           </div>
         </div>
       </div>

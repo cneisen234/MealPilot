@@ -118,15 +118,15 @@ const MyRecipes: React.FC = () => {
           <button
             onClick={() => navigate("/recipe/create")}
             className="generate-button">
-            <FaPlus /> Create/Import New Recipe
+            <FaPlus /> Create/Import New
           </button>
           <button
             onClick={handleGenerateRandomRecipe}
             className="generate-button">
-            <FaMagic /> Generate Any Recipe
+            <FaMagic /> Generate Any
           </button>
           <button onClick={handleGenerateRecipe} className="generate-button">
-            <FaMagic /> Generate Recipe By Preference
+            <FaMagic /> Generate By Preference
           </button>
         </div>
       </div>
