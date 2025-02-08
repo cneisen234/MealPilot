@@ -18,22 +18,35 @@ const client = new vision.ImageAnnotatorClient({
   },
 });
 
-// Helper to parse ingredient strings
-// Helper function to parse ingredient strings more comprehensively
 const parseIngredient = (text) => {
-  // Standardize fractions and formatting
-  text = text
-    .toLowerCase()
-    .trim()
-    .replace(/(\d+)\s+(\d+\/\d+)/g, (_, whole, fraction) => {
-      const [num, denom] = fraction.split("/");
-      return (parseInt(whole) + parseInt(num) / parseInt(denom)).toString();
-    })
-    .replace(/(\d+)\/(\d+)/g, (_, num, denom) =>
-      (parseInt(num) / parseInt(denom)).toString()
-    );
+  // Function to convert mixed fractions to decimals (e.g., "1 1/2" -> 1.5)
+  const convertFraction = (fractionText) => {
+    const mixedFractionPattern = /^(\d+)\s+(\d+\/\d+)$/; // Matches "1 1/2"
+    const simpleFractionPattern = /^(\d+)\/(\d+)$/; // Matches "1/2"
+    
+    // Check if it's a mixed fraction
+    const mixedMatch = fractionText.match(mixedFractionPattern);
+    if (mixedMatch) {
+      const whole = parseInt(mixedMatch[1]);
+      const fraction = mixedMatch[2];
+      const [numerator, denominator] = fraction.split("/").map(Number);
+      return whole + (numerator / denominator); // Converts to decimal
+    }
+    
+    // Check if it's a simple fraction
+    const simpleMatch = fractionText.match(simpleFractionPattern);
+    if (simpleMatch) {
+      const numerator = parseInt(simpleMatch[1]);
+      const denominator = parseInt(simpleMatch[2]);
+      return numerator / denominator; // Converts to decimal
+    }
+    
+    // If not a fraction, return the original text as a number
+    return parseFloat(fractionText);
+  };
 
-  // Match units and common measurements more precisely
+  // Define regex for quantities and units
+  const quantityPattern = /^(\d+\.?\d*|\d+\s+\d+\/\d+)\s*/;  // Match integer, decimal, or mixed fraction
   const unitPatterns = {
     cup: /\b(cups?|c\.?)\b/i,
     tablespoon: /\b(tablespoons?|tbsps?|tbs?\.?)\b/i,
@@ -45,73 +58,45 @@ const parseIngredient = (text) => {
     quantity: /\b(pieces?|whole|cloves?|slices?)\b/i,
   };
 
-  // Extract quantity with strict pattern matching
-  const quantityPattern = /^(\d*\.?\d+)\s*/;
-  const quantityMatch = text.match(quantityPattern);
+  // Standardize the text (lowercase, remove extra spaces, etc.)
+  text = text.trim().toLowerCase();
 
-  if (!quantityMatch) {
-    return {
-      original: text,
-      quantity: 1,
-      unit: null,
-      ingredient: text.trim(),
-    };
+  // Match quantity (including fractions)
+  const quantityMatch = text.match(quantityPattern);
+  let quantity = 1;  // Default to 1 if no quantity is found
+  let remainingText = text;
+
+  if (quantityMatch) {
+    quantity = convertFraction(quantityMatch[1]);  // Convert fraction to decimal
+    remainingText = remainingText.slice(quantityMatch[0].length).trim();
   }
 
-  const quantity = parseFloat(quantityMatch[1]);
-  let remainingText = text.slice(quantityMatch[0].length);
-
-  // Find matching unit
+  // Match unit
   let unit = null;
-  let unitMatch = null;
   for (const [standardUnit, pattern] of Object.entries(unitPatterns)) {
     const match = remainingText.match(pattern);
     if (match) {
       unit = standardUnit;
-      unitMatch = match;
+      remainingText = remainingText.slice(match[0].length).trim();  // Remove the unit from the text
       break;
     }
   }
 
-  // Extract ingredient name
-  let ingredient = remainingText;
-  if (unitMatch) {
-    ingredient = remainingText.slice(unitMatch[0].length);
-  }
+  // Extract the ingredient name (what's left in the remaining text)
+  let ingredient = remainingText.trim();
 
-  // Clean up ingredient name
-  ingredient = ingredient
-    .replace(/^\s*of\s+/, "")
-    .replace(/[,.]\s*$/, "")
-    .trim();
-
-  // Validation
-  if (!ingredient || quantity <= 0) {
-    return {
-      original: text,
-      quantity: 1,
-      unit: null,
-      ingredient: text.trim(),
-    };
-  }
+  // Remove unnecessary words like "of" from the ingredient name
+  ingredient = ingredient.replace(/^\s*of\s+/i, "").trim();
 
   return {
     original: text,
     quantity,
     unit,
     ingredient,
-    formatted: `${quantity}${unit ? ` ${unit} ` : " "}${ingredient}`,
+    formatted: `${quantity}${unit ? ` ${unit}` : ""} ${ingredient}`,
   };
 };
 
-const processSections = (text) => {
-  const sections = {
-    title: [],
-    ingredients: [],
-    instructions: [],
-    nutrition: [],
-    meta: [],
-  };
 
   const sectionPatterns = {
     ingredients: /^ingredients:?|what you(')?ll need:?/i,
