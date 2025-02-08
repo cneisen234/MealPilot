@@ -61,7 +61,7 @@ const Header: React.FC = () => {
             </button>
             {isDropdownOpen && (
               <div className="dropdown-menu">
-                {/* <button
+                <button
                   onClick={() => handleMenuClick("/account-settings")}
                   className="dropdown-item">
                   <FaUserCog className="dropdown-icon" />
@@ -72,7 +72,7 @@ const Header: React.FC = () => {
                   className="dropdown-item">
                   <FaUsers className="dropdown-icon" />
                   Referral Program
-                </button> */}
+                </button>
                 <button
                   onClick={() => handleMenuClick("/achievements")}
                   className="dropdown-item">
