@@ -20,53 +20,127 @@ const client = new vision.ImageAnnotatorClient({
 
 // Helper to parse ingredient strings
 // Helper function to parse ingredient strings more comprehensively
-const parseIngredientString = (ingredientStr) => {
-  // Match complex patterns like "2 cups flour" or "1.5 tablespoons olive oil"
-  const fullRegex =
-    /^([\d./\s]+)\s*(cup|cups|tablespoon|tablespoons|tbsp|teaspoon|teaspoons|tsp|pound|pounds|lb|lbs|ounce|ounces|oz|gram|grams|g|ml|milliliter|milliliters|pinch|pinches)s?\s+(.+)$/i;
-
-  // Match fraction patterns
-  const fractionRegex = /(\d+\/\d+|\d+\s+\d+\/\d+)/g;
-
-  // First, standardize fractions
-  const standardizedStr = ingredientStr.replace(fractionRegex, (match) => {
-    if (match.includes(" ")) {
-      // Mixed number (e.g., "1 1/2")
-      const [whole, fraction] = match.split(" ");
+const parseIngredient = (text) => {
+  // Standardize fractions and formatting
+  text = text
+    .toLowerCase()
+    .trim()
+    .replace(/(\d+)\s+(\d+\/\d+)/g, (_, whole, fraction) => {
       const [num, denom] = fraction.split("/");
       return (parseInt(whole) + parseInt(num) / parseInt(denom)).toString();
-    } else {
-      // Simple fraction (e.g., "1/2")
-      const [num, denom] = match.split("/");
-      return (parseInt(num) / parseInt(denom)).toString();
-    }
-  });
+    })
+    .replace(/(\d+)\/(\d+)/g, (_, num, denom) =>
+      (parseInt(num) / parseInt(denom)).toString()
+    );
 
-  // Now try to match the full pattern
-  const match = standardizedStr.match(fullRegex);
+  // Match units and common measurements more precisely
+  const unitPatterns = {
+    cup: /\b(cups?|c\.?)\b/i,
+    tablespoon: /\b(tablespoons?|tbsps?|tbs?\.?)\b/i,
+    teaspoon: /\b(teaspoons?|tsps?|tsp\.?)\b/i,
+    pound: /\b(pounds?|lbs?\.?)\b/i,
+    ounce: /\b(ounces?|ozs?\.?)\b/i,
+    gram: /\b(grams?|g\.?)\b/i,
+    milliliter: /\b(milliliters?|ml\.?)\b/i,
+    quantity: /\b(pieces?|whole|cloves?|slices?)\b/i,
+  };
 
-  if (!match) {
-    // If no match, this might be an ingredient without measurement
-    // or an improperly formatted string
+  // Extract quantity with strict pattern matching
+  const quantityPattern = /^(\d*\.?\d+)\s*/;
+  const quantityMatch = text.match(quantityPattern);
+
+  if (!quantityMatch) {
     return {
-      original: ingredientStr,
-      quantity: "1",
-      unit: "",
-      ingredient: ingredientStr.trim(),
+      original: text,
+      quantity: 1,
+      unit: null,
+      ingredient: text.trim(),
     };
   }
 
-  const [, quantity, unit, ingredient] = match;
+  const quantity = parseFloat(quantityMatch[1]);
+  let remainingText = text.slice(quantityMatch[0].length);
 
-  // Standardize units
-  const standardizedUnit = standardizeUnit(unit.toLowerCase());
+  // Find matching unit
+  let unit = null;
+  let unitMatch = null;
+  for (const [standardUnit, pattern] of Object.entries(unitPatterns)) {
+    const match = remainingText.match(pattern);
+    if (match) {
+      unit = standardUnit;
+      unitMatch = match;
+      break;
+    }
+  }
+
+  // Extract ingredient name
+  let ingredient = remainingText;
+  if (unitMatch) {
+    ingredient = remainingText.slice(unitMatch[0].length);
+  }
+
+  // Clean up ingredient name
+  ingredient = ingredient
+    .replace(/^\s*of\s+/, "")
+    .replace(/[,.]\s*$/, "")
+    .trim();
+
+  // Validation
+  if (!ingredient || quantity <= 0) {
+    return {
+      original: text,
+      quantity: 1,
+      unit: null,
+      ingredient: text.trim(),
+    };
+  }
 
   return {
-    original: ingredientStr,
-    quantity: quantity.trim(),
-    unit: standardizedUnit,
-    ingredient: ingredient.trim(),
+    original: text,
+    quantity,
+    unit,
+    ingredient,
+    formatted: `${quantity}${unit ? ` ${unit} ` : " "}${ingredient}`,
   };
+};
+
+const processSections = (text) => {
+  const sections = {
+    title: [],
+    ingredients: [],
+    instructions: [],
+    nutrition: [],
+    meta: [],
+  };
+
+  const sectionPatterns = {
+    ingredients: /^ingredients:?|what you(')?ll need:?/i,
+    instructions: /^(instructions|directions|method|steps):?/i,
+    nutrition: /^nutrition(al)?( facts| information)?:?/i,
+    meta: /^(serves|servings|yield|prep time|cook time):?/i,
+  };
+
+  let currentSection = "title";
+  const lines = text
+    .split("\n")
+    .map((line) => line.trim())
+    .filter(Boolean);
+
+  for (const line of lines) {
+    let sectionChanged = false;
+    for (const [section, pattern] of Object.entries(sectionPatterns)) {
+      if (pattern.test(line)) {
+        currentSection = section;
+        sectionChanged = true;
+        break;
+      }
+    }
+    if (!sectionChanged && line) {
+      sections[currentSection].push(line);
+    }
+  }
+
+  return sections;
 };
 
 // Helper function to standardize units
@@ -1277,7 +1351,7 @@ router.post(
 
       recipe.ingredients = recipe.ingredients.map((ingredient) => {
         try {
-          const parsed = parseIngredientString(ingredient);
+          const parsed = parseIngredient(ingredient);
           if (!parsed) return ingredient;
 
           // Only return a formatted string if we have all components
@@ -1528,7 +1602,7 @@ Return a JSON object with exactly this structure:
       // 4. Post-process and validate the recipe
       recipe.ingredients = recipe.ingredients.map((ingredient) => {
         try {
-          const parsed = parseIngredientString(ingredient);
+          const parsed = parseIngredient(ingredient);
           if (!parsed) return ingredient;
 
           // Match the web scraper's format exactly
