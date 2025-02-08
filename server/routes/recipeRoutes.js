@@ -18,14 +18,6 @@ const client = new vision.ImageAnnotatorClient({
   },
 });
 
-const parseIngredient = (text) => {
-  // Return the text exactly as it is without any changes
-  return {
-    original: text,
-    ingredient: text.trim(), // Optionally trim leading/trailing spaces
-  };
-};
-
 router.post(
   "/generate-random",
   [authMiddleware, checkAiActions, checkPaywall],
@@ -1201,19 +1193,6 @@ router.post(
 
       const recipe = JSON.parse(completion.choices[0].message.content);
 
-      recipe.ingredients = recipe.ingredients.map((ingredient) => {
-        try {
-          const parsed = parseIngredient(ingredient);
-          if (!parsed) return ingredient;
-
-          // Directly return the ingredient text without modification
-          return parsed.formatted; // Return the text as it is, no changes
-        } catch (error) {
-          console.error(`Error parsing ingredient: ${ingredient}`, error);
-          return ingredient;
-        }
-      });
-
       res.json({ recipe });
     } catch (error) {
       console.error("Error scraping recipe:", error);
@@ -1445,21 +1424,6 @@ Return a JSON object with exactly this structure:
       }
 
       const recipe = JSON.parse(completion.choices[0].message.content);
-
-      // 4. Post-process and validate the recipe
-      recipe.ingredients = recipe.ingredients.map((ingredient) => {
-        try {
-          // Use the simplified version of parseIngredient
-          const parsed = parseIngredient(ingredient);
-          if (!parsed) return ingredient;
-
-          // Return the ingredient as is without modification
-          return parsed.formatted; // Return the text as it is, no changes
-        } catch (error) {
-          console.error(`Error parsing ingredient: ${ingredient}`, error);
-          return ingredient;
-        }
-      });
 
       // Validate all required fields
       const validatedRecipe = {
