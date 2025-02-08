@@ -1260,7 +1260,11 @@ router.post(
         .map((label) => label.description);
 
       // 2. Process the OCR text into a single block
-      const rawText = fullText.text;
+      // Pre-process text to handle measurement annotations
+      const rawText = fullText.text.replace(
+        /\((\d+(?:[./]\d+)?)\s*(?:cup|cups|tablespoon|tablespoons|teaspoon|teaspoons|ounce|ounces|pound|pounds|g|gram|grams|ml|milliliter|milliliters)s?\)/gi,
+        "$1"
+      );
 
       // 3. Construct a prompt for GPT to structure the recipe
       const gptPrompt = `
@@ -1270,8 +1274,12 @@ router.post(
       2. Identify the recipe title and make it clear and concise.
       3. Break the ingredients and instructions into logical sections and structure them properly.
       4. Remove any unnecessary or promotional text (e.g., disclaimers, irrelevant details).
-      5. Ensure the formatting follows a typical recipe structure (title, ingredients, instructions, prep/cook time, servings, etc.).
-      6. Output the final recipe in this JSON format:
+      5. Handle measurements consistently:
+         - Convert parenthetical measurements into standard format
+         - Standardize unit abbreviations
+         - Keep all numerical quantities and their units together
+      6. Ensure the formatting follows a typical recipe structure (title, ingredients, instructions, prep/cook time, servings, etc.).
+      7. Output the final recipe in this JSON format:
 
       {
         "title": "Recipe title",
@@ -1284,19 +1292,20 @@ router.post(
         "mealType": "main course"
       }
 
-      Here is the extracted text from the recipe:
-
+      Here is the extracted text from the recipe, with detected food items for context:
       ${rawText}
+
+      Food items detected in image: ${foodLabels.join(", ")}
       `;
 
-      // Call GPT (OpenAI or other) to structure the recipe
+      // Call GPT to structure the recipe
       const completion = await openai.chat.completions.create({
         model: "gpt-3.5-turbo",
         messages: [
           {
             role: "system",
             content:
-              "You are a recipe expert. Your job is to structure OCR-extracted recipe text into a complete and clean recipe.",
+              "You are a recipe expert who excels at standardizing measurements and formatting recipes clearly. Your primary focus is on accurate ingredient quantities and clear instructions.",
           },
           {
             role: "user",
@@ -1310,16 +1319,28 @@ router.post(
 
       const recipe = JSON.parse(completion.choices[0].message.content);
 
+      // Post-process ingredients to standardize measurements further
+      const processedRecipe = {
+        ...recipe,
+        ingredients:
+          recipe.ingredients?.map((ingredient) =>
+            ingredient
+              .replace(/\(\s*(\d+(?:[./]\d+)?)\s*([a-z]+)\s*\)/gi, "$1 $2") // Handle remaining parenthetical measurements
+              .replace(/\s+/g, " ") // Normalize spaces
+              .trim()
+          ) || [],
+      };
+
       // Validate and format the final recipe object
       const validatedRecipe = {
-        title: recipe.title || "Untitled Recipe",
-        prepTime: recipe.prepTime || "N/A",
-        cookTime: recipe.cookTime || "N/A",
-        servings: recipe.servings || "N/A",
-        ingredients: recipe.ingredients || [],
-        instructions: recipe.instructions || [],
-        nutritionalInfo: recipe.nutritionalInfo || [],
-        mealType: recipe.mealType || "main course",
+        title: processedRecipe.title || "Untitled Recipe",
+        prepTime: processedRecipe.prepTime || "N/A",
+        cookTime: processedRecipe.cookTime || "N/A",
+        servings: processedRecipe.servings || "N/A",
+        ingredients: processedRecipe.ingredients,
+        instructions: processedRecipe.instructions || [],
+        nutritionalInfo: processedRecipe.nutritionalInfo || [],
+        mealType: processedRecipe.mealType || "main course",
       };
 
       res.json({ recipe: validatedRecipe });
