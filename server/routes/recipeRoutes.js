@@ -1314,22 +1314,35 @@ router.post(
         sections[currentSection].push(trimmedLine);
       });
 
-      // 3. Parse ingredients into a structured format
-      sections.ingredients = sections.ingredients.map((ingredient) => {
-        try {
-          // Use the original ingredient parsing logic
-          const parsed = parseIngredient(ingredient);
-          if (!parsed) return ingredient;
+      // 3. Ingredients Parsing: Split by line breaks or punctuation
+      const parseIngredients = (ingredients) => {
+        const ingredientSeparator = /(?<=\.|\!|\?)\s+/; // Split by punctuation + space
+        const ingredientLines = ingredients
+          .join("\n")
+          .split(ingredientSeparator)
+          .filter(Boolean);
 
-          // Directly return the ingredient text in the proper format
-          return `${parsed.quantity} ${parsed.unit || ""} ${parsed.ingredient}`;
-        } catch (error) {
-          console.error(`Error parsing ingredient: ${ingredient}`, error);
-          return ingredient;
-        }
-      });
+        return ingredientLines.map((ingredient) => ingredient.trim());
+      };
 
-      // 4. Assemble the structured recipe object
+      sections.ingredients = parseIngredients(sections.ingredients);
+
+      // 4. Instructions Parsing: Split by sentence-ending punctuation or line breaks
+      const parseInstructions = (instructions) => {
+        // Split by sentence-ending punctuation followed by a space or line break
+        const stepSeparator = /(?<=\.|\?|\!)(\s+|\n+|\r+)+/;
+        const steps = instructions
+          .join("\n")
+          .split(stepSeparator)
+          .filter(Boolean);
+
+        // Clean each step by trimming excess whitespace
+        return steps.map((step) => step.trim());
+      };
+
+      sections.instructions = parseInstructions(sections.instructions);
+
+      // 5. Assemble the structured recipe object
       const recipe = {
         title: sections.title.join(" ") || "Untitled Recipe",
         prepTime:
