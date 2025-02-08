@@ -1259,27 +1259,30 @@ router.post(
         .filter((label) => label.score > 0.7)
         .map((label) => label.description);
 
-      // 2. Process the OCR text into a single block
-      // Pre-process text to handle measurement annotations
-      const rawText = fullText.text.replace(
-        /\((\d+(?:[./]\d+)?)\s*(?:cup|cups|tablespoon|tablespoons|teaspoon|teaspoons|ounce|ounces|pound|pounds|g|gram|grams|ml|milliliter|milliliters)s?\)/gi,
-        "$1"
-      );
+      // 2. Process the OCR text - preserve ALL original formatting and measurements
+      const rawText = fullText.text;
+
+      // Track parenthetical measurements separately to ensure they're preserved
+      const measurementMatches = [...fullText.text.matchAll(/\(([^)]+)\)/g)];
+      const preservedMeasurements = measurementMatches.map((match) => match[1]);
 
       // 3. Construct a prompt for GPT to structure the recipe
       const gptPrompt = `
-      You are an AI recipe expert. Based on the extracted recipe text, please:
+      You are an AI recipe expert specialized in EXACT transcription. Your primary rule is to maintain EXACT measurements and packaging information. Based on the extracted recipe text, please:
+      
+      CRITICAL RULES:
+      1. NEVER convert measurements between units (e.g., never convert oz to cups)
+      2. ALWAYS preserve parenthetical measurements exactly as written - e.g., "(8 oz.)" must stay exactly as "(8 oz.)"
+      3. ALWAYS preserve brand names and package descriptions exactly
+      4. NEVER add interpretive text like "for serving" or "for dusting" unless it appears in the original
+      5. NEVER assume or infer measurements - use exactly what's in the text
 
-      1. Correct any misspelled or non-sensical words (e.g., "jor" to "jar").
-      2. Identify the recipe title and make it clear and concise.
-      3. Break the ingredients and instructions into logical sections and structure them properly.
-      4. Remove any unnecessary or promotional text (e.g., disclaimers, irrelevant details).
-      5. Handle measurements consistently:
-         - Convert parenthetical measurements into standard format
-         - Standardize unit abbreviations
-         - Keep all numerical quantities and their units together
-      6. Ensure the formatting follows a typical recipe structure (title, ingredients, instructions, prep/cook time, servings, etc.).
-      7. Output the final recipe in this JSON format:
+      6. Correct any misspelled or non-sensical words (e.g., "jor" to "jar").
+      7. Identify the recipe title and make it clear and concise.
+      8. Break the ingredients and instructions into logical sections and structure them properly.
+      9. Remove any unnecessary or promotional text (e.g., disclaimers, irrelevant details).
+      10. Ensure the formatting follows a typical recipe structure (title, ingredients, instructions, prep/cook time, servings, etc.).
+      11. Output the final recipe in this JSON format:
 
       {
         "title": "Recipe title",
@@ -1319,16 +1322,32 @@ router.post(
 
       const recipe = JSON.parse(completion.choices[0].message.content);
 
-      // Post-process ingredients to standardize measurements further
+      // Post-process ingredients to verify exact measurements are preserved
       const processedRecipe = {
         ...recipe,
         ingredients:
-          recipe.ingredients?.map((ingredient) =>
-            ingredient
-              .replace(/\(\s*(\d+(?:[./]\d+)?)\s*([a-z]+)\s*\)/gi, "$1 $2") // Handle remaining parenthetical measurements
-              .replace(/\s+/g, " ") // Normalize spaces
-              .trim()
-          ) || [],
+          recipe.ingredients?.map((ingredient) => {
+            // Verify each preserved measurement appears in the ingredient text
+            preservedMeasurements.forEach((measurement) => {
+              if (!ingredient.includes(`(${measurement})`)) {
+                // If a parenthetical measurement is missing, reinsert it
+                const measurementMatch = measurement.match(
+                  /(\d+)\s*(oz\.|ounces?|lbs?\.?|pounds?|pkg\.?|packages?)/i
+                );
+                if (measurementMatch) {
+                  const [_, num, unit] = measurementMatch;
+                  const searchNum = new RegExp(`\\b${num}\\b`);
+                  if (searchNum.test(ingredient)) {
+                    ingredient = ingredient.replace(
+                      searchNum,
+                      `(${measurement})`
+                    );
+                  }
+                }
+              }
+            });
+            return ingredient.trim();
+          }) || [],
       };
 
       // Validate and format the final recipe object
@@ -1336,7 +1355,7 @@ router.post(
         title: processedRecipe.title || "Untitled Recipe",
         prepTime: processedRecipe.prepTime || "N/A",
         cookTime: processedRecipe.cookTime || "N/A",
-        servings: processedRecipe.servings || "N/A",
+        servings: processedRecipe.servings || "4",
         ingredients: processedRecipe.ingredients,
         instructions: processedRecipe.instructions || [],
         nutritionalInfo: processedRecipe.nutritionalInfo || [],
