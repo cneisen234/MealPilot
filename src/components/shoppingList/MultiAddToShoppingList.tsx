@@ -208,7 +208,9 @@ const MultiAddToShoppingList: React.FC<MultiAddToShoppingListProps> = ({
   };
 
   return (
-    <div className="recipe-result">
+    <div
+      className="recipe-result"
+      style={{ marginTop: 100, marginBottom: 150 }}>
       <div className="recipe-section">
         <div className="modal-header">
           <h2>Add to Shopping List</h2>
