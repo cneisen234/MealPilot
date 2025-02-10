@@ -690,6 +690,128 @@ router.get(
         "rice",
         "pasta",
         "noodles",
+        "red",
+        "green",
+        "blue",
+        "yellow",
+        "white",
+        "black",
+        "brown",
+        "orange",
+        "purple",
+        "pink",
+        "golden",
+        "dark",
+        "light",
+        "sliced",
+        "diced",
+        "chopped",
+        "minced",
+        "grated",
+        "shredded",
+        "crushed",
+        "ground",
+        "mashed",
+        "pureed",
+        "whipped",
+        "beaten",
+        "mixed",
+        "blended",
+        "stirred",
+        "folded",
+        "kneaded",
+        "rolled",
+        "stuffed",
+        "wrapped",
+        "peeled",
+        "cored",
+        "seeded",
+        "pitted",
+        "trimmed",
+        "cleaned",
+        "washed",
+        "rinsed",
+        "raw",
+        "cooked",
+        "prepared",
+        "processed",
+        "canned",
+        "frozen",
+        "fresh",
+        "dried",
+        "dehydrated",
+        "roasted",
+        "toasted",
+        "grilled",
+        "baked",
+        "fried",
+        "steamed",
+        "boiled",
+        "sauteed",
+        "braised",
+        "broiled",
+        "smoked",
+        "cured",
+        "pickled",
+        "fermented",
+        "hot",
+        "cold",
+        "warm",
+        "chilled",
+        "room temperature",
+        "lukewarm",
+        "smooth",
+        "chunky",
+        "creamy",
+        "crunchy",
+        "crispy",
+        "tender",
+        "firm",
+        "soft",
+        "hard",
+        "thick",
+        "thin",
+        "organic",
+        "natural",
+        "artificial",
+        "sweetened",
+        "unsweetened",
+        "salted",
+        "unsalted",
+        "seasoned",
+        "plain",
+        "pure",
+        "refined",
+        "unrefined",
+        "premium",
+        "regular",
+        "extra",
+        "fine",
+        "coarse",
+        "small",
+        "medium",
+        "large",
+        "mini",
+        "bite-sized",
+        "whole",
+        "half",
+        "quarter",
+        "prepared",
+        "divided",
+        "separated",
+        "reserved",
+        "packed",
+        "heaping",
+        "level",
+        "rounded",
+        "sifted",
+        "melted",
+        "softened",
+        "room temperature",
+        "overnight",
+        "aged",
+        "day-old",
+        "fresh",
       ]);
 
       const [recipeResult, inventoryResult] = await Promise.all([
@@ -786,39 +908,37 @@ router.get(
         const itemWords = cleanedItem.split(" ");
         const inventoryWords = cleanedInventoryItem.split(" ");
 
+        // Handle compound ingredients (like "cream cheese")
+        // If both items are compound and contain generic words, they must match exactly
+        const isItemCompound =
+          itemWords.length > 1 &&
+          itemWords.some((word) => genericIngredientWords.has(word));
+        const isInventoryCompound =
+          inventoryWords.length > 1 &&
+          inventoryWords.some((word) => genericIngredientWords.has(word));
+
+        if (isItemCompound && isInventoryCompound) {
+          // For compound ingredients, require exact match
+          return cleanedItem === cleanedInventoryItem;
+        }
+
         // Case 1: If either is a single generic word (e.g., just "milk"),
-        // match it with any ingredient containing that word
+        // only match if the other item is exactly the same
         if (
           itemWords.length === 1 &&
           genericIngredientWords.has(itemWords[0])
         ) {
-          return inventoryWords.includes(itemWords[0]);
+          return cleanedItem === cleanedInventoryItem;
         }
         if (
           inventoryWords.length === 1 &&
           genericIngredientWords.has(inventoryWords[0])
         ) {
-          return itemWords.includes(inventoryWords[0]);
+          return cleanedItem === cleanedInventoryItem;
         }
 
-        // Case 2: For multi-word items, check if one item is a subset of the other
-        const commonGenericWords = itemWords.filter(
-          (word) =>
-            genericIngredientWords.has(word) && inventoryWords.includes(word)
-        );
-
-        if (commonGenericWords.length > 0) {
-          const itemSet = new Set(itemWords);
-          const inventorySet = new Set(inventoryWords);
-
-          if (itemWords.length < inventoryWords.length) {
-            return itemWords.every((word) => inventorySet.has(word));
-          } else {
-            return inventoryWords.every((word) => itemSet.has(word));
-          }
-        }
-
-        // Case 3: For all other cases, match on non-generic words
+        // Case 2: For multi-word items where only one has generic words,
+        // match on non-generic words only
         const itemNonGenericWords = itemWords.filter(
           (word) => !genericIngredientWords.has(word)
         );
@@ -826,9 +946,25 @@ router.get(
           (word) => !genericIngredientWords.has(word)
         );
 
-        return itemNonGenericWords.some((word) =>
-          inventoryNonGenericWords.includes(word)
-        );
+        // If we have non-generic words in both, match on those
+        if (
+          itemNonGenericWords.length > 0 &&
+          inventoryNonGenericWords.length > 0
+        ) {
+          const itemSet = new Set(itemNonGenericWords);
+          const inventorySet = new Set(inventoryNonGenericWords);
+
+          // Require all non-generic words to match
+          if (itemNonGenericWords.length < inventoryNonGenericWords.length) {
+            return itemNonGenericWords.every((word) => inventorySet.has(word));
+          } else {
+            return inventoryNonGenericWords.every((word) => itemSet.has(word));
+          }
+        }
+
+        // If we get here, one of the items has only generic words
+        // In this case, require exact match to prevent false positives
+        return cleanedItem === cleanedInventoryItem;
       };
 
       const extractQuantity = (original) => {

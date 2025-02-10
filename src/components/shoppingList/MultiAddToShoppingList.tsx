@@ -3,6 +3,7 @@ import QtyInput from "../common/QtyInput";
 import AnimatedTechIcon from "../common/AnimatedTechIcon";
 import { addMultipleToShoppingList } from "../../utils/api";
 import { useToast } from "../../context/ToastContext";
+import { FaCheck } from "react-icons/fa";
 
 interface IngredientAnalysis {
   original: string;
@@ -30,9 +31,12 @@ const extractItemName = (original: string): string => {
   let processed = original.toLowerCase();
 
   // List of all measurement terms to remove
-  const measurements = [
+  const excludedWords = [
     "cup",
     "cups",
+    "cut",
+    "inch",
+    "chunks",
     "tablespoon",
     "tablespoons",
     "tbsp",
@@ -56,45 +60,74 @@ const extractItemName = (original: string): string => {
     "pinches",
     "dash",
     "dashes",
+    "divided",
     "handful",
     "handfuls",
     "piece",
     "pieces",
     "slice",
     "slices",
+    "serving",
+    "servings",
     "can",
     "cans",
     "package",
     "packages",
     "bottle",
     "bottles",
+    "peeled",
+    "deveined",
+    "thinly",
+    "of",
+    "the",
+    "a",
+    "an",
+    "and",
+    "to",
+    "cubed",
+    "taste",
+    "fresh",
+    "chopped",
+    "diced",
+    "sliced",
+    "for",
+    "into",
+    "andor",
+    "drained",
+    "block",
+    "about",
+    "each",
+    "finely",
+    "minced",
+    "crumbled",
+    "garnish",
+    "thin",
+    "or",
+    "substitute",
+    "with",
+    "optional",
+    "cored",
+    "softened",
+    "freshly",
+    "cooked",
+    "allpurpose",
+    "all",
+    "purpose",
+    "melted",
+    "such",
+    "premade",
+    "cooled",
   ];
 
   processed = processed
     .replace(/[^a-zA-Z\s]/g, "") // Remove everything except alphabet and spaces
     .replace(/\s+/g, " "); // Normalize multiple spaces to a single space
 
-  // Remove all measurement terms
-  measurements.forEach((measure) => {
+  // Remove all excluded words
+  excludedWords.forEach((word) => {
     // Create regex that matches the measure with optional 's' at end
-    const measureRegex = new RegExp(`\\b${measure}s?\\b`, "g");
-    processed = processed.replace(measureRegex, "");
-  });
-
-  // Remove common connectors and prepositions
-  const connectors = [
-    "of",
-    "the",
-    "a",
-    "an",
-    "fresh",
-    "chopped",
-    "diced",
-    "sliced",
-  ];
-  connectors.forEach((connector) => {
-    const connectorRegex = new RegExp(`\\b${connector}\\b`, "g");
-    processed = processed.replace(connectorRegex, "");
+    const regex = new RegExp(`\\b${word}s?\\b`, "g");
+    processed = processed.replace(regex, "");
   });
 
   // Clean up whitespace and commas
@@ -205,30 +238,47 @@ const MultiAddToShoppingList: React.FC<MultiAddToShoppingListProps> = ({
                   min={0}
                 />
                 {ingredients[index].status.type === "in-inventory" && (
-                  <button
-                    onClick={() => {
-                      // Update the item name to the parsed version
-                      setItemNames((prev) => ({
-                        ...prev,
-                        [index]: extractItemName(ingredients[index].original),
-                      }));
-                      // Hide the button by marking this item as no longer matched
-                      const updatedIngredient = { ...ingredients[index] };
-                      updatedIngredient.status.type = "missing";
-                      ingredients[index] = updatedIngredient;
-                    }}
-                    className="incorrect-match-button"
-                    style={{
-                      padding: "4px 8px",
-                      backgroundColor: "var(--secondary-color)",
-                      color: "white",
-                      border: "none",
-                      borderRadius: "4px",
-                      cursor: "pointer",
-                      fontSize: "0.8rem",
-                    }}>
-                    Incorrect Match
-                  </button>
+                  <>
+                    <div
+                      className="ingredient-status-wrapper"
+                      style={{ width: 215 }}>
+                      <div
+                        className="ingredient-status"
+                        style={{
+                          backgroundColor: "var(--primary-color)",
+                          color: "white",
+                        }}>
+                        <FaCheck />
+                        <span>
+                          Current Stock: {ingredient.status.available?.quantity}
+                        </span>
+                      </div>
+                    </div>
+                    <button
+                      onClick={() => {
+                        // Update the item name to the parsed version
+                        setItemNames((prev) => ({
+                          ...prev,
+                          [index]: extractItemName(ingredients[index].original),
+                        }));
+                        // Hide the button by marking this item as no longer matched
+                        const updatedIngredient = { ...ingredients[index] };
+                        updatedIngredient.status.type = "missing";
+                        ingredients[index] = updatedIngredient;
+                      }}
+                      className="incorrect-match-button"
+                      style={{
+                        padding: "4px 8px",
+                        backgroundColor: "var(--secondary-color)",
+                        color: "white",
+                        border: "none",
+                        borderRadius: "4px",
+                        cursor: "pointer",
+                        fontSize: "0.8rem",
+                      }}>
+                      Mark as incorrect match
+                    </button>
+                  </>
                 )}
               </div>
               <div className="matches-item">

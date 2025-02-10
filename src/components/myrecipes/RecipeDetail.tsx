@@ -359,7 +359,7 @@ const RecipeDetail: React.FC = () => {
     return (
       <MultiAddToShoppingList
         //@ts-ignore
-        ingredients={recipe.ingredients}
+        ingredients={analyzedIngredients}
         onClose={() => setIsShoppingListModalOpen(false)}
       />
     );
