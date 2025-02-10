@@ -42,6 +42,18 @@ const Home: React.FC = () => {
             effortless cooking command center.
           </p>
 
+          <div className="mealpilot-home__video-container">
+            <div className="mealpilot-home__video-wrapper">
+              <iframe
+                src="https://www.youtube.com/embed/3WZmZmOCeZk"
+                title="MealSphere Feature Overview"
+                allow="accelerometer; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                allowFullScreen
+                className="mealpilot-home__video"
+              />
+            </div>
+          </div>
+
           <div className="mealpilot-home__stats">
             <div className="mealpilot-home__stat">
               <span className="mealpilot-home__stat-number">$1,500</span>
