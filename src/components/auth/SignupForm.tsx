@@ -128,7 +128,10 @@ const SignupForm: React.FC = ({ referralCode }) => {
       <div className="form-group">
         <InputWithPasswordToggle
           value={password}
-          onChange={(e) => setPassword(e.target.value)}
+          onChange={(e) => {
+            setPassword(e.target.value);
+            setPasswordError([]);
+          }}
           showPassword={showPassword}
           onToggle={togglePasswordVisibility}
         />
