@@ -646,14 +646,14 @@ const Recipe = () => {
 
         <PreferenceInput
           label="Cuisine"
-          description="Do you prefer a specific cuisine style?"
+          description="Do you prefer a specific cuisine style? (limited to 1)"
           placeholder="Enter a cuisine preference..."
           items={cuisinePreferences}
           onAdd={handleAddCuisinePreference}
           onRemove={handleRemoveCuisinePreference}
           type="combo"
           options={COMMON_CUISINE_PREFERENCES}
-          disabled={preferencesCount > 9}
+          disabled={preferencesCount > 9 || cuisinePreferences.length > 0}
         />
       </div>
 
