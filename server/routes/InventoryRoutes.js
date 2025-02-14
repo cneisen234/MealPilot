@@ -4,7 +4,6 @@ const authMiddleware = require("../middleware/auth");
 const checkAiActions = require("../middleware/aiActions");
 const checkPaywall = require("../middleware/checkPaywall");
 const openai = require("../openai");
-const deepseek = require("../deepseek");
 const pool = require("../db");
 const vision = require("@google-cloud/vision");
 const client = new vision.ImageAnnotatorClient({
@@ -432,22 +431,9 @@ Respond with a JSON object in this format:
   "confidence": "high/medium/low based on available information",
   "inventoryMatches": ["potential matches from inventory list"]
 }`;
-      let completion;
-      const timeout = 7000; // Timeout in milliseconds
-      let timeoutId;
 
-      // Create the timeout promise
-      const timeoutPromise = new Promise(
-        (_, reject) =>
-          (timeoutId = setTimeout(() => {
-            console.log("DeepSeek was too slow, forcing fallback to GPT");
-            reject(new Error("DeepSeek took too long"));
-          }, timeout))
-      );
-
-      // Create the DeepSeek promise
-      const deepseekPromise = deepseek.chat.completions.create({
-        model: "deepseek-chat",
+      const completion = await openai.chat.completions.create({
+        model: "gpt-3.5-turbo",
         messages: [
           {
             role: "system",
@@ -463,35 +449,7 @@ Respond with a JSON object in this format:
         temperature: 0.3,
         response_format: { type: "json_object" },
       });
-
-      try {
-        // Use Promise.race to execute both the DeepSeek and timeout promises
-        completion = await Promise.race([deepseekPromise, timeoutPromise]);
-        console.log("Using DeepSeek model");
-        clearTimeout(timeoutId);
-      } catch (aiError) {
-        // Fallback to GPT if DeepSeek fails or times out
-        console.log("Error occurred:", aiError.message);
-
-        completion = await openai.chat.completions.create({
-          model: "gpt-3.5-turbo",
-          messages: [
-            {
-              role: "system",
-              content:
-                "You are a precise food item identification expert. You excel at identifying specific food items from image analysis data.",
-            },
-            {
-              role: "user",
-              content: gptPrompt,
-            },
-          ],
-          max_tokens: 500,
-          temperature: 0.3,
-          response_format: { type: "json_object" },
-        });
-        console.log("Using GPT-3.5 model");
-      }
+      console.log("Using GPT-3.5 model");
 
       const analysis = JSON.parse(completion.choices[0].message.content);
 

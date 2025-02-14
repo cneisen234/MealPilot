@@ -5,7 +5,6 @@ const checkAiActions = require("../middleware/aiActions");
 const checkPaywall = require("../middleware/checkPaywall");
 const pool = require("../db");
 const openai = require("../openai");
-const deepseek = require("../deepseek");
 const axios = require("axios");
 const cheerio = require("cheerio");
 const cleanAIResponse = require("../cleanAiResponse");
@@ -88,44 +87,12 @@ Nutritional Information:
 
 IMPORTANT: All fields must be included and properly formatted as shown above, especially the prep time, cook time, and complete nutritional information.`;
 
-      let completion;
-      const timeout = 20000;
-      let timeoutId;
-
-      const timeoutPromise = new Promise(
-        (_, reject) =>
-          (timeoutId = setTimeout(() => {
-            console.log("DeepSeek was too slow, forcing fallback to GPT");
-            reject(new Error("DeepSeek took too long"));
-          }, timeout))
-      );
-
-      const deepseekPromise = deepseek.chat.completions.create({
-        model: "deepseek-chat",
+      const completion = await openai.chat.completions.create({
+        model: "gpt-3.5-turbo",
         messages: [{ role: "user", content: prompt }],
         max_tokens: 1000,
         temperature: 1.0,
       });
-
-      try {
-        completion = await Promise.race([deepseekPromise, timeoutPromise]);
-        console.log("Using DeepSeek model");
-        clearTimeout(timeoutId);
-      } catch (aiError) {
-        if (aiError.message === "DeepSeek took too long") {
-          console.log("Fallback to GPT due to timeout");
-        } else {
-          console.log("Fallback to GPT due to error:", aiError.message);
-        }
-
-        completion = await openai.chat.completions.create({
-          model: "gpt-3.5-turbo",
-          messages: [{ role: "user", content: prompt }],
-          max_tokens: 1000,
-          temperature: 1.0,
-        });
-        console.log("Using GPT-3.5 model");
-      }
 
       const recipeText = completion.choices[0].message.content;
       const recipe = cleanAIResponse(recipeText);
@@ -421,47 +388,13 @@ Nutritional Information:
 
 IMPORTANT: All fields must be included and properly formatted as shown above, especially the prep time, cook time, and complete nutritional information.`;
 
-      let completion;
-      const timeout = 20000; // Timeout in milliseconds
-      let timeoutId;
-
-      const timeoutPromise = new Promise(
-        (_, reject) =>
-          (timeoutId = setTimeout(() => {
-            console.log("DeepSeek was too slow, forcing fallback to GPT");
-            reject(new Error("DeepSeek took too long"));
-          }, timeout))
-      );
-
-      const deepseekPromise = deepseek.chat.completions.create({
-        model: "deepseek-chat",
+      // Generate recipe using GPT
+      const completion = await openai.chat.completions.create({
+        model: "gpt-3.5-turbo",
         messages: [{ role: "user", content: prompt }],
         max_tokens: 1000,
         temperature: 1.0,
       });
-
-      try {
-        // Use Promise.race to execute both the DeepSeek and timeout promises
-        completion = await Promise.race([deepseekPromise, timeoutPromise]);
-        console.log("Using DeepSeek model");
-        clearTimeout(timeoutId);
-      } catch (aiError) {
-        // Fallback to GPT if DeepSeek fails or times out
-        if (aiError.message === "DeepSeek took too long") {
-          console.log("Fallback to GPT due to timeout");
-        } else {
-          console.log("Fallback to GPT due to error:", aiError.message);
-        }
-
-        // Generate recipe using GPT
-        completion = await openai.chat.completions.create({
-          model: "gpt-3.5-turbo",
-          messages: [{ role: "user", content: prompt }],
-          max_tokens: 1000,
-          temperature: 1.0,
-        });
-        console.log("Using GPT-3.5 model");
-      }
       const recipeText = completion.choices[0].message.content;
       recipe = cleanAIResponse(recipeText);
       recipe.mealType = mealType;
