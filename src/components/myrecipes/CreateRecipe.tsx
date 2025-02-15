@@ -237,7 +237,7 @@ const CreateRecipe: React.FC = () => {
           </div>
         </div>
 
-        <div className="recipe-section">
+        {/* <div className="recipe-section">
           <h2>Nutritional Information</h2>
           <div className="recipe-array-inputs">
             {formData.nutritionalInfo.map((info, index) => (
@@ -269,7 +269,7 @@ const CreateRecipe: React.FC = () => {
               Add Nutritional Info
             </button>
           </div>
-        </div>
+        </div> */}
       </form>
     </div>
   );

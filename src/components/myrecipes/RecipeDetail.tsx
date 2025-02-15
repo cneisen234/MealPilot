@@ -513,7 +513,7 @@ const RecipeDetail: React.FC = () => {
           </div>
         </div>
 
-        <div className="recipe-section">
+        {/* <div className="recipe-section">
           <h2>Nutritional Information</h2>
           <div className="recipe-array-inputs">
             {editedRecipe.nutritional_info.map((info, index) => (
@@ -545,7 +545,7 @@ const RecipeDetail: React.FC = () => {
               Add Nutritional Info
             </button>
           </div>
-        </div>
+        </div> */}
       </div>
     );
   }
@@ -713,7 +713,7 @@ const RecipeDetail: React.FC = () => {
           })}
         </div>
       </div>
-      <div className="recipe-section">
+      {/* <div className="recipe-section">
         <h2>Nutritional Information</h2>
         <ul className="recipe-list nutrition-list">
           {recipe.nutritional_info.map((info, index) => (
@@ -722,7 +722,7 @@ const RecipeDetail: React.FC = () => {
             </li>
           ))}
         </ul>
-      </div>
+      </div> */}
       {isDeleteConfirmOpen && (
         <ConfirmDeleteModal
           isOpen={isDeleteConfirmOpen}

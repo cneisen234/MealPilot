@@ -123,7 +123,7 @@ const MyRecipes: React.FC = () => {
           <button
             onClick={handleGenerateRandomRecipe}
             className="generate-button">
-            <FaMagic /> Generate Any
+            <FaMagic /> Generate Random
           </button>
           <button onClick={handleGenerateRecipe} className="generate-button">
             <FaMagic /> Generate By Preference

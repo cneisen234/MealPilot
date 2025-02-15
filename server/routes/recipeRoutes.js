@@ -45,8 +45,60 @@ router.post(
         ...recipesQuery.rows.map((recipe) => recipe.title),
         ...todayGlobalRecipesQuery.rows.map((recipe) => recipe.title),
       ];
+
+      const MEAL_TYPES = [
+        "breakfast",
+        "brunch",
+        "lunch",
+        "dinner",
+        "appetizer",
+        "main course",
+        "side dish",
+        "salad",
+        "soup",
+        "dessert",
+        "snack",
+      ];
+
+      const TASTE_PREFERENCES = [
+        "bitter",
+        "creamy",
+        "salty",
+        "savory",
+        "smoky",
+        "sour",
+        "spicy",
+        "sweet",
+        "tangy",
+        "umami",
+      ];
+
+      const CUISINE_PREFERENCES = [
+        "african",
+        "american",
+        "asian",
+        "indian",
+        "italian",
+        "japanese",
+        "mediterranean",
+        "mexican",
+        "thai",
+        "vegan",
+      ];
+
+      const getRandomMealValue = (mealValue) => {
+        const randomIndex = Math.floor(Math.random() * mealValue.length);
+        return mealValue[randomIndex];
+      };
+
+      const selectedMealType = getRandomMealValue(MEAL_TYPES);
+      const selectedTastePreference = getRandomMealValue(TASTE_PREFERENCES);
+      const selectedCuisine = getRandomMealValue(CUISINE_PREFERENCES);
+
+      console.log(selectedMealType, selectedTastePreference, selectedCuisine);
+
       // Generate base prompt without any preferences
-      let prompt = `Generate a detailed recipe.`;
+      let prompt = `Generate a detailed recipe. This should be a ${selectedMealType} recipe for 4 servings.`;
 
       // Add dietary restrictions
       if (cantHaves.length > 0) {
@@ -54,6 +106,10 @@ router.post(
           ", "
         )}.`;
       }
+      prompt += `\nIt's preferable that the recipe follows these taste preferences: ${selectedTastePreference}.`;
+
+      prompt += `\nIt's preferable that the recipe follows these cuisine preferences: ${selectedCuisine}.`;
+
       if (existingRecipes.length > 0) {
         prompt += `\nIMPORTANT: The recipe must be unique and MUST NOT be any of these existing recipes: ${existingRecipes.join(
           ", "

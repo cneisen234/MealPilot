@@ -520,7 +520,7 @@ const Recipe = () => {
             </div>
           </div>
 
-          <div className="recipe-section">
+          {/* <div className="recipe-section">
             <h2>Nutritional Information</h2>
             <ul className="recipe-list nutrition-list">
               {recipe.nutritionalInfo?.map((info, index) => (
@@ -529,13 +529,13 @@ const Recipe = () => {
                 </li>
               ))}
             </ul>
-          </div>
+          </div> */}
           <div className="recipe-actions">
             <button
               onClick={handleGenerateRandomRecipe}
               className="recipe-action-button back-button"
               disabled={isLoading}>
-              <FaMagic /> Regenerate Any
+              <FaMagic /> Regenerate Random
             </button>
             <button
               onClick={handleGenerateRecipe}
@@ -665,7 +665,11 @@ const Recipe = () => {
           <FaUndo /> Reset Preferences
         </button>
       </div>
-
+      <div className="generate-container">
+        <button onClick={handleGenerateRecipe} className="generate-button">
+          <FaMagic /> Generate By Preference
+        </button>
+      </div>
       <div className="generate-container">
         <button
           onClick={() => navigate("/myrecipes")}
