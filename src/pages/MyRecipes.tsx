@@ -103,7 +103,7 @@ const MyRecipes: React.FC = () => {
     return (
       <div className="loading-container">
         <AnimatedTechIcon size={100} speed={4} />{" "}
-        {isGenerating && "thinking on it!"}
+        {isGenerating && "Generating your recipe!"}
       </div>
     );
   }

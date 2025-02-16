@@ -433,11 +433,7 @@ const Recipe = () => {
     return (
       <div className="loading-container">
         <AnimatedTechIcon size={100} speed={4} />
-        <p>
-          {isGenerating
-            ? "Generating your recipe..."
-            : "Loading preferences..."}
-        </p>
+        <p>{isGenerating && "Generating your recipe..."}</p>
       </div>
     );
   }
@@ -549,7 +545,8 @@ const Recipe = () => {
               onClick={handleGenerateRandomRecipe}
               className="recipe-action-button back-button"
               disabled={isLoading}>
-              <FaMagic /> Regenerate Random
+              <FaMagic /> <br />
+              Regenerate Random
             </button>
             <button
               onClick={handleGenerateRecipe}
