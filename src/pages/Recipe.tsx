@@ -75,6 +75,7 @@ const Recipe = () => {
   const [selectedMealType, setSelectedMealType] =
     useState<string>("main course");
   const [isLoading, setIsLoading] = useState(true);
+  const [isGenerating, setIsGenerating] = useState(false);
   const [recipe, setRecipe] = useState<Recipe | null>(null);
   const [isSaving, setIsSaving] = useState(false);
   const [selectedServings, setSelectedServings] = useState<string>("4");
@@ -83,6 +84,10 @@ const Recipe = () => {
 
   useEffect(() => {
     loadPreferences();
+    return () => {
+      setIsLoading(false);
+      setIsGenerating(false);
+    };
   }, []);
 
   useEffect(() => {
@@ -360,7 +365,7 @@ const Recipe = () => {
   };
 
   const handleGenerateRandomRecipe = async () => {
-    setIsLoading(true); // Use existing loading state
+    setIsGenerating(true); // Use generating state instead of loading
     try {
       if (aiActionsRemaining <= 0) {
         showToast("You've reached your daily AI action limit", "error");
@@ -380,12 +385,12 @@ const Recipe = () => {
     } catch (error) {
       showToast("Error generating recipe", "error");
     } finally {
-      setIsLoading(false);
+      setIsGenerating(false);
     }
   };
 
   const handleGenerateRecipe = async () => {
-    setIsLoading(true);
+    setIsGenerating(true); // Use generating state
     try {
       if (aiActionsRemaining <= 0) {
         showToast("You've reached your daily AI action limit", "error");
@@ -404,13 +409,17 @@ const Recipe = () => {
     } catch (error) {
       showToast("Error generating recipe", "error");
     } finally {
-      setIsLoading(false);
+      setIsGenerating(false);
     }
   };
 
   const handleBack = () => {
+    // Clear any loading states before navigation
+    setIsLoading(false);
+    setIsGenerating(false);
+
     if (routeLocation.state?.fromMealPlan) {
-      navigate("/mealplan");
+      navigate("/mealplan", { state: { isNew: false } });
     } else {
       navigate("/myrecipes");
     }
@@ -420,10 +429,15 @@ const Recipe = () => {
     setRecipe(null);
   };
 
-  if (isLoading) {
+  if (isLoading || isGenerating) {
     return (
       <div className="loading-container">
-        <AnimatedTechIcon size={100} speed={4} /> Thinking on it!
+        <AnimatedTechIcon size={100} speed={4} />
+        <p>
+          {isGenerating
+            ? "Generating your recipe..."
+            : "Loading preferences..."}
+        </p>
       </div>
     );
   }

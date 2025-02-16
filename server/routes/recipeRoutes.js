@@ -33,7 +33,7 @@ router.post(
         `SELECT title
         FROM global_recipes 
         WHERE DATE(last_queried_at) = CURRENT_DATE
-        AND ($1::text[] = '{}' OR (cant_haves @> $1::text[] AND array_length($1::text[], 1) = array_length(ARRAY(
+        AND ($1::text[] = '{}' OR cant_haves IS NULL OR (cant_haves @> $1::text[] AND array_length($1::text[], 1) = array_length(ARRAY(
           SELECT DISTINCT unnest($1::text[])
           INTERSECT
           SELECT DISTINCT unnest(cant_haves)
@@ -97,6 +97,49 @@ router.post(
 
       console.log(selectedMealType, selectedTastePreference, selectedCuisine);
 
+      // Check for matching recipes in global_recipes
+      const threeDaysAgo = new Date();
+      threeDaysAgo.setDate(threeDaysAgo.getDate() - 3);
+
+      const matchingRecipesQuery = await pool.query(
+        `SELECT *
+        FROM global_recipes 
+        WHERE last_queried_at < $1
+        AND ($2::text[] = '{}' OR cant_haves IS NULL OR (cant_haves @> $2::text[] AND array_length($2::text[], 1) = array_length(ARRAY(
+          SELECT DISTINCT unnest($2::text[])
+          INTERSECT
+          SELECT DISTINCT unnest(cant_haves)
+        ), 1)))
+        AND taste_preferences @> ARRAY[$3]::text[]
+        AND cuisine_preferences @> ARRAY[$4]::text[]
+        AND title NOT IN (SELECT unnest($5::text[]))`,
+        [
+          threeDaysAgo.toISOString(),
+          cantHaves,
+          selectedTastePreference,
+          selectedCuisine,
+          existingRecipes,
+        ]
+      );
+
+      let recipe;
+
+      if (matchingRecipesQuery.rows.length > 0) {
+        // Randomly select one matching recipe
+        const randomIndex = Math.floor(
+          Math.random() * matchingRecipesQuery.rows.length
+        );
+        recipe = matchingRecipesQuery.rows[randomIndex];
+
+        // Update last_queried_at for the selected recipe
+        await pool.query(
+          "UPDATE global_recipes SET last_queried_at = NOW() WHERE id = $1",
+          [recipe.id]
+        );
+
+        return res.json({ recipe });
+      }
+
       // Generate base prompt without any preferences
       let prompt = `Generate a detailed recipe. This should be a ${selectedMealType} recipe for 4 servings.`;
 
@@ -151,15 +194,16 @@ IMPORTANT: All fields must be included and properly formatted as shown above, es
       });
 
       const recipeText = completion.choices[0].message.content;
-      const recipe = cleanAIResponse(recipeText);
+      recipe = cleanAIResponse(recipeText);
 
-      // Save to global_recipes table with minimal metadata
+      // Save to global_recipes table with taste and cuisine preferences
       await pool.query(
         `INSERT INTO global_recipes (
           title, prep_time, cook_time, servings, 
           ingredients, instructions, nutritional_info,
+          cant_haves, taste_preferences, cuisine_preferences,
           meal_type
-        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`,
+        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)`,
         [
           recipe.title,
           recipe.prepTime,
@@ -168,7 +212,10 @@ IMPORTANT: All fields must be included and properly formatted as shown above, es
           recipe.ingredients,
           recipe.instructions,
           recipe.nutritionalInfo,
-          "meal", // Default meal type
+          cantHaves,
+          [selectedTastePreference],
+          [selectedCuisine],
+          selectedMealType,
         ]
       );
 
@@ -242,27 +289,27 @@ router.post(
         FROM global_recipes 
         WHERE meal_type = $1
         AND DATE(last_queried_at) = CURRENT_DATE
-        AND ($2::text[] = '{}' OR (cant_haves @> $2::text[] AND array_length($2::text[], 1) = array_length(ARRAY(
+        AND ($2::text[] = '{}' OR cant_haves IS NULL OR (cant_haves @> $2::text[] AND array_length($2::text[], 1) = array_length(ARRAY(
           SELECT DISTINCT unnest($2::text[])
           INTERSECT
           SELECT DISTINCT unnest(cant_haves)
         ), 1)))
-        AND ($3::text[] = '{}' OR (must_haves @> $3::text[] AND array_length($3::text[], 1) = array_length(ARRAY(
+        AND ($3::text[] = '{}' OR must_haves IS NULL OR (must_haves @> $3::text[] AND array_length($3::text[], 1) = array_length(ARRAY(
           SELECT DISTINCT unnest($3::text[])
           INTERSECT
           SELECT DISTINCT unnest(must_haves)
         ), 1)))
-        AND ($4::text[] = '{}' OR (taste_preferences @> $4::text[] AND array_length($4::text[], 1) = array_length(ARRAY(
+        AND ($4::text[] = '{}' OR taste_preferences IS NULL OR (taste_preferences @> $4::text[] AND array_length($4::text[], 1) = array_length(ARRAY(
           SELECT DISTINCT unnest($4::text[])
           INTERSECT
           SELECT DISTINCT unnest(taste_preferences)
         ), 1)))
-        AND ($5::text[] = '{}' OR (dietary_goals @> $5::text[] AND array_length($5::text[], 1) = array_length(ARRAY(
+        AND ($5::text[] = '{}' OR dietary_goals IS NULL OR (dietary_goals @> $5::text[] AND array_length($5::text[], 1) = array_length(ARRAY(
           SELECT DISTINCT unnest($5::text[])
           INTERSECT
           SELECT DISTINCT unnest(dietary_goals)
         ), 1)))
-        AND ($6::text[] = '{}' OR (cuisine_preferences @> $6::text[] AND array_length($6::text[], 1) = array_length(ARRAY(
+        AND ($6::text[] = '{}' OR cuisine_preferences IS NULL OR (cuisine_preferences @> $6::text[] AND array_length($6::text[], 1) = array_length(ARRAY(
           SELECT DISTINCT unnest($6::text[])
           INTERSECT
           SELECT DISTINCT unnest(cuisine_preferences)
@@ -291,27 +338,27 @@ router.post(
         FROM global_recipes 
         WHERE meal_type = $1
         AND last_queried_at < $2
-        AND ($3::text[] = '{}' OR (cant_haves @> $3::text[] AND array_length($3::text[], 1) = array_length(ARRAY(
+        AND ($3::text[] = '{}' OR cant_haves IS NULL OR (cant_haves @> $3::text[] AND array_length($3::text[], 1) = array_length(ARRAY(
           SELECT DISTINCT unnest($3::text[])
           INTERSECT
           SELECT DISTINCT unnest(cant_haves)
         ), 1)))
-        AND ($4::text[] = '{}' OR (must_haves @> $4::text[] AND array_length($4::text[], 1) = array_length(ARRAY(
+        AND ($4::text[] = '{}' OR must_haves IS NULL OR (must_haves @> $4::text[] AND array_length($4::text[], 1) = array_length(ARRAY(
           SELECT DISTINCT unnest($4::text[])
           INTERSECT
           SELECT DISTINCT unnest(must_haves)
         ), 1)))
-        AND ($5::text[] = '{}' OR (taste_preferences @> $5::text[] AND array_length($5::text[], 1) = array_length(ARRAY(
+        AND ($5::text[] = '{}' OR taste_preferences IS NULL OR (taste_preferences @> $5::text[] AND array_length($5::text[], 1) = array_length(ARRAY(
           SELECT DISTINCT unnest($5::text[])
           INTERSECT
           SELECT DISTINCT unnest(taste_preferences)
         ), 1)))
-        AND ($6::text[] = '{}' OR (dietary_goals @> $6::text[] AND array_length($6::text[], 1) = array_length(ARRAY(
+        AND ($6::text[] = '{}' OR dietary_goals IS NULL OR (dietary_goals @> $6::text[] AND array_length($6::text[], 1) = array_length(ARRAY(
           SELECT DISTINCT unnest($6::text[])
           INTERSECT
           SELECT DISTINCT unnest(dietary_goals)
         ), 1)))
-        AND ($7::text[] = '{}' OR (cuisine_preferences @> $7::text[] AND array_length($7::text[], 1) = array_length(ARRAY(
+        AND ($7::text[] = '{}' OR cuisine_preferences IS NULL OR (cuisine_preferences @> $7::text[] AND array_length($7::text[], 1) = array_length(ARRAY(
           SELECT DISTINCT unnest($7::text[])
           INTERSECT
           SELECT DISTINCT unnest(cuisine_preferences)

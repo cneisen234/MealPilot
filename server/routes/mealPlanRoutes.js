@@ -101,8 +101,8 @@ router.post("/generate", [authMiddleware, checkPaywall], async (req, res) => {
                cuisine_preferences, meal_type
         FROM global_recipes
         WHERE 
-          ($1::text[] = '{}' OR cant_haves @> $1) 
-          AND ($2::text[] = '{}' OR must_haves @> $2)
+          ($1::text[] = '{}' OR cant_haves IS NULL OR cant_haves @> $1) 
+          AND ($2::text[] = '{}' OR must_haves IS NULL OR must_haves @> $2)
           AND title NOT IN (SELECT title FROM recipes WHERE user_id = $3)
       )
       SELECT * FROM filtered_recipes

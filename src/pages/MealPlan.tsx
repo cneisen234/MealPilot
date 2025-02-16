@@ -41,6 +41,7 @@ const MealPlan: React.FC = () => {
   const { showToast } = useToast();
   const [mealPlan, setMealPlan] = useState<MealPlan | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [isGenerating, setIsGenerating] = useState(false);
   const [showConfirmModal, setShowConfirmModal] = useState(false);
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
   const [userRecipes, setUserRecipes] = useState([]);
@@ -63,6 +64,13 @@ const MealPlan: React.FC = () => {
     if (routeLocation?.state?.isNew) {
     }
   }, [routeLocation?.state?.isNew]);
+
+  useEffect(() => {
+    return () => {
+      setIsLoading(false);
+      setIsGenerating(false);
+    };
+  }, []);
 
   const loadMealPlan = async () => {
     try {
@@ -110,7 +118,7 @@ const MealPlan: React.FC = () => {
   };
 
   const generateNewPlan = async () => {
-    setIsLoading(true);
+    setIsGenerating(true);
     try {
       const response = await generateMealPlan();
       const result = await incrementAchievement("meal_plans_created");
@@ -122,7 +130,7 @@ const MealPlan: React.FC = () => {
     } catch (error) {
       showToast("Error generating meal plan", "error");
     } finally {
-      setIsLoading(false);
+      setIsGenerating(false);
     }
   };
 
@@ -204,10 +212,11 @@ const MealPlan: React.FC = () => {
     }
   };
 
-  if (isLoading) {
+  if (isLoading || isGenerating) {
     return (
       <div className="loading-container">
         <AnimatedTechIcon size={100} speed={4} />
+        {isGenerating && <p>Generating your meal plan...</p>}
       </div>
     );
   }
