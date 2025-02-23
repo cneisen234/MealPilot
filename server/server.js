@@ -14,6 +14,7 @@ const paymentRoutes = require("./routes/paymentRoutes");
 const referralRoutes = require("./routes/referralRoutes");
 const achievementsRoutes = require("./routes/achievementsRoutes");
 const miscRoutes = require("./routes/miscRoutes");
+const affiliateRoutes = require("./routes/affiliateRoutes");
 const path = require("path");
 
 const app = express();
@@ -52,6 +53,7 @@ app.use("/api/preference", preferenceRoutes);
 app.use("/api/payment", paymentRoutes);
 app.use("/api/referrals", referralRoutes);
 app.use("/api/achievements", achievementsRoutes);
+app.use("/api/affiliate", affiliateRoutes);
 
 app.get("*", (req, res) => {
   res.sendFile(path.join(__dirname, "../build", "index.html"));

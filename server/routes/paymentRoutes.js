@@ -154,6 +154,59 @@ router.post("/subscribe", authMiddleware, async (req, res) => {
 
     const user = userResult.rows[0];
 
+    // Add affiliate check and notification
+    if (user.affiliate_code && user.affiliate_paid === null) {
+      // Update user's affiliate_paid status
+      await pool.query(
+        `UPDATE users 
+     SET affiliate_paid = false 
+     WHERE id = $1`,
+        [req.user.id]
+      );
+
+      // Get affiliate's info to send notification
+      const affiliateResult = await pool.query(
+        `SELECT name, email FROM affiliates WHERE affiliate_code = $1`,
+        [user.affiliate_code]
+      );
+
+      if (affiliateResult.rows.length > 0) {
+        const affiliate = affiliateResult.rows[0];
+
+        // Affiliate notification email
+        const affiliateNotificationHtml = `
+      <html>
+        <body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px;">
+          <div style="text-align: center; margin-bottom: 20px;">
+            <div style="background-color: #05472A; color: white; font-size: 24px; font-weight: bold; padding: 10px 20px; display: inline-block; border-radius: 5px;">
+              MealSphere
+            </div>
+          </div>
+          <div style="background-color: #f8f9fa; border-radius: 5px; padding: 20px; margin-bottom: 20px;">
+            <h2 style="color: #05472A; margin-top: 0;">New Referral Subscription!</h2>
+            <p>Hi ${affiliate.name},</p>
+            <p>Great news! A user you referred has subscribed to MealSphere.</p>
+            <p>To recieve payment login to your account and send an invoice.</p>
+            <p>Thank you for helping grow the MealSphere community!</p>
+          </div>
+          <div style="text-align: center; font-size: 12px; color: #666;">
+            <p>&copy; 2025 VibeQuest. All rights reserved.</p>
+          </div>
+        </body>
+      </html>
+    `;
+
+        // Send notification email to affiliate
+        await sgMail.send({
+          to: affiliate.email,
+          from: process.env.SENDGRID_FROM_EMAIL,
+          subject: "MealSphere: New Referral Subscription!",
+          html: affiliateNotificationHtml,
+          text: `Great news! A user you referred has subscribed to MealSphere. You will receive your referral bonus once their subscription has been processed.`,
+        });
+      }
+    }
+
     const { wasReferred } = await ReferralService.handleNewSubscription(
       req.user.id
     );

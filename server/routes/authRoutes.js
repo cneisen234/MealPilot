@@ -171,15 +171,22 @@ router.post("/signup", async (req, res) => {
     const trialEndDate = new Date();
     trialEndDate.setDate(trialEndDate.getDate() + 30);
 
-    // Create the user with their unique referral code
+    // Check if it's an affiliate code
+    let affiliateCode = null;
+    if (referralCode && referralCode.toLowerCase().startsWith("affiliate")) {
+      affiliateCode = referralCode;
+    }
+
+    // Create the user with their unique referral code and affiliate code if present
     const result = await pool.query(
       `INSERT INTO users (
         name, 
         email, 
         password,
         trial_end_date,
-        referral_code
-      ) VALUES ($1, $2, $3, $4, $5) 
+        referral_code,
+        affiliate_code
+      ) VALUES ($1, $2, $3, $4, $5, $6) 
       RETURNING id, trial_end_date`,
       [
         name,
@@ -187,14 +194,15 @@ router.post("/signup", async (req, res) => {
         hashedPassword,
         trialEndDate,
         userReferralCode,
+        affiliateCode,
       ]
     );
 
     const userId = result.rows[0].id;
 
     // If referrer code exists, create referral record
-    if (referralCode) {
-      const referralResult = await pool.query(
+    if (referralCode && !affiliateCode) {
+      await pool.query(
         `INSERT INTO referrals (
           referrer_code, 
           referred_id,

@@ -1,5 +1,9 @@
 import React, { useState, useEffect, useCallback } from "react";
-import { signup, login, checkEmailAvailability } from "../../utils/api";
+import {
+  signupAffiliate,
+  loginAffiliate,
+  checkEmailAvailability,
+} from "../../utils/api";
 import { useAuth } from "../../context/AuthContext";
 import useDebounce from "../../hooks/useDebounce";
 import { emailFormatValidationHelper } from "../../helpers/emailFormatValidationHelper";
@@ -10,8 +14,7 @@ import {
 import { InputWithPasswordToggle } from "./InputWithPasswordToggle";
 import { useToast } from "../../context/ToastContext";
 
-//@ts-ignore
-const SignupForm: React.FC = ({ referralCode }) => {
+const AffiliateSignupForm: React.FC = () => {
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -20,7 +23,8 @@ const SignupForm: React.FC = ({ referralCode }) => {
   const [generalError, setGeneralError] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const { showToast } = useToast();
-  const { checkAuthStatus } = useAuth();
+  const { checkAffiliateAuthStatus, loginAffiliate: authLoginAffiliate } =
+    useAuth();
 
   const debouncedEmail = useDebounce(email, 300);
 
@@ -75,31 +79,31 @@ const SignupForm: React.FC = ({ referralCode }) => {
         return;
       }
 
-      // Proceed with signup
-      await signup({
+      // Proceed with affiliate signup
+      await signupAffiliate({
         name,
         email: email.toLowerCase(),
         password,
-        ...(referralCode && { referralCode }),
       });
 
-      // Login
-      const loginResponse = await login({ email, password });
+      // Login after signup
+      const loginResponse = await loginAffiliate({ email, password });
 
-      console.log(loginResponse.data);
+      authLoginAffiliate(
+        loginResponse.data.token,
+        loginResponse.data.affiliate.name,
+        loginResponse.data.affiliate.email,
+        loginResponse.data.affiliate.affiliate_code
+      );
 
       // Store the token
-      localStorage.setItem("token", loginResponse.data.token);
+      localStorage.setItem("affiliateToken", loginResponse.data.token);
 
       // Update auth status
-      checkAuthStatus();
-      showToast("Account created successfully!", "success");
+      checkAffiliateAuthStatus();
+      showToast("Affiliate account created!", "success");
     } catch (error) {
-      showToast(
-        //@ts-ignore
-        error.response?.data?.message || "Error creating account",
-        "error"
-      );
+      showToast("Error creating affiliate account", "error");
     }
   };
 
@@ -150,10 +154,10 @@ const SignupForm: React.FC = ({ referralCode }) => {
         type="submit"
         className="btn btn-primary"
         style={{ width: "100%" }}>
-        Sign Up
+        Create Affiliate Account
       </button>
     </form>
   );
 };
 
-export default SignupForm;
+export default AffiliateSignupForm;

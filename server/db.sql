@@ -57,6 +57,13 @@ ALTER TABLE users ADD COLUMN created_at TIMESTAMP DEFAULT NOW
 ALTER TABLE users ADD COLUMN referral_code VARCHAR
 (20) UNIQUE;
 
+ALTER TABLE users 
+ADD COLUMN affiliate_code VARCHAR
+(255)
+
+ALTER TABLE users 
+ADD COLUMN affiliate_paid BOOLEAN DEFAULT NULL;
+
 CREATE TABLE cant_haves
 (
     id SERIAL PRIMARY KEY,
@@ -261,3 +268,15 @@ ON global_recipes(title);
 
             CREATE INDEX idx_global_recipes_restrictions ON global_recipes (cant_haves, must_haves);
             CREATE INDEX idx_recipes_title ON recipes (title);
+
+            CREATE TABLE affiliates
+            (
+                id SERIAL PRIMARY KEY,
+                name VARCHAR(255) NOT NULL,
+                email VARCHAR(255) UNIQUE NOT NULL,
+                password VARCHAR(255) NOT NULL,
+                affiliate_code VARCHAR(255) UNIQUE NOT NULL,
+                reset_password_token VARCHAR(255),
+                reset_password_expires TIMESTAMP,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            );

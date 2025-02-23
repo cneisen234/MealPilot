@@ -33,17 +33,29 @@ import { ToastContainer } from "./components/common/Toast";
 import { ToastProvider } from "./context/ToastContext";
 import PaywallGuard from "./components/paywall/PaywallGuard";
 import Achievements from "./pages/Achievements";
+import AffiliateSignup from "./pages/AffilateSignUp";
+import AffiliateLogin from "./pages/AffiliateLogin";
+import AffiliateRoute from "./components/auth/AffiliateRoute";
+import AffiliateDashboard from "./pages/AffiliateDashboard";
 
 const AppContent: React.FC = () => {
-  const { isAuthenticated, checkAuthStatus } = useAuth();
+  const {
+    isAuthenticated,
+    isAffiliateAuthenticated,
+    checkAuthStatus,
+    checkAffiliateAuthStatus,
+  } = useAuth();
 
   useEffect(() => {
     checkAuthStatus();
-  }, [checkAuthStatus]);
+    checkAffiliateAuthStatus();
+  }, [checkAuthStatus, checkAffiliateAuthStatus]);
 
   const stripePromise = loadStripe(
     process.env.REACT_APP_STRIPE_PUBLISHABLE_KEY!
   );
+
+  console.log(isAuthenticated);
 
   return (
     <div
@@ -89,6 +101,43 @@ const AppContent: React.FC = () => {
             <Route
               path="/share/shopping-list/:id"
               element={<ShareableListPage />}
+            />
+
+            <Route
+              path="/affiliate/login"
+              element={
+                isAffiliateAuthenticated ? (
+                  <Navigate to="/affiliate/dashboard" replace />
+                ) : (
+                  <AffiliateLogin />
+                )
+              }
+            />
+            <Route
+              path="/affiliate/signup"
+              element={
+                isAffiliateAuthenticated ? (
+                  <Navigate to="/affiliate/dashboard" replace />
+                ) : (
+                  <AffiliateSignup />
+                )
+              }
+            />
+
+            <Route
+              path="/affiliate/forgot-password"
+              element={<ForgotPassword />}
+            />
+            <Route
+              path="/affiliate/reset-password/:token"
+              element={<ResetPassword />}
+            />
+
+            {/* is accessible only by affiliates */}
+
+            <Route
+              path="/affiliate/dashboard"
+              element={<AffiliateRoute element={<AffiliateDashboard />} />}
             />
 
             {/* is accessible without paywall */}

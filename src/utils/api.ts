@@ -15,9 +15,18 @@ const api = axios.create({
 // Request interceptor
 api.interceptors.request.use(
   (config) => {
-    const token = localStorage.getItem('token');
-    if (token) {
-      config.headers['Authorization'] = `Bearer ${token}`;
+    // Check if it's an affiliate route
+    if (config.url?.startsWith('/affiliate')) {
+      const affiliateToken = localStorage.getItem('affiliateToken');
+      if (affiliateToken) {
+        config.headers['Authorization'] = `Bearer ${affiliateToken}`;
+      }
+    } else {
+      // Regular user routes
+      const token = localStorage.getItem('token');
+      if (token) {
+        config.headers['Authorization'] = `Bearer ${token}`;
+      }
     }
     return config;
   },
@@ -35,11 +44,22 @@ api.interceptors.response.use(
     if (error.response) {
       switch (error.response.status) {
         case 401:
-         console.error('UnAuthorized:', error.response.data);
-         if(window.location.pathname !== "/login") {
-          localStorage.removeItem('token');
-          window.location.href = '/login';
-         }
+          const hasRegularToken = localStorage.getItem('token');
+          const hasAffiliateToken = localStorage.getItem('affiliateToken');
+          // Only proceed with 401 handling if NO valid token exists
+          if (!hasRegularToken && !hasAffiliateToken) {
+            if (window.location.pathname.startsWith('/affiliate')) {
+              if(window.location.pathname !== "/affiliate/login") {
+                localStorage.removeItem('affiliateToken');
+                window.location.href = '/affiliate/login';
+              }
+            } else {
+              if(window.location.pathname !== "/login") {
+                localStorage.removeItem('token');
+                window.location.href = '/login';
+              }
+            }
+          }
           break;
         case 403:
           // Forbidden: you might want to handle this differently
@@ -406,8 +426,6 @@ export const analyzeImageWithHuggingFace = async (file: File): Promise<string> =
       );
 
       return response.data
-        
-      throw new Error('No objects detected');
       
     } catch (error) {
       if (axios.isAxiosError(error) && error.response?.status === 503) {
@@ -510,6 +528,40 @@ export const incrementAchievement = async (type: string): Promise<AchievementRes
   return { data: response.data };
 };
 
+export const signupAffiliate = (userData: { 
+  name: string; 
+  email: string; 
+  password: string;
+}) => {
+  return api.post('/affiliate/signup', userData);
+};
+
+export const loginAffiliate = (credentials: { 
+  email: string; 
+  password: string;
+}) => {
+  return api.post('/affiliate/login', credentials);
+};
+
+export const requestAffiliatePasswordReset = (email: string) => {
+  return api.post('/affiliate/forgot-password', { email });
+};
+
+export const resetAffiliatePassword = (token: string, password: string) => {
+  return api.post(`/affiliate/reset-password/${token}`, { password });
+};
+
+export const getAffiliateReferrals = (affiliateCode: any) => {
+  return api.post('/affiliate/referrals', {affiliateCode});
+};
+
+export const sendInvoiceEmail = async (data: { 
+  amount: number; 
+  userCount: number;
+  affiliateCode: string;
+}) => {
+  return api.post('/affiliate/send-invoice', data);
+};
 
 export default api;
 

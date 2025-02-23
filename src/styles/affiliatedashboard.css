@@ -1,0 +1,279 @@
+.affiliate-dashboard {
+    padding: 1rem;
+    max-width: 1200px;
+    margin: 0 auto;
+}
+
+.dashboard-header {
+    margin-bottom: 2rem;
+}
+
+.dashboard-header h1 {
+    color: var(--primary-color);
+    margin-bottom: 1rem;
+}
+
+.affiliate-code {
+    background-color: var(--surface-color);
+    padding: 1rem;
+    border-radius: 8px;
+    display: flex;
+    gap: 1rem;
+    align-items: center;
+    flex-wrap: wrap;
+}
+
+.affiliate-code strong {
+    color: var(--primary-color);
+    font-size: 1.1rem;
+}
+
+.referrals-section {
+    background-color: var(--surface-color);
+    padding: 1.5rem;
+    border-radius: 8px;
+}
+
+.referrals-section h2 {
+    color: var(--primary-color);
+    margin-bottom: 1.5rem;
+}
+
+.referrals-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+    gap: 1rem;
+}
+
+.referral-card {
+    background-color: var(--background-color);
+    border-radius: 8px;
+    padding: 1.5rem;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.referral-header {
+    margin-bottom: 1rem;
+}
+
+.referral-header h3 {
+    margin: 0;
+    color: var(--primary-color);
+    font-size: 1.1rem;
+}
+
+.referral-email {
+    color: var(--text-color-light);
+    font-size: 0.9rem;
+}
+
+.referral-status {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+}
+
+.status-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.status-item label {
+    color: var(--text-color-light);
+    font-size: 0.9rem;
+}
+
+.status,
+.payment-status {
+    padding: 0.25rem 0.75rem;
+    border-radius: 20px;
+    font-size: 0.9rem;
+}
+
+.status.active {
+    background-color: var(--success-color-light);
+    color: var(--success-color);
+}
+
+.status.inactive {
+    background-color: var(--error-color-light);
+    color: var(--error-color);
+}
+
+.payment-status.paid {
+    background-color: var(--success-color-light);
+    color: var(--success-color);
+}
+
+.payment-status.unpaid {
+    background-color: var(--error-color-light);
+    color: var(--error-color);
+}
+
+.no-referrals {
+    text-align: center;
+    color: var(--text-color-light);
+    padding: 2rem;
+    grid-column: 1 / -1;
+    background-color: var(--background-color);
+    border-radius: 8px;
+}
+
+.dashboard-header {
+    margin-bottom: 2rem;
+}
+
+.dashboard-header h1 {
+    color: var(--primary-color);
+    margin-bottom: 1rem;
+    font-size: 2rem;
+}
+
+.referral-description {
+    color: var(--text-color);
+    margin-bottom: 1.5rem;
+    font-size: 1rem;
+}
+
+.referral-link-container {
+    display: flex;
+    gap: 0.5rem;
+    align-items: center;
+    width: 100%;
+}
+
+.referral-link-input {
+    flex: 1;
+    padding: 0.75rem;
+    border: 1px solid #e0e0e0;
+    border-radius: 4px;
+    font-size: 0.9rem;
+    background-color: white;
+    color: var(--text-color);
+}
+
+.copy-link-button {
+    background-color: var(--primary-color);
+    color: white;
+    padding: 0.75rem 1.25rem;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    font-weight: 600;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    transition: background-color 0.2s ease;
+}
+
+.copy-link-button:hover {
+    background-color: #043d23;
+}
+
+.stats-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 1.5rem;
+    margin-bottom: 2rem;
+}
+
+.stat-card {
+    background-color: var(--surface-color);
+    padding: 1.5rem;
+    border-radius: 8px;
+    text-align: center;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    transition: transform 0.2s ease;
+}
+
+.stat-card:hover {
+    transform: translateY(-2px);
+}
+
+.stat-value {
+    font-size: 2.5rem;
+    font-weight: bold;
+    color: var(--primary-color);
+    margin-bottom: 0.5rem;
+}
+
+.stat-label {
+    color: var(--text-color);
+    font-size: 1rem;
+    font-weight: 500;
+}
+
+.earnings-card {
+    background-color: #f0f9ff;
+    border: 1px solid #93c5fd;
+}
+
+.invoice-button {
+    margin-top: 1rem;
+    padding: 0.5rem 1rem;
+    background-color: var(--primary-color);
+    color: white;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    font-weight: 500;
+    transition: all 0.2s ease;
+    width: 100%;
+}
+
+.invoice-button:hover:not(:disabled) {
+    background-color: #043d23;
+}
+
+.invoice-button:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+@media (max-width: 768px) {
+    .stats-grid {
+        grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+        gap: 1rem;
+    }
+
+    .stat-value {
+        font-size: 2rem;
+    }
+
+    .stat-label {
+        font-size: 0.9rem;
+    }
+}
+
+@media (max-width: 480px) {
+    .stats-grid {
+        grid-template-columns: 1fr;
+    }
+}
+
+@media (max-width: 480px) {
+    .referral-link-container {
+        flex-direction: column;
+    }
+
+    .copy-link-button {
+        width: 100%;
+        justify-content: center;
+    }
+    .referral-link-input {
+            width: 92%;
+                justify-content: center;
+    }
+}
+
+@media (max-width: 480px) {
+    .affiliate-code {
+        flex-direction: column;
+        align-items: flex-start;
+    }
+
+    .referrals-grid {
+        grid-template-columns: 1fr;
+    }
+}
