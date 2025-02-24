@@ -34,8 +34,8 @@ export const passwordValidationHelper = (password: string): boolean => {
 export const getPasswordValidationErrors = (password: string): string[] => {
   const errors: string[] = [];
 
-  if (password.length < 10) {
-    errors.push("Password must be at least 10 characters long");
+  if (password.length < 8) {
+    errors.push("Password must be at least 8 characters long");
   }
   if (!/[A-Z]/.test(password)) {
     errors.push("Password must contain at least one uppercase letter");
