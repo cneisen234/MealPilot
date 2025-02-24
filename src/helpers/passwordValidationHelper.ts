@@ -1,8 +1,8 @@
 // src/helpers/passwordValidationHelper.ts
 
 export const passwordValidationHelper = (password: string): boolean => {
-  // Check for minimum length of 10 characters
-  if (password.length < 10) {
+  // Check for minimum length of 8 characters
+  if (password.length < 8) {
     return false;
   }
 
